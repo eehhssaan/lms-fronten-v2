@@ -19,6 +19,7 @@ import { Course, Content } from "@/types";
 import { use } from "react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Notification from "@/components/Notification";
+import BulkEnrollment from "@/components/BulkEnrollment";
 
 export default function CoursePage({
   params,
@@ -324,6 +325,22 @@ export default function CoursePage({
                   </Heading>
                   <FileUpload courseId={courseId} />
                 </Box>
+              )}
+
+              {/* Show bulk enrollment for teachers and admins */}
+              {user && (user.role === "teacher" || user.role === "admin") && (
+                <BulkEnrollment
+                  courseId={courseId}
+                  onSuccess={() => {
+                    // Refresh course data after successful bulk enrollment
+                    if (courseId) {
+                      getCourse(courseId).then((courseData) => {
+                        setCourse(courseData);
+                        setIsEnrolled(checkEnrollmentStatus(courseData));
+                      });
+                    }
+                  }}
+                />
               )}
             </Box>
           </Flex>

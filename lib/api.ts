@@ -676,8 +676,16 @@ export const getClass = async (
   department?: string;
   gradeLevel?: string;
   description?: string;
-  classTeacher: string;
-  students: string[];
+  classTeacher: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  students: {
+    _id: string;
+    name: string;
+    email: string;
+  }[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -688,6 +696,136 @@ export const getClass = async (
   } catch (error: any) {
     throw new Error(
       error.response?.data?.message || "Failed to fetch class details"
+    );
+  }
+};
+
+export const updateClass = async (
+  classId: string,
+  classData: {
+    name: string;
+    code: string;
+    academicYear: string;
+    department?: string;
+    gradeLevel?: string;
+    description?: string;
+  }
+): Promise<{
+  _id: string;
+  name: string;
+  code: string;
+  academicYear: string;
+  department?: string;
+  gradeLevel?: string;
+  description?: string;
+  classTeacher: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  students: {
+    _id: string;
+    name: string;
+    email: string;
+  }[];
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}> => {
+  try {
+    const response = await api.put(`/api/classes/${classId}`, classData);
+    return response.data.data;
+  } catch (error: any) {
+    // Check for specific error about duplicate class code
+    if (
+      error.response?.status === 400 &&
+      error.response.data?.message?.includes("already exists")
+    ) {
+      throw new Error(
+        `A class with this code already exists. Please choose a different code.`
+      );
+    }
+    throw new Error(error.response?.data?.message || "Failed to update class");
+  }
+};
+
+export const removeStudentFromClass = async (
+  classId: string,
+  studentId: string
+): Promise<void> => {
+  try {
+    await api.delete(`/api/classes/${classId}/students/${studentId}`);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to remove student from class"
+    );
+  }
+};
+
+export const getAllUsers = async (): Promise<
+  {
+    _id: string;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  }[]
+> => {
+  try {
+    const response = await api.get("/api/users");
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch users");
+  }
+};
+
+// Update the getAvailableStudents function to use getAllUsers
+export const getAvailableStudents = async (
+  classId: string
+): Promise<
+  {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+  }[]
+> => {
+  try {
+    const allUsers = await getAllUsers();
+    // Filter for students only
+    return allUsers.filter((user) => user.role === "student");
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch available students"
+    );
+  }
+};
+
+// Update the existing addStudentsToClass function to handle single student
+export const addStudentToClass = async (
+  classId: string,
+  studentId: string
+): Promise<void> => {
+  try {
+    await api.post(`/api/classes/${classId}/students`, {
+      students: [studentId],
+    });
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to add student to class"
+    );
+  }
+};
+
+export const getClassCourses = async (classId: string): Promise<Course[]> => {
+  try {
+    const response = await api.get(`/api/classes/${classId}/courses`);
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch class courses"
     );
   }
 };

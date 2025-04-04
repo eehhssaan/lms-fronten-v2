@@ -115,7 +115,7 @@ export const registerUser = async (userData: {
 export const loginUser = async (credentials: {
   email: string;
   password: string;
-}): Promise<{ token: string; data: User }> => {
+}): Promise<{ token: string; user: User }> => {
   try {
     console.log("Logging in with email:", credentials.email);
     // Directly calling the backend API
@@ -167,8 +167,11 @@ export const logoutUser = async (): Promise<void> => {
 export const getCurrentUser = async (): Promise<User> => {
   try {
     const response = await api.get("/api/users/me");
-    return response.data.data;
+    console.log("getCurrentUser response:", response.data);
+    // Check if the response has a nested data property
+    return response.data.data || response.data;
   } catch (error: any) {
+    console.error("getCurrentUser error:", error);
     if (error.message === "Network Error") {
       throw new Error(
         "Unable to connect to the server. Please check your network or try again later."
@@ -576,6 +579,115 @@ export const addStudentsToClass = async (
   } catch (error: any) {
     throw new Error(
       error.response?.data?.message || "Failed to add students to class"
+    );
+  }
+};
+
+// Class APIs
+export const getAvailableClasses = async (): Promise<
+  { _id: string; name: string }[]
+> => {
+  try {
+    const response = await api.get("/api/classes/available");
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch available classes"
+    );
+  }
+};
+
+// Class Management APIs
+export const createClass = async (classData: {
+  name: string;
+  code: string;
+  academicYear: string;
+  department?: string;
+  gradeLevel?: string;
+  description?: string;
+  classTeacher?: string;
+}): Promise<{
+  _id: string;
+  name: string;
+  code: string;
+  academicYear: string;
+  department?: string;
+  gradeLevel?: string;
+  description?: string;
+  classTeacher: string;
+  students: string[];
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}> => {
+  try {
+    const response = await api.post("/api/classes", classData);
+    return response.data.data; // Extract the data from the success response
+  } catch (error: any) {
+    // Check for specific error about duplicate class code
+    if (
+      error.response?.status === 400 &&
+      error.response.data?.message?.includes("already exists")
+    ) {
+      throw new Error(
+        `A class with this code already exists. Please choose a different code.`
+      );
+    }
+    throw new Error(error.response?.data?.message || "Failed to create class");
+  }
+};
+
+export const getClasses = async (params?: {
+  page?: number;
+  limit?: number;
+}): Promise<{
+  data: {
+    _id: string;
+    name: string;
+    code: string;
+    academicYear: string;
+    department?: string;
+    gradeLevel?: string;
+    description?: string;
+    classTeacher: string;
+    students: string[];
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }[];
+  count: number;
+  pagination: { page: number; limit: number; totalPages: number };
+}> => {
+  try {
+    const response = await api.get("/api/classes", { params });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch classes");
+  }
+};
+
+export const getClass = async (
+  classId: string
+): Promise<{
+  _id: string;
+  name: string;
+  code: string;
+  academicYear: string;
+  department?: string;
+  gradeLevel?: string;
+  description?: string;
+  classTeacher: string;
+  students: string[];
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}> => {
+  try {
+    const response = await api.get(`/api/classes/${classId}`);
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch class details"
     );
   }
 };

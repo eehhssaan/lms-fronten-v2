@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Box, Flex, Text } from 'rebass';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import Navigation from '@/components/Navigation';
+import { useState } from "react";
+import { Box, Flex, Text } from "rebass";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import Navigation from "@/components/Navigation";
 
 export default function Header() {
   const { isAuthenticated, logout, user } = useAuth();
@@ -20,7 +20,7 @@ export default function Header() {
     try {
       await logout();
     } catch (err) {
-      console.error('Logout failed:', err);
+      console.error("Logout failed:", err);
     }
   };
 
@@ -28,9 +28,9 @@ export default function Header() {
     <Box
       as="header"
       sx={{
-        borderBottom: '1px solid',
-        borderColor: 'border',
-        bg: 'white',
+        borderBottom: "1px solid",
+        borderColor: "border",
+        bg: "white",
       }}
     >
       <Flex
@@ -40,14 +40,10 @@ export default function Header() {
         justifyContent="space-between"
         className="container"
       >
-        <Link href="/" style={{ textDecoration: 'none' }}>
+        <Link href="/" style={{ textDecoration: "none" }}>
           <Flex alignItems="center">
-            <Text
-              fontSize={[3, 4]}
-              fontWeight="bold"
-              color="primary"
-            >
-              LMS
+            <Text fontSize={[3, 4]} fontWeight="bold" color="primary">
+              LMS!
             </Text>
           </Flex>
         </Link>
@@ -55,8 +51,8 @@ export default function Header() {
         {/* Mobile menu button */}
         <Box
           sx={{
-            display: ['block', 'none'],
-            cursor: 'pointer',
+            display: ["block", "none"],
+            cursor: "pointer",
           }}
           onClick={toggleMenu}
         >
@@ -81,10 +77,14 @@ export default function Header() {
         {/* Desktop navigation */}
         <Box
           sx={{
-            display: ['none', 'block'],
+            display: ["none", "block"],
           }}
         >
-          <Navigation isAuthenticated={isAuthenticated} pathname={pathname} />
+          <Navigation
+            isAuthenticated={isAuthenticated}
+            pathname={pathname}
+            user={user}
+          />
         </Box>
 
         {/* User menu (desktop) */}
@@ -92,18 +92,18 @@ export default function Header() {
           <Flex
             alignItems="center"
             sx={{
-              display: ['none', 'flex'],
+              display: ["none", "flex"],
             }}
           >
             <Link href="/profile">
               <Box
                 mr={3}
                 sx={{
-                  color: pathname === '/profile' ? 'primary' : 'text',
-                  fontWeight: pathname === '/profile' ? 'bold' : 'normal',
+                  color: pathname === "/profile" ? "primary" : "text",
+                  fontWeight: pathname === "/profile" ? "bold" : "normal",
                 }}
               >
-                {user?.firstName || 'Profile'}
+                {user?.name || "Profile"}
               </Box>
             </Link>
             <Box
@@ -126,9 +126,9 @@ export default function Header() {
       {menuOpen && (
         <Box
           sx={{
-            display: ['block', 'none'],
-            borderTop: '1px solid',
-            borderColor: 'border',
+            display: ["block", "none"],
+            borderTop: "1px solid",
+            borderColor: "border",
           }}
         >
           <Box p={3}>
@@ -137,18 +137,19 @@ export default function Header() {
               pathname={pathname}
               isMobile={true}
               closeMenu={() => setMenuOpen(false)}
+              user={user}
             />
-            
+
             {isAuthenticated && (
               <Box mt={3}>
                 <Link href="/profile" onClick={() => setMenuOpen(false)}>
                   <Box
                     py={2}
                     sx={{
-                      borderTop: '1px solid',
-                      borderColor: 'border',
-                      color: pathname === '/profile' ? 'primary' : 'text',
-                      fontWeight: pathname === '/profile' ? 'bold' : 'normal',
+                      borderTop: "1px solid",
+                      borderColor: "border",
+                      color: pathname === "/profile" ? "primary" : "text",
+                      fontWeight: pathname === "/profile" ? "bold" : "normal",
                     }}
                   >
                     Profile

@@ -1,14 +1,13 @@
 // User types
 export interface User {
   _id: string;
-  username: string;
+  name: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: 'student' | 'teacher' | 'admin';
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  role: "student" | "teacher" | "admin";
+  profilePicture?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Course types
@@ -34,7 +33,7 @@ export interface Content {
   _id: string;
   title: string;
   description?: string;
-  type: 'lecture' | 'resource' | 'assignment' | 'quiz';
+  type: "lecture" | "resource" | "assignment" | "quiz";
   order: number;
   fileUrl?: string;
   text?: string;
@@ -91,7 +90,7 @@ export interface Quiz {
 export interface QuizQuestion {
   _id: string;
   question: string;
-  type: 'multiple-choice' | 'true-false' | 'short-answer';
+  type: "multiple-choice" | "true-false" | "short-answer";
   options?: string[];
   correctAnswer: string | string[];
   points: number;

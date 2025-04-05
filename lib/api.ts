@@ -286,91 +286,52 @@ export const getCourse = async (courseId: string): Promise<Course> => {
 };
 
 export const getCourseContents = async (
-  courseId: string
+  courseId: string,
+  params?: {
+    moduleNumber?: number;
+    lessonNumber?: number;
+    type?: string;
+  }
 ): Promise<Content[]> => {
   try {
     console.log(`API Client: Getting contents for course ${courseId}`);
 
-    // Check backend API status before requesting contents
-    try {
-      const response = await api.get(`/api/courses/${courseId}/contents`, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+    const queryParams = new URLSearchParams({
+      courseId: courseId,
+      ...(params?.moduleNumber && {
+        moduleNumber: params.moduleNumber.toString(),
+      }),
+      ...(params?.lessonNumber && {
+        lessonNumber: params.lessonNumber.toString(),
+      }),
+      ...(params?.type && { type: params.type }),
+    });
 
-      console.log("Course contents received:", response.data);
+    const response = await api.get(`/api/contents?${queryParams.toString()}`);
 
-      // Handle the case when we get a successful response but invalid data structure
-      if (!response.data) {
-        console.log(
-          "API Client: Empty response data for contents, returning empty array"
-        );
-        return []; // Return empty array instead of throwing
-      }
-
-      // Special handling for the success flag from our API
-      if (response.data.success === false) {
-        console.log(
-          "API Client: Server returned error response for contents, returning empty array"
-        );
-        return [];
-      }
-
-      // Check for the expected data structure
-      if (!response.data.data) {
-        // First check if the data itself is directly an array (some APIs don't wrap in data property)
-        if (Array.isArray(response.data)) {
-          console.log(
-            "API Client: Response contains contents array directly instead of in .data property"
-          );
-          return response.data;
-        }
-
-        console.log(
-          "API Client: Invalid content data format (missing data property), returning empty array"
-        );
-        return []; // Return empty array instead of throwing
-      }
-
-      return response.data.data;
-    } catch (err: any) {
-      // If we get a 404, the endpoint might not exist yet
-      if (err.response?.status === 404) {
-        console.log(
-          "API Client: Course contents endpoint returned 404. The endpoint may not be implemented yet."
-        );
-
-        // This is a graceful fallback - return empty array if the backend API is missing this endpoint
-        return [];
-      }
-
-      // Rethrow for other errors to be handled by the main catch block
-      throw err;
+    if (!response.data.success) {
+      console.log("API Client: Server returned error response for contents");
+      throw new Error(
+        response.data.message || "Failed to fetch course contents"
+      );
     }
+
+    return response.data.data || [];
   } catch (error: any) {
     console.error("API Client: Error fetching course contents:", {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
-      config: error.config
-        ? {
-            url: error.config.url,
-            method: error.config.method,
-          }
-        : "No config",
     });
 
     // Check for authentication errors
     if (error.response?.status === 401 || error.response?.status === 403) {
-      console.log(
-        "Authentication error while fetching course contents, returning empty array"
-      );
-      return [];
+      throw new Error("Authentication required. Please log in again.");
     }
 
-    // For all other errors, also return empty array instead of throwing
-    return [];
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch course contents"
+    );
   }
 };
 
@@ -414,26 +375,89 @@ export const createCourse = async (courseData: {
 // Special handling for file downloads
 export const downloadContent = async (
   contentId: string,
-  filename: string
+  filename: string,
+  onProgress?: (progress: number) => void
 ): Promise<void> => {
   try {
-    const response = await api.get(`/api/contents/${contentId}/download`, {
-      responseType: "blob",
-    });
+    const response = await fetch(
+      `${getBaseUrl()}/api/contents/${contentId}/download`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${getStoredToken()}`,
+        },
+      }
+    );
 
-    // Create download link and trigger it
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", filename || "download");
-    document.body.appendChild(link);
-    link.click();
+    if (!response.ok) {
+      // Handle specific error cases
+      switch (response.status) {
+        case 401:
+          throw new Error("Please log in to download materials");
+        case 403:
+          throw new Error(
+            "You do not have permission to download this material"
+          );
+        case 404:
+          throw new Error("Material not found");
+        default:
+          throw new Error("Failed to download file");
+      }
+    }
+
+    // Get total size
+    const contentLength = response.headers.get("content-length");
+    const total = parseInt(contentLength || "0", 10);
+
+    // Create response reader
+    const reader = response.body!.getReader();
+    const chunks: Uint8Array[] = [];
+    let receivedLength = 0;
+
+    // Read the data chunks
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        break;
+      }
+
+      chunks.push(value);
+      receivedLength += value.length;
+
+      // Report progress if callback provided
+      if (onProgress && total) {
+        const progress = (receivedLength / total) * 100;
+        onProgress(progress);
+      }
+    }
+
+    // Combine chunks into single Uint8Array
+    const chunksAll = new Uint8Array(receivedLength);
+    let position = 0;
+    for (let chunk of chunks) {
+      chunksAll.set(chunk, position);
+      position += chunk.length;
+    }
+
+    // Create blob and download
+    const blob = new Blob([chunksAll], {
+      type: response.headers.get("content-type") || "application/pdf",
+    });
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || "course-material.pdf";
+    document.body.appendChild(a);
+    a.click();
 
     // Cleanup
-    link.parentNode?.removeChild(link);
     window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   } catch (error: any) {
-    throw new Error("Failed to download file");
+    console.error("Download error:", error);
+    throw error;
   }
 };
 
@@ -835,6 +859,33 @@ export const removeCourseFromClass = async (
   } catch (error: any) {
     throw new Error(
       error.response?.data?.message || "Failed to remove course from class"
+    );
+  }
+};
+
+export const createCourseContent = async (
+  courseId: string,
+  formData: FormData
+): Promise<Content> => {
+  try {
+    const response = await api.post(`/api/contents`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Failed to create content");
+    }
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "Content creation error:",
+      error.response?.data || error.message
+    );
+    throw new Error(
+      error.response?.data?.message || "Failed to create content"
     );
   }
 };

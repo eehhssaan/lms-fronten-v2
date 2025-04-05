@@ -3,8 +3,6 @@ export interface User {
   _id: string;
   name: string;
   email: string;
-  firstName: string;
-  lastName: string;
   role: "student" | "teacher" | "admin";
   profilePicture?: string;
   isActive?: boolean;
@@ -17,15 +15,39 @@ export interface Course {
   _id: string;
   title: string;
   code: string;
-  description: string;
   subject: string;
   grade: string;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-  maxStudents: number;
-  teacher?: User;
+  description?: string;
+  teacher?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  startDate?: string;
+  endDate?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   students?: User[];
+  maxStudents?: number;
+}
+
+export interface Class {
+  _id: string;
+  name: string;
+  code: string;
+  academicYear: string;
+  department?: string;
+  gradeLevel?: string;
+  description?: string;
+  classTeacher: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  students: User[];
+  courses: Course[];
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }

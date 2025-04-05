@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Box, Heading, Text, Flex } from "rebass";
 import Button from "@/components/Button";
-import { enrollClassInCourse, getCourses } from "@/lib/api";
+import { assignCourseToClass, getCourses } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Notification from "@/components/Notification";
@@ -14,13 +14,6 @@ interface CourseAssignmentProps {
   assignedCourses: APICourse[];
   onSuccess?: () => void;
   onCancel?: () => void;
-}
-
-interface Course extends Omit<APICourse, "teacher"> {
-  teacher?: {
-    firstName: string;
-    lastName: string;
-  };
 }
 
 export default function CourseAssignment({
@@ -38,7 +31,7 @@ export default function CourseAssignment({
     message: string;
     type: "success" | "error";
   } | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<APICourse[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [coursesError, setCoursesError] = useState<string | null>(null);
 
@@ -55,21 +48,8 @@ export default function CourseAssignment({
         setCoursesError(null);
         const response = await getCourses();
 
-        // Transform the API response to match our component's interface
-        const transformedCourses: Course[] = response.data.map(
-          (course: APICourse) => ({
-            ...course,
-            teacher: course.teacher
-              ? {
-                  firstName: course.teacher.firstName,
-                  lastName: course.teacher.lastName,
-                }
-              : undefined,
-          })
-        );
-
         // Filter out already assigned courses
-        const availableCourses = transformedCourses.filter(
+        const availableCourses = response.data.filter(
           (course) =>
             !assignedCourses.some((assigned) => assigned._id === course._id)
         );
@@ -106,9 +86,9 @@ export default function CourseAssignment({
       setLoading(true);
       setError(null);
 
-      // Enroll the class in each selected course
+      // Assign each selected course to the class
       for (const courseId of selectedCourses) {
-        await enrollClassInCourse(courseId, classId);
+        await assignCourseToClass(classId, courseId);
       }
 
       setNotification({
@@ -121,6 +101,7 @@ export default function CourseAssignment({
       // Clear selections
       setSelectedCourses([]);
 
+      // Close the dialog and refresh the parent view
       if (onSuccess) {
         onSuccess();
       }
@@ -156,7 +137,8 @@ export default function CourseAssignment({
 
       <Box mb={3}>
         <Text fontSize={1} mb={2}>
-          Select courses to assign to this class:
+          Select courses to assign to this class. All students in the class will
+          be automatically enrolled in these courses.
         </Text>
 
         {loadingCourses ? (

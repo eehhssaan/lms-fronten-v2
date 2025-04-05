@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Course, User, Content } from "@/types";
+import { Course, User, Content, Class } from "@/types";
 
 // Determine the base URL for API requests
 const getBaseUrl = () => {
@@ -76,8 +76,7 @@ export const registerUser = async (userData: {
   username: string;
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   role?: "student" | "teacher" | "admin";
 }): Promise<{ token: string; data: User }> => {
   try {
@@ -666,88 +665,71 @@ export const getClasses = async (params?: {
   }
 };
 
-export const getClass = async (
-  classId: string
-): Promise<{
-  _id: string;
-  name: string;
-  code: string;
-  academicYear: string;
-  department?: string;
-  gradeLevel?: string;
-  description?: string;
-  classTeacher: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  students: {
-    _id: string;
-    name: string;
-    email: string;
-  }[];
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}> => {
+export async function getClass(classId: string): Promise<Class> {
   try {
-    const response = await api.get(`/api/classes/${classId}`);
-    return response.data.data;
+    // First get the class details with populated students
+    const classResponse = await api.get(
+      `/api/classes/${classId}?populate=students`
+    );
+    const classData = classResponse.data.data;
+
+    // If there are course IDs, fetch the full course details
+    if (classData.courses && classData.courses.length > 0) {
+      // Get all courses
+      const coursesResponse = await api.get("/api/courses");
+      const allCourses = coursesResponse.data.data;
+
+      // Map the course IDs to full course objects
+      const populatedCourses = classData.courses
+        .map((courseId: string) =>
+          allCourses.find((course: Course) => course._id === courseId)
+        )
+        .filter(Boolean); // Remove any undefined values
+
+      // Return the class data with populated courses
+      return {
+        ...classData,
+        courses: populatedCourses,
+      };
+    }
+
+    // If no courses, return the class data as is with empty courses array
+    return {
+      ...classData,
+      courses: [],
+    };
   } catch (error: any) {
+    // Check for authentication errors specifically
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      throw new Error("You are not logged in. Please log in to get access");
+    }
     throw new Error(
       error.response?.data?.message || "Failed to fetch class details"
     );
   }
-};
+}
 
-export const updateClass = async (
+export async function updateClass(
   classId: string,
-  classData: {
-    name: string;
-    code: string;
-    academicYear: string;
-    department?: string;
-    gradeLevel?: string;
-    description?: string;
-  }
-): Promise<{
-  _id: string;
-  name: string;
-  code: string;
-  academicYear: string;
-  department?: string;
-  gradeLevel?: string;
-  description?: string;
-  classTeacher: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  students: {
-    _id: string;
-    name: string;
-    email: string;
-  }[];
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}> => {
+  classData: Partial<
+    Omit<Class, "_id" | "students" | "courses" | "createdAt" | "updatedAt">
+  >
+): Promise<Class> {
   try {
     const response = await api.put(`/api/classes/${classId}`, classData);
     return response.data.data;
   } catch (error: any) {
     // Check for specific error about duplicate class code
-    if (
-      error.response?.status === 400 &&
-      error.response.data?.message?.includes("already exists")
-    ) {
-      throw new Error(
-        `A class with this code already exists. Please choose a different code.`
-      );
+    if (error.response?.data?.code === "DUPLICATE_CLASS_CODE") {
+      throw new Error("A class with this code already exists");
+    }
+    // Check for authentication errors
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      throw new Error("You are not logged in. Please log in to get access");
     }
     throw new Error(error.response?.data?.message || "Failed to update class");
   }
-};
+}
 
 export const removeStudentFromClass = async (
   classId: string,
@@ -767,8 +749,7 @@ export const getAllUsers = async (): Promise<
     _id: string;
     username: string;
     email: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     role: string;
   }[]
 > => {
@@ -786,8 +767,7 @@ export const getAvailableStudents = async (
 ): Promise<
   {
     _id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
     role: string;
   }[]
@@ -826,6 +806,35 @@ export const getClassCourses = async (classId: string): Promise<Course[]> => {
   } catch (error: any) {
     throw new Error(
       error.response?.data?.message || "Failed to fetch class courses"
+    );
+  }
+};
+
+// Update the class-course management endpoints
+export const assignCourseToClass = async (
+  classId: string,
+  courseId: string
+): Promise<void> => {
+  try {
+    await api.post(`/api/classes/${classId}/courses`, {
+      courseId,
+    });
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to assign course to class"
+    );
+  }
+};
+
+export const removeCourseFromClass = async (
+  classId: string,
+  courseId: string
+): Promise<void> => {
+  try {
+    await api.delete(`/api/classes/${classId}/courses/${courseId}`);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to remove course from class"
     );
   }
 };

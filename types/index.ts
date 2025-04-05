@@ -56,12 +56,17 @@ export interface Class {
 export interface Content {
   _id: string;
   title: string;
-  description?: string;
-  type: "lecture" | "resource" | "assignment" | "quiz";
+  description: string;
+  type: "document" | "video" | "link" | "text" | "other";
+  moduleNumber: number;
+  lessonNumber: number;
+  courseId: string;
+  file: string;
+  link: string;
+  textContent: string;
+  duration: number;
   order: number;
-  fileUrl?: string;
-  text?: string;
-  course: string;
+  isPublished: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

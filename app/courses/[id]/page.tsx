@@ -20,6 +20,7 @@ import { use } from "react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Notification from "@/components/Notification";
 import BulkEnrollment from "@/components/BulkEnrollment";
+import CourseContentManager from "@/components/CourseContentManager";
 
 export default function CoursePage({
   params,
@@ -210,6 +211,21 @@ export default function CoursePage({
             <Text mt={3}>{course.description}</Text>
           </Box>
 
+          {course && user?.role === "teacher" && (
+            <Box mt={4} mb={4}>
+              <CourseContentManager
+                courseId={courseId}
+                contents={contents}
+                onContentAdded={() => {
+                  // Refresh course contents
+                  getCourseContents(courseId)
+                    .then(setContents)
+                    .catch(console.error);
+                }}
+              />
+            </Box>
+          )}
+
           <Flex flexDirection={["column", "row"]} mt={4}>
             <Box width={[1, 2 / 3]} pr={[0, 4]}>
               <Heading as="h2" fontSize={3} mb={3}>
@@ -240,23 +256,25 @@ export default function CoursePage({
                     Instructor
                   </Box>
                   <Box as="dd" mb={2}>
-                    {course.teacher
-                      ? `${course.teacher.firstName} ${course.teacher.lastName}`
-                      : "Not assigned"}
+                    {course.teacher ? `${course.teacher.name}` : "Not assigned"}
                   </Box>
 
                   <Box as="dt" fontWeight="bold">
                     Start Date
                   </Box>
                   <Box as="dd" mb={2}>
-                    {new Date(course.startDate).toLocaleDateString()}
+                    {course.startDate
+                      ? new Date(course.startDate).toLocaleDateString()
+                      : "Not set"}
                   </Box>
 
                   <Box as="dt" fontWeight="bold">
                     End Date
                   </Box>
                   <Box as="dd" mb={2}>
-                    {new Date(course.endDate).toLocaleDateString()}
+                    {course.endDate
+                      ? new Date(course.endDate).toLocaleDateString()
+                      : "Not set"}
                   </Box>
 
                   <Box as="dt" fontWeight="bold">
@@ -296,14 +314,14 @@ export default function CoursePage({
                         fullWidth
                         disabled={
                           enrollLoading ||
-                          (course.students &&
-                            course.students.length >= course.maxStudents)
+                          (course.students?.length ?? 0) >=
+                            (course.maxStudents ?? 0)
                         }
                       >
                         {enrollLoading
                           ? "Processing..."
-                          : course.students &&
-                            course.students.length >= course.maxStudents
+                          : (course.students?.length ?? 0) >=
+                            (course.maxStudents ?? 0)
                           ? "Course Full"
                           : "Enroll Now"}
                       </Button>

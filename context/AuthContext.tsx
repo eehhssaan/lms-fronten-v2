@@ -20,8 +20,7 @@ interface AuthContextType {
     username: string;
     email: string;
     password: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     role?: "student" | "teacher" | "admin";
   }) => Promise<void>;
   logout: () => Promise<void>;
@@ -93,8 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     username: string;
     email: string;
     password: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     role?: "student" | "teacher" | "admin";
   }) => {
     try {

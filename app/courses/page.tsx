@@ -25,6 +25,9 @@ export default function CoursesPage() {
   const [enrolledTotalPages, setEnrolledTotalPages] = useState(1);
   const router = useRouter();
 
+  // For students, we only need enrolledCourses state and pagination
+  const [courses, setCourses] = useState<Course[]>([]);
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/auth");
@@ -89,6 +92,26 @@ export default function CoursesPage() {
     }
   }, [isAuthenticated, enrolledPage, limit, activeTab, user?.role]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      const fetchCourses = async () => {
+        try {
+          setLoading(true);
+          const response = await getEnrolledCourses({ page, limit });
+          setCourses(response.data);
+          setTotalPages(response.pagination.totalPages || 1);
+        } catch (err) {
+          console.error("Failed to fetch courses:", err);
+          setError("Failed to load your courses. Please try again later.");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchCourses();
+    }
+  }, [isAuthenticated, page, limit]);
+
   const handlePageChange = (newPage: number) => {
     if (activeTab === "all" && newPage > 0 && newPage <= totalPages) {
       setPage(newPage);
@@ -117,7 +140,7 @@ export default function CoursesPage() {
   return (
     <Box as="div" className="container" py={4}>
       <Flex justifyContent="space-between" alignItems="center" mb={4}>
-        <Heading as="h1">Courses</Heading>
+        <Heading as="h1">My Courses</Heading>
 
         {/* Show Create Course button only for teachers and admins */}
         {user && (user.role === "teacher" || user.role === "admin") && (
@@ -133,23 +156,6 @@ export default function CoursesPage() {
       {/* Tabs - only show the Enrolled tab for students */}
       {user?.role === "student" && (
         <Flex mb={4} className="tabs">
-          <Box
-            as="button"
-            onClick={() => handleTabChange("all")}
-            className={`tab ${activeTab === "all" ? "active" : ""}`}
-            mr={3}
-            py={2}
-            px={3}
-            sx={{
-              borderBottom: activeTab === "all" ? "2px solid" : "none",
-              borderColor: "primary",
-              backgroundColor: "transparent",
-              cursor: "pointer",
-              fontWeight: activeTab === "all" ? "bold" : "normal",
-            }}
-          >
-            All Courses
-          </Box>
           <Box
             as="button"
             onClick={() => handleTabChange("enrolled")}
@@ -175,108 +181,45 @@ export default function CoursesPage() {
         <Loading />
       ) : (
         <>
-          {activeTab === "all" && (
+          {courses.length > 0 ? (
             <>
-              {allCourses.length > 0 ? (
-                <>
-                  <CourseList
-                    courses={allCourses}
-                    showEnrollmentStatus={true}
-                  />
+              <CourseList courses={courses} showEnrollmentStatus={false} />
 
-                  {/* Pagination controls */}
-                  <Flex justifyContent="center" mt={4}>
-                    <Button
-                      onClick={() => handlePageChange(page - 1)}
-                      disabled={page === 1}
-                      variant="secondary"
-                      size="small"
-                      style={{ marginRight: "0.5rem" }}
-                    >
-                      Previous
-                    </Button>
-                    <Text alignSelf="center" mx={2}>
-                      Page {page} of {totalPages}
-                    </Text>
-                    <Button
-                      onClick={() => handlePageChange(page + 1)}
-                      disabled={page === totalPages}
-                      variant="secondary"
-                      size="small"
-                      style={{ marginLeft: "0.5rem" }}
-                    >
-                      Next
-                    </Button>
-                  </Flex>
-                </>
-              ) : (
-                <Box
-                  p={4}
-                  bg="lightGray"
-                  borderRadius="default"
-                  textAlign="center"
+              {/* Pagination controls */}
+              <Flex justifyContent="center" mt={4}>
+                <Button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                  variant="secondary"
+                  size="small"
+                  sx={{ marginRight: "0.5rem" }}
                 >
-                  <Heading as="h3" fontSize={3} mb={3}>
-                    No courses available
-                  </Heading>
-                  <Box as="p" color="secondary">
-                    There are currently no courses to display.
-                  </Box>
-                </Box>
-              )}
-            </>
-          )}
-
-          {activeTab === "enrolled" && (
-            <>
-              {enrolledCourses.length > 0 ? (
-                <>
-                  <CourseList
-                    courses={enrolledCourses}
-                    showEnrollmentStatus={true}
-                  />
-
-                  {/* Pagination controls */}
-                  <Flex justifyContent="center" mt={4}>
-                    <Button
-                      onClick={() => handlePageChange(enrolledPage - 1)}
-                      disabled={enrolledPage === 1}
-                      variant="secondary"
-                      size="small"
-                      style={{ marginRight: "0.5rem" }}
-                    >
-                      Previous
-                    </Button>
-                    <Text alignSelf="center" mx={2}>
-                      Page {enrolledPage} of {enrolledTotalPages}
-                    </Text>
-                    <Button
-                      onClick={() => handlePageChange(enrolledPage + 1)}
-                      disabled={enrolledPage === enrolledTotalPages}
-                      variant="secondary"
-                      size="small"
-                      style={{ marginLeft: "0.5rem" }}
-                    >
-                      Next
-                    </Button>
-                  </Flex>
-                </>
-              ) : (
-                <Box
-                  p={4}
-                  bg="lightGray"
-                  borderRadius="default"
-                  textAlign="center"
+                  Previous
+                </Button>
+                <Text alignSelf="center" mx={2}>
+                  Page {page} of {totalPages}
+                </Text>
+                <Button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
+                  variant="secondary"
+                  size="small"
+                  sx={{ marginLeft: "0.5rem" }}
                 >
-                  <Heading as="h3" fontSize={3} mb={3}>
-                    You're not enrolled in any courses
-                  </Heading>
-                  <Box as="p" color="secondary">
-                    Browse the "All Courses" tab to find courses to enroll in.
-                  </Box>
-                </Box>
-              )}
+                  Next
+                </Button>
+              </Flex>
             </>
+          ) : (
+            <Box p={4} bg="lightGray" borderRadius="default" textAlign="center">
+              <Heading as="h3" fontSize={3} mb={3}>
+                You're not enrolled in any courses
+              </Heading>
+              <Box as="p" color="secondary">
+                Please contact your teacher or administrator to enroll in
+                courses.
+              </Box>
+            </Box>
           )}
         </>
       )}

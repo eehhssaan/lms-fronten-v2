@@ -229,7 +229,7 @@ export default function AuthForm() {
             />
           </Box>
 
-          <Box mb={4}>
+          <Box mb={3}>
             <Label htmlFor="loginPassword" mb={2}>
               Password
             </Label>
@@ -244,6 +244,23 @@ export default function AuthForm() {
               required
               className="form-input"
             />
+          </Box>
+
+          <Box mb={3} textAlign="right">
+            <Text
+              as="a"
+              href="/forgot-password"
+              color="primary"
+              sx={{
+                cursor: "pointer",
+                textDecoration: "none",
+                "&:hover": {
+                  textDecoration: "underline",
+                },
+              }}
+            >
+              Forgot Password?
+            </Text>
           </Box>
 
           <Box>

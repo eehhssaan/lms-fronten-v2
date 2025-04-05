@@ -180,11 +180,13 @@ export const getCurrentUser = async (): Promise<User> => {
   }
 };
 
-export const updateUserProfile = async (
-  userData: Partial<User>
-): Promise<User> => {
+export const updateUserProfile = async (userData: FormData): Promise<User> => {
   try {
-    const response = await api.put("/api/users/profile", userData);
+    const response = await api.put("/api/users/me", userData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return response.data.data;
   } catch (error: any) {
     throw new Error(
@@ -886,6 +888,76 @@ export const createCourseContent = async (
     );
     throw new Error(
       error.response?.data?.message || "Failed to create content"
+    );
+  }
+};
+
+export const uploadCourseFile = async (
+  courseId: string,
+  file: File | null,
+  description?: string
+): Promise<void> => {
+  try {
+    if (!file) {
+      throw new Error("No file provided");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("courseId", courseId);
+    if (description) {
+      formData.append("description", description);
+    }
+    formData.append("type", "file"); // Indicate this is a file upload
+
+    await api.post(`/api/contents`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  } catch (error: any) {
+    console.error("File upload failed:", error);
+    throw new Error(error.response?.data?.message || "Failed to upload file");
+  }
+};
+
+// User Profile Management APIs
+export const getUserProfile = async (): Promise<User> => {
+  try {
+    const response = await api.get("/api/users/me");
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch profile");
+  }
+};
+
+export const getStudentCourses = async () => {
+  try {
+    const response = await api.get("/api/users/me/courses");
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch courses");
+  }
+};
+
+export const getStudentProgress = async () => {
+  try {
+    const response = await api.get("/api/users/me/progress");
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch progress"
+    );
+  }
+};
+
+export const getTeachingCourses = async () => {
+  try {
+    const response = await api.get("/api/users/me/teaching");
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch teaching courses"
     );
   }
 };

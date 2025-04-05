@@ -28,8 +28,6 @@ export default function CourseCard({
       ? course.students.some((student) => student._id === user._id)
       : false;
 
-  console.log("isEnrolled", user && course);
-
   return (
     <Link href={`/courses/${course._id}`} style={{ textDecoration: "none" }}>
       <Card

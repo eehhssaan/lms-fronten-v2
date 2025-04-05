@@ -123,12 +123,12 @@ export default function CourseContentManager({
 
             <Box mb={3}>
               <Text as="label" display="block" mb={2}>
-                File (PDF) <span style={{ color: "red" }}>*</span>
+                File <span style={{ color: "red" }}>*</span>
               </Text>
               <input
                 type="file"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
-                accept=".pdf"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.mp4,.zip"
                 required
                 style={{
                   width: "100%",
@@ -137,6 +137,10 @@ export default function CourseContentManager({
                   border: "1px solid #ddd",
                 }}
               />
+              <Text fontSize={1} color="gray" mt={1}>
+                Supported formats: PDF, Word, PowerPoint, Excel, Text, Images
+                (JPG/PNG), Video (MP4), ZIP
+              </Text>
             </Box>
 
             <Flex mb={3} mx={-2}>

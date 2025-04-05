@@ -97,7 +97,15 @@ export default function CoursesPage() {
       const fetchCourses = async () => {
         try {
           setLoading(true);
-          const response = await getEnrolledCourses({ page, limit });
+          setError(null);
+
+          // For students, show enrolled courses
+          // For teachers and admins, show all courses they have access to
+          const response =
+            user?.role === "student"
+              ? await getEnrolledCourses({ page, limit })
+              : await getCourses({ page, limit });
+
           setCourses(response.data);
           setTotalPages(response.pagination.totalPages || 1);
         } catch (err) {
@@ -110,7 +118,7 @@ export default function CoursesPage() {
 
       fetchCourses();
     }
-  }, [isAuthenticated, page, limit]);
+  }, [isAuthenticated, page, limit, user?.role]);
 
   const handlePageChange = (newPage: number) => {
     if (activeTab === "all" && newPage > 0 && newPage <= totalPages) {
@@ -140,7 +148,9 @@ export default function CoursesPage() {
   return (
     <Box as="div" className="container" py={4}>
       <Flex justifyContent="space-between" alignItems="center" mb={4}>
-        <Heading as="h1">My Courses</Heading>
+        <Heading as="h1">
+          {user?.role === "student" ? "My Courses" : "All Courses"}
+        </Heading>
 
         {/* Show Create Course button only for teachers and admins */}
         {user && (user.role === "teacher" || user.role === "admin") && (
@@ -183,7 +193,10 @@ export default function CoursesPage() {
         <>
           {courses.length > 0 ? (
             <>
-              <CourseList courses={courses} showEnrollmentStatus={false} />
+              <CourseList
+                courses={courses}
+                showEnrollmentStatus={user?.role === "student"}
+              />
 
               {/* Pagination controls */}
               <Flex justifyContent="center" mt={4}>
@@ -213,11 +226,14 @@ export default function CoursesPage() {
           ) : (
             <Box p={4} bg="lightGray" borderRadius="default" textAlign="center">
               <Heading as="h3" fontSize={3} mb={3}>
-                You're not enrolled in any courses
+                {user?.role === "student"
+                  ? "You're not enrolled in any courses"
+                  : "No courses available"}
               </Heading>
               <Box as="p" color="secondary">
-                Please contact your teacher or administrator to enroll in
-                courses.
+                {user?.role === "student"
+                  ? "Please contact your teacher or administrator to enroll in courses."
+                  : "Create a new course to get started."}
               </Box>
             </Box>
           )}

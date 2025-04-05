@@ -6,8 +6,60 @@ export interface User {
   role: "student" | "teacher" | "admin";
   profilePicture?: string;
   isActive?: boolean;
+  studentId?: string; // For students
+  grade?: string; // For students
+  subject?: string; // For teachers
+  enrolledCourses?: {
+    // For students
+    _id: string;
+    title: string;
+    code: string;
+    teacher: {
+      name: string;
+    };
+    progress: number;
+    assignments: {
+      total: number;
+      completed: number;
+    };
+    quizzes: {
+      total: number;
+      completed: number;
+    };
+  }[];
+  teachingCourses?: {
+    // For teachers
+    _id: string;
+    title: string;
+    code: string;
+    studentCount: number;
+    pendingAssignments: number;
+    pendingQuizzes: number;
+  }[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface StudentProgress {
+  overall: {
+    completionRate: number;
+    averageScore: number;
+  };
+  courses: {
+    courseId: string;
+    title: string;
+    progress: number;
+    assignments: {
+      completed: number;
+      total: number;
+      averageScore: number;
+    };
+    quizzes: {
+      completed: number;
+      total: number;
+      averageScore: number;
+    };
+  }[];
 }
 
 // Course types

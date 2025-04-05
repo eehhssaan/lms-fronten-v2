@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Box, Heading } from 'rebass';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import CourseList from '@/components/CourseList';
-import Loading from '@/components/Loading';
-import ErrorMessage from '@/components/ErrorMessage';
-import { getCourses } from '@/lib/api';
-import { Course } from '@/types';
+import { useEffect, useState } from "react";
+import { Box, Heading } from "rebass";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import CourseList from "@/components/CourseList";
+import Loading from "@/components/Loading";
+import ErrorMessage from "@/components/ErrorMessage";
+import { getCourses } from "@/lib/api";
+import { Course } from "@/types";
 
 export default function Home() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -19,7 +19,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/auth');
+      router.push("/auth");
     }
   }, [authLoading, isAuthenticated, router]);
 
@@ -31,13 +31,13 @@ export default function Home() {
           const coursesData = await getCourses();
           setCourses(coursesData.data);
         } catch (err) {
-          console.error('Failed to fetch courses:', err);
-          setError('Failed to load courses. Please try again later.');
+          console.error("Failed to fetch courses:", err);
+          setError("Failed to load courses. Please try again later.");
         } finally {
           setLoading(false);
         }
       };
-      
+
       fetchCourses();
     }
   }, [isAuthenticated]);
@@ -53,7 +53,7 @@ export default function Home() {
   return (
     <Box as="div" className="container" py={4}>
       <Box mb={4}>
-        <Heading as="h1">Welcome, {user?.firstName || 'Student'}</Heading>
+        <Heading as="h1">Welcome, {user?.name || "Student"}</Heading>
         <Box as="p" color="secondary" fontSize={2} mt={2}>
           Browse your courses and continue your learning journey.
         </Box>
@@ -71,12 +71,7 @@ export default function Home() {
           {courses.length > 0 ? (
             <CourseList courses={courses} />
           ) : (
-            <Box
-              p={4}
-              bg="lightGray"
-              borderRadius="default"
-              textAlign="center"
-            >
+            <Box p={4} bg="lightGray" borderRadius="default" textAlign="center">
               <Heading as="h3" fontSize={3} mb={3}>
                 No courses available
               </Heading>

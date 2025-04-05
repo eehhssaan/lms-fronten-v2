@@ -23,8 +23,6 @@ export default function Navigation({
     }
   };
 
-  console.log("isAuthenticated", isAuthenticated, user);
-
   const navItems = isAuthenticated
     ? [
         { path: "/", label: "Home" },

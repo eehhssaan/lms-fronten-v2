@@ -1,7 +1,7 @@
 import { ElementType } from "react";
 import { Button as RebassButton } from "rebass";
 
-interface ButtonProps {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   onClick?: () => void;
   variant?: "primary" | "secondary";

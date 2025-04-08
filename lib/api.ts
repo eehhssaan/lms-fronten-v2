@@ -1101,3 +1101,101 @@ export const deleteCourse = async (courseId: string): Promise<void> => {
     throw new Error(error.response?.data?.message || "Failed to delete course");
   }
 };
+
+// Assignment APIs
+export const createAssignment = async (formData: FormData) => {
+  const response = await api.post("/api/assignments", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data;
+};
+
+export const getAssignments = async (
+  courseId: string,
+  moduleNumber?: number,
+  isPublished?: boolean
+) => {
+  const params = new URLSearchParams();
+  params.append("courseId", courseId);
+  if (moduleNumber !== undefined)
+    params.append("moduleNumber", moduleNumber.toString());
+  if (isPublished !== undefined)
+    params.append("isPublished", isPublished.toString());
+
+  const response = await api.get(`/api/assignments?${params.toString()}`);
+  return response.data;
+};
+
+export const getAssignment = async (id: string) => {
+  const response = await api.get(`/api/assignments/${id}`);
+  return response.data;
+};
+
+export const updateAssignment = async (id: string, formData: FormData) => {
+  const response = await api.put(`/api/assignments/${id}`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data;
+};
+
+export const deleteAssignment = async (id: string) => {
+  const response = await api.delete(`/api/assignments/${id}`);
+  return response.data;
+};
+
+// Assignment Submission APIs
+export const submitAssignmentWithFiles = async (
+  assignmentId: string,
+  formData: FormData
+) => {
+  const response = await api.post(
+    `/api/assignments/${assignmentId}/submit`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return response.data;
+};
+
+export const getMyAssignmentSubmission = async (assignmentId: string) => {
+  const response = await api.get(
+    `/api/assignments/${assignmentId}/my-submission`
+  );
+  return response.data;
+};
+
+export const getAllAssignmentSubmissions = async (assignmentId: string) => {
+  const response = await api.get(
+    `/api/assignments/${assignmentId}/submissions`
+  );
+  return response.data;
+};
+
+export const gradeAssignmentSubmission = async (
+  submissionId: string,
+  data: { score: number; feedback?: string }
+) => {
+  const response = await api.put(
+    `/api/assignments/submissions/${submissionId}`,
+    data
+  );
+  return response.data;
+};
+
+export const downloadAssignmentAttachment = async (
+  submissionId: string,
+  attachmentId: string
+) => {
+  const response = await api.get(
+    `/api/assignments/submissions/${submissionId}/download/${attachmentId}`,
+    { responseType: "blob" }
+  );
+  return response.data;
+};

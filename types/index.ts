@@ -139,28 +139,57 @@ export interface Assignment {
   _id: string;
   title: string;
   description: string;
-  dueDate: string;
-  points: number;
-  course: string;
-  submissions?: AssignmentSubmission[];
-  createdAt: string;
-  updatedAt: string;
+  courseId: string;
+  dueDate: Date;
+  totalPoints: number;
+  attachments: {
+    name: string;
+    file: string;
+    mimeType: string;
+    uploadedAt: Date;
+  }[];
+  allowLateSubmissions: boolean;
+  latePenalty: number;
+  instructions: string;
+  rubric: {
+    criterion: string;
+    points: number;
+    description: string;
+  }[];
+  isPublished: boolean;
+  moduleNumber: number;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AssignmentSubmission {
   _id: string;
-  assignment: string;
-  student: User;
-  textSubmission?: string;
-  attachments?: {
-    _id: string;
-    filename: string;
-    path: string;
-  }[];
-  submittedAt: string;
-  grade?: number;
+  student:
+    | string
+    | {
+        _id: string;
+        name: string;
+        email: string;
+      };
+  courseId: string;
+  assignmentId: string;
+  submittedAt: Date;
+  status: "submitted" | "graded" | "returned" | "late";
+  score?: number;
   feedback?: string;
-  isLate: boolean;
+  textResponse?: string;
+  attachments: {
+    name: string;
+    file: string;
+    mimeType: string;
+    uploadedAt: Date;
+  }[];
+  gradedBy?: {
+    _id: string;
+    name: string;
+  };
+  gradedAt?: Date;
 }
 
 // Quiz types

@@ -1,8 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyJwtToken } from "@/lib/auth";
 
 const apiUrl =
   process.env.NEXT_PUBLIC_API_URL ||
   "https://fictional-eureka-grg4vg9r56529w5g-8000.app.github.dev";
+
+// Helper function to check if user can modify course
+async function canModifyCourse(userId: string, courseId: string, role: string) {
+  try {
+    const response = await fetch(`${apiUrl}/api/courses/${courseId}`);
+    const course = await response.json();
+
+    return (
+      role === "admin" ||
+      (role === "teacher" && course.data.teacher._id === userId)
+    );
+  } catch (error) {
+    console.error("Error checking course permissions:", error);
+    return false;
+  }
+}
 
 export async function GET(
   request: NextRequest,
@@ -169,6 +186,164 @@ export async function GET(
     console.error("Error fetching course:", error);
     return NextResponse.json(
       { success: false, message: "Failed to fetch course details" },
+      { status: 500 }
+    );
+  }
+}
+
+// UPDATE course
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Get the authorization token
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { success: false, message: "Not authorized to access this route" },
+        { status: 401 }
+      );
+    }
+
+    // Verify token and get user info
+    const token = authHeader.split(" ")[1];
+    const decoded = await verifyJwtToken(token);
+    if (!decoded) {
+      return NextResponse.json(
+        { success: false, message: "Invalid token" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user can modify the course
+    const hasPermission = await canModifyCourse(
+      decoded.userId,
+      params.id,
+      decoded.role
+    );
+    if (!hasPermission) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You are not authorized to update this course",
+        },
+        { status: 403 }
+      );
+    }
+
+    // Get update data from request body
+    const updateData = await request.json();
+
+    // Forward the request to the backend API
+    const response = await fetch(`${apiUrl}/api/courses/${params.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+      },
+      body: JSON.stringify(updateData),
+    });
+
+    const data = await response.json();
+
+    // Handle different response scenarios
+    if (!response.ok) {
+      if (response.status === 404) {
+        return NextResponse.json(
+          { success: false, message: "Course not found" },
+          { status: 404 }
+        );
+      }
+      if (response.status === 400) {
+        return NextResponse.json(data, { status: 400 });
+      }
+      throw new Error("Failed to update course");
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch (error: any) {
+    console.error("Error updating course:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message || "Internal server error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE course
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Get the authorization token
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { success: false, message: "Not authorized to access this route" },
+        { status: 401 }
+      );
+    }
+
+    // Verify token and get user info
+    const token = authHeader.split(" ")[1];
+    const decoded = await verifyJwtToken(token);
+    if (!decoded) {
+      return NextResponse.json(
+        { success: false, message: "Invalid token" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user can modify the course
+    const hasPermission = await canModifyCourse(
+      decoded.userId,
+      params.id,
+      decoded.role
+    );
+    if (!hasPermission) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You are not authorized to delete this course",
+        },
+        { status: 403 }
+      );
+    }
+
+    // Forward the delete request to the backend API
+    const response = await fetch(`${apiUrl}/api/courses/${params.id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return NextResponse.json(
+          { success: false, message: "Course not found" },
+          { status: 404 }
+        );
+      }
+      throw new Error("Failed to delete course");
+    }
+
+    return NextResponse.json(
+      { success: true, message: "Course deleted successfully" },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error("Error deleting course:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message || "Internal server error",
+      },
       { status: 500 }
     );
   }

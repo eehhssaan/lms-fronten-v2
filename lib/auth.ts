@@ -1,4 +1,4 @@
-import { jwtDecode } from 'jwt-decode';
+import { jwtDecode } from "jwt-decode";
 
 interface DecodedToken {
   exp: number;
@@ -15,12 +15,31 @@ export const isAuthenticated = (): boolean => {
   // Instead, we'll rely on AuthContext which makes an API call to /api/auth/me
   // For immediate checks, we'll just check if we're not on the login page
   // which means middleware didn't redirect us
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     // If we're not on the auth page, we're likely authenticated
     // since middleware would redirect us otherwise
-    return !window.location.pathname.includes('/auth');
+    return !window.location.pathname.includes("/auth");
   }
   return false;
+};
+
+// Verify JWT token and return decoded data
+export const verifyJwtToken = async (
+  token: string
+): Promise<DecodedToken | null> => {
+  try {
+    const decoded = jwtDecode<DecodedToken>(token);
+
+    // Check if token is expired
+    if (decoded.exp < Date.now() / 1000) {
+      return null;
+    }
+
+    return decoded;
+  } catch (error) {
+    console.error("Error verifying JWT token:", error);
+    return null;
+  }
 };
 
 export const getDecodedToken = (): DecodedToken | null => {
@@ -28,20 +47,20 @@ export const getDecodedToken = (): DecodedToken | null => {
     // If we need token data on client, we need to look at an API response
     // that has the user data since HTTP-only cookies aren't accessible via JS
     // This function should be paired with a getCurrentUser call in most cases
-    const userDataElement = document.getElementById('__NEXT_DATA__');
+    const userDataElement = document.getElementById("__NEXT_DATA__");
     if (userDataElement && userDataElement.textContent) {
       const nextData = JSON.parse(userDataElement.textContent);
       if (nextData?.props?.pageProps?.user) {
         return {
           userId: nextData.props.pageProps.user._id,
           role: nextData.props.pageProps.user.role,
-          exp: Date.now() / 1000 + 86400 // Assume token valid for at least a day
+          exp: Date.now() / 1000 + 86400, // Assume token valid for at least a day
         };
       }
     }
     return null;
   } catch (error) {
-    console.error('Error accessing user data:', error);
+    console.error("Error accessing user data:", error);
     return null;
   }
 };

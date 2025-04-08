@@ -339,31 +339,61 @@ export const getCourseContents = async (
 
 export const createCourse = async (courseData: {
   title: string;
-  code: string;
   description: string;
+  code: string;
   subject: string;
   grade: string;
   teacher?: string;
-  startDate?: string;
-  endDate?: string;
+  startDate: string;
+  endDate: string;
   isActive?: boolean;
+  thumbnail?: string;
+  language?: "english" | "cantonese" | "mandarin";
   maxStudents?: number;
 }): Promise<Course> => {
   try {
     // If teacher is not provided, we'll use the current user's ID
     // (assuming they're a teacher or admin)
     if (!courseData.teacher) {
-      // Try to get current user to use their ID as the teacher
       try {
         const currentUser = await getCurrentUser();
         courseData.teacher = currentUser._id;
       } catch (err) {
         console.error("Failed to get current user for teacher ID:", err);
-        // Will proceed without it and let the backend handle the error
+        throw new Error("Teacher ID is required for course creation");
       }
     }
 
-    const response = await api.post("/api/courses", courseData);
+    // Validate required fields
+    const requiredFields = [
+      "title",
+      "description",
+      "code",
+      "subject",
+      "grade",
+      "startDate",
+      "endDate",
+    ] as const;
+    const missingFields = requiredFields.filter((field) => !courseData[field]);
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+    }
+
+    // Set default values if not provided
+    const finalData = {
+      ...courseData,
+      isActive: courseData.isActive ?? true,
+      language: courseData.language || "english",
+      maxStudents: courseData.maxStudents || 50,
+      thumbnail: courseData.thumbnail || "",
+    };
+
+    console.log("Creating course with data:", {
+      ...finalData,
+      description: finalData.description.substring(0, 100) + "...", // Truncate long description in logs
+    });
+
+    const response = await api.post("/api/courses", finalData);
     return response.data.data;
   } catch (error: any) {
     console.error(
@@ -959,5 +989,115 @@ export const getTeachingCourses = async () => {
     throw new Error(
       error.response?.data?.message || "Failed to fetch teaching courses"
     );
+  }
+};
+
+export const updateCourse = async (
+  courseId: string,
+  courseData: Partial<{
+    title: string;
+    description: string;
+    code: string; // admin only
+    subject: string;
+    grade: string;
+    teacher: string; // admin only
+    startDate: string;
+    endDate: string;
+    isActive: boolean;
+    thumbnail: string;
+    language: "english" | "cantonese" | "mandarin";
+    maxStudents: number;
+  }>
+): Promise<Course> => {
+  try {
+    console.log("Updating course:", courseId, "with data:", courseData);
+
+    // Get current user to check role
+    const currentUser = await getCurrentUser();
+
+    // If not admin, remove admin-only fields
+    if (currentUser.role !== "admin") {
+      const adminOnlyFields = ["code", "teacher"] as const;
+      adminOnlyFields.forEach((field) => {
+        if (courseData.hasOwnProperty(field)) {
+          console.log(
+            `Non-admin user attempting to update ${field}. Field will be ignored.`
+          );
+          delete courseData[field as keyof typeof courseData];
+        }
+      });
+    }
+
+    // Validate maxStudents if provided
+    if (courseData.maxStudents !== undefined) {
+      if (courseData.maxStudents < 0) {
+        throw new Error("Maximum students cannot be negative");
+      }
+      if (courseData.maxStudents > 1000) {
+        // reasonable upper limit
+        throw new Error("Maximum students cannot exceed 1000");
+      }
+    }
+
+    // Validate title length if provided
+    if (courseData.title && courseData.title.length > 100) {
+      throw new Error("Course title cannot be more than 100 characters");
+    }
+
+    // Validate dates if provided
+    if (courseData.startDate || courseData.endDate) {
+      const course = await getCourse(courseId); // Get current course data
+      const startDate = new Date(courseData.startDate || course.startDate);
+      const endDate = new Date(courseData.endDate || course.endDate);
+
+      if (startDate >= endDate) {
+        throw new Error("End date must be after start date");
+      }
+    }
+
+    // Make the update request
+    const response = await api.put(`/api/courses/${courseId}`, courseData);
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Failed to update course");
+    }
+
+    console.log("Course update response:", response.data);
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "Course update error:",
+      error.response?.data || error.message
+    );
+
+    // Handle specific error cases
+    if (error.response?.status === 403) {
+      throw new Error("You are not authorized to update this course");
+    }
+    if (error.response?.status === 404) {
+      throw new Error("Course not found");
+    }
+
+    throw new Error(error.response?.data?.message || "Failed to update course");
+  }
+};
+
+export const deleteCourse = async (courseId: string): Promise<void> => {
+  try {
+    console.log("Attempting to delete course:", courseId);
+    const response = await api.delete(`/api/courses/${courseId}`);
+
+    // Check if the deletion was successful
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Failed to delete course");
+    }
+
+    console.log("Course deleted successfully");
+  } catch (error: any) {
+    console.error(
+      "Course deletion error:",
+      error.response?.data || error.message
+    );
+    throw new Error(error.response?.data?.message || "Failed to delete course");
   }
 };

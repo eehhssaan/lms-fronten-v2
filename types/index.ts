@@ -66,22 +66,32 @@ export interface StudentProgress {
 export interface Course {
   _id: string;
   title: string;
+  description: string;
   code: string;
   subject: string;
   grade: string;
-  description?: string;
-  teacher?: {
+  teacher: {
     _id: string;
     name: string;
     email: string;
   };
-  startDate?: string;
-  endDate?: string;
-  isActive?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  students?: User[];
-  maxStudents?: number;
+  students: User[];
+  enrolledClasses: {
+    _id: string;
+    name: string;
+  }[];
+  individualEnrollments: User[];
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  thumbnail: string;
+  language: "english" | "cantonese" | "mandarin";
+  maxStudents: number;
+  createdAt: string;
+  updatedAt: string;
+  contents?: Content[];
+  assignments?: Assignment[];
+  quizzes?: Quiz[];
 }
 
 export interface Class {

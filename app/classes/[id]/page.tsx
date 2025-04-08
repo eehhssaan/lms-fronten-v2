@@ -14,6 +14,7 @@ import {
   getAvailableStudents,
   addStudentToClass,
   addStudentsToClass,
+  removeCourseFromClass,
 } from "@/lib/api";
 import { Course, Class } from "@/types";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -74,6 +75,9 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [showUnassignDialog, setShowUnassignDialog] = useState(false);
+  const [selectedCourseToUnassign, setSelectedCourseToUnassign] =
+    useState<Course | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -247,6 +251,42 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
     setShowAssignCourseDialog(false);
   };
 
+  const handleUnassignCourse = async () => {
+    if (!selectedCourseToUnassign) {
+      console.error("No course selected for unassignment");
+      return;
+    }
+
+    try {
+      console.log("Starting course unassignment...");
+      console.log("Class ID:", params.id);
+      console.log("Course ID:", selectedCourseToUnassign._id);
+
+      setLoading(true);
+      await removeCourseFromClass(params.id, selectedCourseToUnassign._id);
+
+      console.log("Course unassigned successfully");
+
+      setNotification({
+        message: `Successfully unassigned ${selectedCourseToUnassign.title} from the class`,
+        type: "success",
+      });
+
+      // Refresh class details
+      await fetchClassDetails();
+    } catch (err: any) {
+      console.error("Failed to unassign course:", err);
+      setNotification({
+        message: err.message || "Failed to unassign course",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+      setShowUnassignDialog(false);
+      setSelectedCourseToUnassign(null);
+    }
+  };
+
   if (loading) {
     return <Loading />;
   }
@@ -342,15 +382,39 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
                   borderRadius: 2,
                 }}
               >
-                <Text fontWeight="bold">{course.title}</Text>
-                <Text fontSize={1} color="gray">
-                  {course.code} - {course.subject} (Grade {course.grade})
-                </Text>
-                {course.teacher && (
-                  <Text fontSize={1} color="gray">
-                    Teacher: {course.teacher.name}
-                  </Text>
-                )}
+                <Flex justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Text fontWeight="bold">{course.title}</Text>
+                    <Text fontSize={1} color="gray">
+                      {course.code} - {course.subject} (Grade {course.grade})
+                    </Text>
+                    {course.teacher && (
+                      <Text fontSize={1} color="gray">
+                        Teacher: {course.teacher.name}
+                      </Text>
+                    )}
+                  </Box>
+                  {(user?.role === "teacher" || user?.role === "admin") && (
+                    <Button
+                      variant="secondary"
+                      sx={{
+                        bg: "transparent",
+                        color: "red",
+                        border: "1px solid red",
+                        "&:hover": {
+                          bg: "red",
+                          color: "white",
+                        },
+                      }}
+                      onClick={() => {
+                        setSelectedCourseToUnassign(course);
+                        setShowUnassignDialog(true);
+                      }}
+                    >
+                      Unassign
+                    </Button>
+                  )}
+                </Flex>
               </Box>
             ))}
           </Box>
@@ -368,6 +432,21 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
           onCancel={() => setShowAssignCourseDialog(false)}
         />
       )}
+
+      {/* Add Unassign Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showUnassignDialog}
+        title="Unassign Course"
+        message={`Are you sure you want to unassign ${selectedCourseToUnassign?.title} from this class? Students will lose access to this course.`}
+        confirmLabel="Unassign"
+        cancelLabel="Cancel"
+        onConfirm={handleUnassignCourse}
+        onCancel={() => {
+          setShowUnassignDialog(false);
+          setSelectedCourseToUnassign(null);
+        }}
+        isLoading={loading}
+      />
     </Box>
   );
 }

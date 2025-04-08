@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Course } from "@/types";
-import { createCourse } from "@/lib/api";
+import { createCourse, updateCourse } from "@/lib/api";
 import Button from "./Button";
 import ErrorMessage from "./ErrorMessage";
 
@@ -83,17 +83,29 @@ export default function CourseForm({
 
       // Format data for API
       const courseData = {
-        ...formData,
-        startDate: formData.startDate
-          ? new Date(formData.startDate).toISOString()
-          : undefined,
-        endDate: formData.endDate
-          ? new Date(formData.endDate).toISOString()
-          : undefined,
+        title: formData.title.trim(),
+        code: formData.code.trim(),
+        description: formData.description.trim(),
+        subject: formData.subject.trim(),
+        grade: formData.grade.trim(),
+        startDate: formData.startDate || new Date().toISOString(),
+        endDate:
+          formData.endDate ||
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default to 30 days from now
+        maxStudents: formData.maxStudents,
+        isActive: formData.isActive,
+        language: "english" as const, // Default to English if not specified
       };
 
-      // Submit to API
-      const course = await createCourse(courseData);
+      let course;
+      if (initialData?._id) {
+        // Update existing course
+        course = await updateCourse(initialData._id, courseData);
+      } else {
+        // Create new course
+        course = await createCourse(courseData);
+      }
+
       setSuccess(true);
 
       // Call success callback if provided
@@ -101,7 +113,10 @@ export default function CourseForm({
         onSuccess(course);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to create course");
+      setError(
+        err.message ||
+          `Failed to ${initialData?._id ? "update" : "create"} course`
+      );
     } finally {
       setIsSubmitting(false);
     }

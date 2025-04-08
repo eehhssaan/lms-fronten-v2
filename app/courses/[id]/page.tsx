@@ -14,6 +14,7 @@ import {
   getCourseContents,
   enrollInCourse,
   unenrollFromCourse,
+  deleteCourse,
 } from "@/lib/api";
 import { Course, Content } from "@/types";
 import { use } from "react";
@@ -21,6 +22,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import Notification from "@/components/Notification";
 import BulkEnrollment from "@/components/BulkEnrollment";
 import CourseContentManager from "@/components/CourseContentManager";
+import CourseForm from "@/components/CourseForm";
 
 export default function CoursePage({
   params,
@@ -48,6 +50,9 @@ export default function CoursePage({
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -248,100 +253,149 @@ export default function CoursePage({
 
             <Box width={[1, 1 / 3]} mt={[4, 0]}>
               <Box className="card">
-                <Heading as="h3" fontSize={2} mb={3}>
-                  Course Information
-                </Heading>
-                <Box as="dl">
-                  <Box as="dt" fontWeight="bold">
-                    Instructor
-                  </Box>
-                  <Box as="dd" mb={2}>
-                    {course.teacher ? `${course.teacher.name}` : "Not assigned"}
-                  </Box>
+                {!isEditing ? (
+                  <>
+                    <Heading as="h3" fontSize={2} mb={3}>
+                      Course Information
+                    </Heading>
+                    <Box as="dl">
+                      <Box as="dt" fontWeight="bold">
+                        Instructor
+                      </Box>
+                      <Box as="dd" mb={2}>
+                        {course.teacher
+                          ? `${course.teacher.name}`
+                          : "Not assigned"}
+                      </Box>
 
-                  <Box as="dt" fontWeight="bold">
-                    Start Date
-                  </Box>
-                  <Box as="dd" mb={2}>
-                    {course.startDate
-                      ? new Date(course.startDate).toLocaleDateString()
-                      : "Not set"}
-                  </Box>
+                      <Box as="dt" fontWeight="bold">
+                        Start Date
+                      </Box>
+                      <Box as="dd" mb={2}>
+                        {course.startDate
+                          ? new Date(course.startDate).toLocaleDateString()
+                          : "Not set"}
+                      </Box>
 
-                  <Box as="dt" fontWeight="bold">
-                    End Date
-                  </Box>
-                  <Box as="dd" mb={2}>
-                    {course.endDate
-                      ? new Date(course.endDate).toLocaleDateString()
-                      : "Not set"}
-                  </Box>
+                      <Box as="dt" fontWeight="bold">
+                        End Date
+                      </Box>
+                      <Box as="dd" mb={2}>
+                        {course.endDate
+                          ? new Date(course.endDate).toLocaleDateString()
+                          : "Not set"}
+                      </Box>
 
-                  <Box as="dt" fontWeight="bold">
-                    Status
-                  </Box>
-                  <Box as="dd" mb={2}>
-                    {course.isActive ? "Active" : "Inactive"}
-                  </Box>
+                      <Box as="dt" fontWeight="bold">
+                        Status
+                      </Box>
+                      <Box as="dd" mb={2}>
+                        {course.isActive ? "Active" : "Inactive"}
+                      </Box>
 
-                  <Box as="dt" fontWeight="bold">
-                    Enrollment
-                  </Box>
-                  <Box as="dd" mb={2}>
-                    {course.students
-                      ? `${course.students.length}/${course.maxStudents}`
-                      : "0/0"}{" "}
-                    students
-                  </Box>
-                </Box>
+                      <Box as="dt" fontWeight="bold">
+                        Enrollment
+                      </Box>
+                      <Box as="dd" mb={2}>
+                        {course.students
+                          ? `${course.students.length}/${course.maxStudents}`
+                          : "0/0"}{" "}
+                        students
+                      </Box>
+                    </Box>
 
-                {/* Show enrollment actions for students only */}
-                {user && user.role === "student" && (
-                  <Box mt={3}>
-                    {isEnrolled ? (
-                      <Button
-                        onClick={() => setShowUnenrollDialog(true)}
-                        variant="secondary"
-                        fullWidth
-                        disabled={enrollLoading}
-                      >
-                        {enrollLoading ? "Processing..." : "Leave Course"}
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => setShowEnrollDialog(true)}
-                        variant="primary"
-                        fullWidth
-                        disabled={
-                          enrollLoading ||
-                          (course.students?.length ?? 0) >=
-                            (course.maxStudents ?? 0)
-                        }
-                      >
-                        {enrollLoading
-                          ? "Processing..."
-                          : (course.students?.length ?? 0) >=
-                            (course.maxStudents ?? 0)
-                          ? "Course Full"
-                          : "Enroll Now"}
-                      </Button>
-                    )}
-                    {enrollmentError && (
-                      <Text color="red" fontSize={1} mt={2}>
-                        {enrollmentError}
-                      </Text>
-                    )}
-                  </Box>
+                    {/* Show edit button for admins and course owner (teacher) */}
+                    {user &&
+                      (user.role === "admin" ||
+                        (user.role === "teacher" &&
+                          course?.teacher?._id === user._id)) && (
+                        <Button
+                          onClick={() => setIsEditing(true)}
+                          variant="primary"
+                          fullWidth
+                          sx={{ mt: 3 }}
+                        >
+                          Edit Course
+                        </Button>
+                      )}
+                  </>
+                ) : (
+                  <>
+                    <Heading as="h3" fontSize={2} mb={3}>
+                      Edit Course
+                    </Heading>
+                    <CourseForm
+                      initialData={course}
+                      onSuccess={(updatedCourse) => {
+                        setCourse(updatedCourse);
+                        setIsEditing(false);
+                        setNotification({
+                          message: "Course updated successfully",
+                          type: "success",
+                        });
+                      }}
+                    />
+                    <Button
+                      onClick={() => setIsEditing(false)}
+                      variant="secondary"
+                      fullWidth
+                      sx={{ mt: 3 }}
+                    >
+                      Cancel
+                    </Button>
+                  </>
                 )}
               </Box>
 
-              {/* Only show assignment submission for enrolled students or teachers */}
+              {/* Show enrollment actions for students only */}
+              {user && user.role === "student" && (
+                <Box mt={3}>
+                  {isEnrolled ? (
+                    <Button
+                      onClick={() => setShowUnenrollDialog(true)}
+                      variant="secondary"
+                      fullWidth
+                      disabled={enrollLoading}
+                    >
+                      {enrollLoading ? "Processing..." : "Leave Course"}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => setShowEnrollDialog(true)}
+                      variant="primary"
+                      fullWidth
+                      disabled={
+                        enrollLoading ||
+                        (course.students?.length ?? 0) >=
+                          (course.maxStudents ?? 0)
+                      }
+                    >
+                      {enrollLoading
+                        ? "Processing..."
+                        : (course.students?.length ?? 0) >=
+                          (course.maxStudents ?? 0)
+                        ? "Course Full"
+                        : "Enroll Now"}
+                    </Button>
+                  )}
+                  {enrollmentError && (
+                    <Text color="red" fontSize={1} mt={2}>
+                      {enrollmentError}
+                    </Text>
+                  )}
+                </Box>
+              )}
+
+              {/* Only show assignment submission info for enrolled students or teachers */}
               {((user && user.role !== "student") || isEnrolled) && (
                 <Box className="card" mt={3}>
                   <Heading as="h3" fontSize={2} mb={3}>
-                    Assignment Submission
+                    Assignments
                   </Heading>
-                  <FileUpload courseId={courseId} />
+                  <Text>
+                    To view and submit assignments for this course, please visit
+                    the Assignments section.
+                  </Text>
                 </Box>
               )}
 
@@ -360,6 +414,60 @@ export default function CoursePage({
                   }}
                 />
               )}
+
+              {/* Show delete button for admins and course owner (teacher) */}
+              {user &&
+                (user.role === "admin" ||
+                  (user.role === "teacher" &&
+                    course?.teacher?._id === user._id)) && (
+                  <Box mt={3}>
+                    <Button
+                      onClick={() => {
+                        console.log("Delete button clicked");
+                        console.log("Course students:", course?.students);
+                        // Check if course has enrolled students
+                        if (course?.students?.length > 0) {
+                          console.log(
+                            "Course has enrolled students, showing notification"
+                          );
+                          setNotification({
+                            message: `Cannot delete course with ${
+                              course.students.length
+                            } active student${
+                              course.students.length === 1 ? "" : "s"
+                            }. Please remove all students first.`,
+                            type: "error",
+                          });
+                          return;
+                        }
+                        console.log("Showing delete dialog");
+                        setShowDeleteDialog(true);
+                      }}
+                      variant="secondary"
+                      fullWidth
+                      disabled={deleteLoading}
+                      sx={{
+                        bg: "#dc3545",
+                        color: "white",
+                        "&:hover": { bg: "#c82333" },
+                      }}
+                    >
+                      {deleteLoading ? "Deleting..." : "Delete Course"}
+                    </Button>
+                    {course?.students?.length > 0 && (
+                      <Text
+                        color="red"
+                        fontSize={1}
+                        mt={2}
+                        sx={{ textAlign: "center" }}
+                      >
+                        This course has {course.students.length} enrolled
+                        student{course.students.length === 1 ? "" : "s"}. You
+                        must remove all students before deleting the course.
+                      </Text>
+                    )}
+                  </Box>
+                )}
             </Box>
           </Flex>
 
@@ -384,6 +492,43 @@ export default function CoursePage({
             onConfirm={handleUnenroll}
             onCancel={() => setShowUnenrollDialog(false)}
             isLoading={enrollLoading}
+          />
+
+          <ConfirmDialog
+            isOpen={showDeleteDialog}
+            title="Delete Course"
+            message={`Are you sure you want to delete ${course?.title}? This action cannot be undone and will remove all course materials and student enrollments.`}
+            confirmLabel="Delete Course"
+            cancelLabel="Cancel"
+            onConfirm={async () => {
+              try {
+                console.log("Delete confirmation clicked");
+                setDeleteLoading(true);
+                console.log("Attempting to delete course:", courseId);
+                await deleteCourse(courseId);
+                console.log("Course deleted successfully");
+                setNotification({
+                  message: "Course successfully deleted",
+                  type: "success",
+                });
+                router.push("/courses"); // Redirect to courses page
+              } catch (err: any) {
+                console.error("Delete course error:", err);
+                setNotification({
+                  message: err.message || "Failed to delete course",
+                  type: "error",
+                });
+              } finally {
+                setDeleteLoading(false);
+                setShowDeleteDialog(false);
+              }
+            }}
+            onCancel={() => {
+              console.log("Delete cancelled");
+              setShowDeleteDialog(false);
+            }}
+            isLoading={deleteLoading}
+            variant="danger"
           />
 
           {/* Notification */}

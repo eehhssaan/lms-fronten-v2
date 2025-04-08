@@ -23,6 +23,7 @@ import Notification from "@/components/Notification";
 import BulkEnrollment from "@/components/BulkEnrollment";
 import CourseContentManager from "@/components/CourseContentManager";
 import CourseForm from "@/components/CourseForm";
+import CourseNavigation from "@/components/CourseNavigation";
 
 export default function CoursePage({
   params,
@@ -215,6 +216,8 @@ export default function CoursePage({
             </Text>
             <Text mt={3}>{course.description}</Text>
           </Box>
+
+          <CourseNavigation courseId={courseId} activeTab="content" />
 
           {course && user?.role === "teacher" && (
             <Box mt={4} mb={4}>

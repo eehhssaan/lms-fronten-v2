@@ -62,6 +62,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Skip initial auth check if we're on the auth page
+    if (typeof window !== "undefined" && window.location.pathname === "/auth") {
+      setLoading(false);
+      return;
+    }
     fetchUser();
   }, []);
 
@@ -124,7 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(false);
     } catch (error) {
       console.error("AuthContext: Logout failed:", error);
-      throw error;
+      // Even if the logout API call fails, we should still clear the local state
+      setUser(null);
+      setIsAuthenticated(false);
     }
   };
 

@@ -47,7 +47,7 @@ export default function Header() {
         <Link href="/" style={{ textDecoration: "none" }}>
           <Flex alignItems="center">
             <Text fontSize={[3, 4]} fontWeight="bold" color="primary">
-              LMS!
+              LMS
             </Text>
           </Flex>
         </Link>

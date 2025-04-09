@@ -41,7 +41,7 @@ export default function AssignmentsPage() {
   };
 
   const handleAssignmentClick = (assignment: Assignment) => {
-    router.push(`/assignments/${assignment._id}`);
+    router.push(`/assignments/${assignment._id}?courseId=${courseId}`);
   };
 
   return (

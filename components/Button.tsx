@@ -4,7 +4,7 @@ import { Button as RebassButton } from "rebass";
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   onClick?: () => void;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "danger";
   size?: "small" | "medium" | "large";
   fullWidth?: boolean;
   disabled?: boolean;
@@ -69,6 +69,21 @@ export default function Button({
       "&:disabled": {
         bg: "#e9ecef",
         color: "#6c757d",
+        cursor: "not-allowed",
+      },
+    },
+    danger: {
+      bg: "#dc3545",
+      color: "white",
+      border: "1px solid #dc3545",
+      "&:hover": {
+        bg: "#c82333",
+        borderColor: "#bd2130",
+      },
+      "&:disabled": {
+        bg: "#f5c6cb",
+        borderColor: "#f5c6cb",
+        color: "#721c24",
         cursor: "not-allowed",
       },
     },

@@ -493,6 +493,43 @@ export const downloadContent = async (
   }
 };
 
+export const deleteCourseContent = async (contentId: string): Promise<void> => {
+  try {
+    console.log(`API Client: Deleting content with ID ${contentId}`);
+    const response = await api.delete(`/api/contents/${contentId}`);
+
+    if (!response.data.success) {
+      throw new Error(
+        response.data.message || "Failed to delete course content"
+      );
+    }
+  } catch (error: any) {
+    console.error("API Client: Error deleting course content:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    // Handle specific error cases as per backend documentation
+    switch (error.response?.status) {
+      case 403:
+        throw new Error(
+          "You don't have permission to delete this content. Only course teachers and admins can delete content."
+        );
+      case 404:
+        if (error.response?.data?.message?.includes("course")) {
+          throw new Error("The associated course was not found");
+        } else {
+          throw new Error("The content you're trying to delete was not found");
+        }
+      default:
+        throw new Error(
+          error.response?.data?.message || "Failed to delete course content"
+        );
+    }
+  }
+};
+
 // Special handling for file uploads
 export const submitAssignment = async (
   assignmentId: string,
@@ -1198,4 +1235,67 @@ export const downloadAssignmentAttachment = async (
     { responseType: "blob" }
   );
   return response.data;
+};
+
+export const updateCourseContent = async (
+  contentId: string,
+  data:
+    | FormData
+    | {
+        title?: string;
+        description?: string;
+        type?: "document" | "video" | "link" | "text";
+        moduleNumber?: number;
+        lessonNumber?: number;
+        order?: number;
+        link?: string;
+        textContent?: string;
+      }
+): Promise<Content> => {
+  try {
+    console.log(`API Client: Updating content with ID ${contentId}`);
+
+    let response;
+    if (data instanceof FormData) {
+      response = await api.put(`/api/contents/${contentId}`, data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    } else {
+      response = await api.put(`/api/contents/${contentId}`, data);
+    }
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Failed to update content");
+    }
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error("API Client: Error updating course content:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    // Handle specific error cases
+    switch (error.response?.status) {
+      case 401:
+        throw new Error("Please log in to update content");
+      case 403:
+        throw new Error(
+          "You don't have permission to update this content. Only course teachers and admins can update content."
+        );
+      case 404:
+        throw new Error("The content you're trying to update was not found");
+      case 400:
+        throw new Error(
+          error.response?.data?.message || "Invalid update data provided"
+        );
+      default:
+        throw new Error(
+          error.response?.data?.message || "Failed to update content"
+        );
+    }
+  }
 };

@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 
 interface CourseNavigationProps {
   courseId: string;
-  activeTab: "content" | "assignments";
+  activeTab: "content" | "assignments" | "information";
 }
 
 export default function CourseNavigation({
@@ -22,6 +22,11 @@ export default function CourseNavigation({
       id: "assignments",
       label: "Assignments",
       href: `/assignments?courseId=${courseId}`,
+    },
+    {
+      id: "information",
+      label: "Information",
+      href: `/courses/${courseId}/information`,
     },
   ];
 

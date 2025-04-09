@@ -447,6 +447,188 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
         }}
         isLoading={loading}
       />
+
+      {/* Edit Class Form */}
+      {showEditDialog && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <Box
+            sx={{
+              backgroundColor: "white",
+              padding: 4,
+              borderRadius: "8px",
+              width: "90%",
+              maxWidth: "600px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
+            <Heading as="h2" fontSize={3} mb={3}>
+              Edit Class
+            </Heading>
+
+            <Box mb={3}>
+              <Text fontWeight="bold" mb={2}>
+                Class Name *{" "}
+                <Text as="span" color="red" fontSize="12px">
+                  (max 50 characters)
+                </Text>
+              </Text>
+              <input
+                type="text"
+                name="name"
+                value={editedClass.name}
+                onChange={handleInputChange}
+                maxLength={50}
+                placeholder="Enter class name"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                }}
+              />
+            </Box>
+
+            <Box mb={3}>
+              <Text fontWeight="bold" mb={2}>
+                Class Code *{" "}
+                <Text as="span" color="red" fontSize="12px">
+                  (max 20 characters)
+                </Text>
+              </Text>
+              <input
+                type="text"
+                name="code"
+                value={editedClass.code}
+                onChange={handleInputChange}
+                maxLength={20}
+                placeholder="Enter class code (e.g., CS101-2024)"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                }}
+              />
+            </Box>
+
+            <Box mb={3}>
+              <Text fontWeight="bold" mb={2}>
+                Academic Year *
+              </Text>
+              <input
+                type="text"
+                name="academicYear"
+                value={editedClass.academicYear}
+                onChange={handleInputChange}
+                placeholder="Enter academic year (e.g., 2024)"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                }}
+              />
+            </Box>
+
+            <Box mb={3}>
+              <Text fontWeight="bold" mb={2}>
+                Department (Optional)
+              </Text>
+              <input
+                type="text"
+                name="department"
+                value={editedClass.department}
+                onChange={handleInputChange}
+                placeholder="Enter department name"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                }}
+              />
+            </Box>
+
+            <Box mb={3}>
+              <Text fontWeight="bold" mb={2}>
+                Grade Level (Optional)
+              </Text>
+              <input
+                type="text"
+                name="gradeLevel"
+                value={editedClass.gradeLevel}
+                onChange={handleInputChange}
+                placeholder="Enter grade level"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                }}
+              />
+            </Box>
+
+            <Box mb={4}>
+              <Text fontWeight="bold" mb={2}>
+                Description (Optional)
+              </Text>
+              <textarea
+                name="description"
+                value={editedClass.description}
+                onChange={handleInputChange}
+                placeholder="Enter class description"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                  minHeight: "100px",
+                }}
+              />
+            </Box>
+
+            <Flex justifyContent="flex-end" gap={3}>
+              <Button
+                variant="secondary"
+                onClick={() => setShowEditDialog(false)}
+                disabled={editLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleUpdateClass}
+                disabled={editLoading}
+              >
+                {editLoading ? "Saving..." : "Save Changes"}
+              </Button>
+            </Flex>
+          </Box>
+        </Box>
+      )}
+
+      {/* Notification */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
     </Box>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, FormEvent, ChangeEvent } from "react";
 import { Box, Heading, Text, Flex } from "rebass";
-import { Label, Input } from "@rebass/forms";
+import { Label, Input, Textarea } from "@rebass/forms";
 import { Assignment } from "@/types";
 import { createAssignment, updateAssignment } from "@/lib/api";
 import Button from "./Button";
@@ -11,14 +11,14 @@ import { useAuth } from "@/context/AuthContext";
 
 interface AssignmentFormProps {
   courseId: string;
-  initialData?: Partial<Assignment>;
-  onSuccess?: (assignment: Assignment) => void;
-  onCancel?: () => void;
+  assignment?: Assignment;
+  onSuccess: () => void;
+  onCancel: () => void;
 }
 
 export default function AssignmentForm({
   courseId,
-  initialData,
+  assignment,
   onSuccess,
   onCancel,
 }: AssignmentFormProps) {
@@ -27,21 +27,31 @@ export default function AssignmentForm({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [formData, setFormData] = useState({
-    title: initialData?.title || "",
-    description: initialData?.description || "",
-    instructions: initialData?.instructions || "",
-    moduleNumber: initialData?.moduleNumber || 1,
-    dueDate: initialData?.dueDate
-      ? new Date(initialData.dueDate).toISOString().split("T")[0]
-      : "",
-    totalPoints: initialData?.totalPoints || 100,
-    allowLateSubmissions: initialData?.allowLateSubmissions || false,
-    latePenalty: initialData?.latePenalty || 0,
-    isPublished:
-      initialData?.isPublished !== undefined ? initialData.isPublished : true,
-    rubric: initialData?.rubric || [],
-  });
+  const [formData, setFormData] = useState<FormData>(new FormData());
+  const [title, setTitle] = useState(assignment?.title || "");
+  const [description, setDescription] = useState(assignment?.description || "");
+  const [instructions, setInstructions] = useState(
+    assignment?.instructions || ""
+  );
+  const [moduleNumber, setModuleNumber] = useState(
+    assignment?.moduleNumber || 1
+  );
+  const [dueDate, setDueDate] = useState(
+    assignment?.dueDate
+      ? new Date(assignment.dueDate).toISOString().split("T")[0]
+      : ""
+  );
+  const [totalPoints, setTotalPoints] = useState(
+    assignment?.totalPoints || 100
+  );
+  const [allowLateSubmissions, setAllowLateSubmissions] = useState(
+    assignment?.allowLateSubmissions || false
+  );
+  const [latePenalty, setLatePenalty] = useState(assignment?.latePenalty || 0);
+  const [isPublished, setIsPublished] = useState(
+    assignment?.isPublished || false
+  );
+  const [rubric, setRubric] = useState(assignment?.rubric || []);
 
   const [files, setFiles] = useState<File[]>([]);
   const [rubricItem, setRubricItem] = useState({
@@ -56,11 +66,18 @@ export default function AssignmentForm({
     >
   ) => {
     const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
-    }));
+    setFormData((prev) => {
+      const newFormData = new FormData(prev);
+      if (type === "checkbox") {
+        newFormData.append(
+          name,
+          (e.target as HTMLInputElement).checked.toString()
+        );
+      } else {
+        newFormData.append(name, value);
+      }
+      return newFormData;
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,74 +95,59 @@ export default function AssignmentForm({
 
   const handleAddRubricItem = () => {
     if (rubricItem.criterion && rubricItem.points > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        rubric: [...prev.rubric, rubricItem],
-      }));
+      setRubric((prev) => [...prev, rubricItem]);
       setRubricItem({ criterion: "", points: 0, description: "" });
     }
   };
 
   const handleRemoveRubricItem = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      rubric: prev.rubric.filter((_, i) => i !== index),
-    }));
+    setRubric((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    setLoading(true);
 
     try {
-      const formDataToSend = new FormData();
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("instructions", instructions);
+      formData.append("moduleNumber", moduleNumber.toString());
+      formData.append("dueDate", new Date(dueDate).toISOString());
+      formData.append("totalPoints", totalPoints.toString());
+      formData.append("allowLateSubmissions", allowLateSubmissions.toString());
+      formData.append("latePenalty", latePenalty.toString());
+      formData.append("isPublished", isPublished.toString());
+      formData.append("courseId", courseId);
 
-      // Add basic fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key === "rubric") {
-          // Handle rubric array properly
-          if (Array.isArray(value)) {
-            if (value.length > 0) {
-              value.forEach((item, index) => {
-                formDataToSend.append(
-                  `rubric[${index}][criterion]`,
-                  item.criterion
-                );
-                formDataToSend.append(
-                  `rubric[${index}][points]`,
-                  item.points.toString()
-                );
-                formDataToSend.append(
-                  `rubric[${index}][description]`,
-                  item.description
-                );
-              });
-            }
-            // Don't append anything if the array is empty - let the backend handle the default
-          } else {
-            console.warn("Rubric is not an array:", value);
-          }
-        } else {
-          formDataToSend.append(key, value.toString());
+      // Handle rubric array properly
+      if (Array.isArray(rubric)) {
+        if (rubric.length > 0) {
+          rubric.forEach((item, index) => {
+            formData.append(`rubric[${index}][criterion]`, item.criterion);
+            formData.append(`rubric[${index}][points]`, item.points.toString());
+            formData.append(`rubric[${index}][description]`, item.description);
+          });
         }
-      });
-
-      // Add courseId
-      formDataToSend.append("courseId", courseId);
+        // Don't append anything if the array is empty - let the backend handle the default
+      } else {
+        console.warn("Rubric is not an array:", rubric);
+      }
 
       // Add files
       files.forEach((file) => {
-        formDataToSend.append("attachments", file);
+        formData.append("attachments", file);
       });
 
-      const response = initialData?._id
-        ? await updateAssignment(initialData._id, formDataToSend)
-        : await createAssignment(formDataToSend);
-
-      if (onSuccess) {
-        onSuccess(response.data);
+      if (assignment) {
+        await updateAssignment(assignment._id, formData);
+      } else {
+        await createAssignment(formData);
       }
+
+      onSuccess();
     } catch (err: any) {
       setError(err.message || "Failed to save assignment");
     } finally {
@@ -165,7 +167,7 @@ export default function AssignmentForm({
       sx={{ maxWidth: "800px", mx: "auto" }}
     >
       <Heading as="h2" mb={4}>
-        {initialData?._id ? "Edit Assignment" : "Create New Assignment"}
+        {assignment ? "Edit Assignment" : "Create New Assignment"}
       </Heading>
 
       {error && <ErrorMessage message={error} />}
@@ -175,45 +177,37 @@ export default function AssignmentForm({
         <Input
           id="title"
           name="title"
-          value={formData.title}
-          onChange={handleChange}
+          value={title}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setTitle(e.target.value)
+          }
           required
         />
       </Box>
 
       <Box mb={3}>
         <Label htmlFor="description">Description</Label>
-        <textarea
+        <Textarea
           id="description"
           name="description"
-          value={formData.description}
-          onChange={handleChange}
+          value={description}
+          onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+            setDescription(e.target.value)
+          }
           required
-          style={{
-            width: "100%",
-            minHeight: "100px",
-            padding: "8px",
-            borderRadius: "4px",
-            border: "1px solid #ddd",
-          }}
         />
       </Box>
 
       <Box mb={3}>
         <Label htmlFor="instructions">Instructions</Label>
-        <textarea
+        <Textarea
           id="instructions"
           name="instructions"
-          value={formData.instructions}
-          onChange={handleChange}
+          value={instructions}
+          onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+            setInstructions(e.target.value)
+          }
           required
-          style={{
-            width: "100%",
-            minHeight: "100px",
-            padding: "8px",
-            borderRadius: "4px",
-            border: "1px solid #ddd",
-          }}
         />
       </Box>
 
@@ -224,8 +218,10 @@ export default function AssignmentForm({
             type="number"
             id="moduleNumber"
             name="moduleNumber"
-            value={formData.moduleNumber}
-            onChange={handleChange}
+            value={moduleNumber}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setModuleNumber(Number(e.target.value))
+            }
             min={1}
             required
           />
@@ -237,8 +233,10 @@ export default function AssignmentForm({
             type="number"
             id="totalPoints"
             name="totalPoints"
-            value={formData.totalPoints}
-            onChange={handleChange}
+            value={totalPoints}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setTotalPoints(Number(e.target.value))
+            }
             min={0}
             required
           />
@@ -251,8 +249,10 @@ export default function AssignmentForm({
           type="date"
           id="dueDate"
           name="dueDate"
-          value={formData.dueDate}
-          onChange={handleChange}
+          value={dueDate}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setDueDate(e.target.value)
+          }
           required
         />
       </Box>
@@ -262,22 +262,26 @@ export default function AssignmentForm({
           <input
             type="checkbox"
             name="allowLateSubmissions"
-            checked={formData.allowLateSubmissions}
-            onChange={handleChange}
+            checked={allowLateSubmissions}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setAllowLateSubmissions(e.target.checked)
+            }
           />{" "}
           Allow Late Submissions
         </Label>
       </Box>
 
-      {formData.allowLateSubmissions && (
+      {allowLateSubmissions && (
         <Box mb={3}>
-          <Label htmlFor="latePenalty">Late Penalty (%)</Label>
+          <Label htmlFor="latePenalty">Late Submission Penalty (%)</Label>
           <Input
             type="number"
             id="latePenalty"
             name="latePenalty"
-            value={formData.latePenalty}
-            onChange={handleChange}
+            value={latePenalty}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setLatePenalty(Number(e.target.value))
+            }
             min={0}
             max={100}
           />
@@ -289,8 +293,10 @@ export default function AssignmentForm({
           <input
             type="checkbox"
             name="isPublished"
-            checked={formData.isPublished}
-            onChange={handleChange}
+            checked={isPublished}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setIsPublished(e.target.checked)
+            }
           />{" "}
           Publish Assignment
         </Label>
@@ -325,7 +331,7 @@ export default function AssignmentForm({
               <Input
                 placeholder="Criterion"
                 value={rubricItem.criterion}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
                   handleRubricItemChange("criterion", e.target.value)
                 }
               />
@@ -335,7 +341,7 @@ export default function AssignmentForm({
                 type="number"
                 placeholder="Points"
                 value={rubricItem.points}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
                   handleRubricItemChange("points", Number(e.target.value))
                 }
                 min={0}
@@ -349,13 +355,13 @@ export default function AssignmentForm({
             mt={2}
             placeholder="Description"
             value={rubricItem.description}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
               handleRubricItemChange("description", e.target.value)
             }
           />
         </Box>
 
-        {formData.rubric.map((item, index) => (
+        {rubric.map((item, index) => (
           <Flex key={index} mb={2} sx={{ gap: 2, alignItems: "center" }}>
             <Box flex={2}>
               <Text fontWeight="bold">{item.criterion}</Text>
@@ -378,15 +384,13 @@ export default function AssignmentForm({
       </Box>
 
       <Flex sx={{ gap: 3, justifyContent: "flex-end" }}>
-        {onCancel && (
-          <Button onClick={onCancel} variant="secondary">
-            Cancel
-          </Button>
-        )}
+        <Button onClick={onCancel} variant="secondary">
+          Cancel
+        </Button>
         <Button as="button" type="submit" variant="primary" disabled={loading}>
           {loading
             ? "Saving..."
-            : initialData?._id
+            : assignment
             ? "Update Assignment"
             : "Create Assignment"}
         </Button>

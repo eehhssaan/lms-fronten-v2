@@ -1,95 +1,67 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Box, Heading } from "rebass";
 import AssignmentList from "@/components/AssignmentList";
 import AssignmentForm from "@/components/AssignmentForm";
-import Loading from "@/components/Loading";
-import ErrorMessage from "@/components/ErrorMessage";
-import { useAuth } from "@/context/AuthContext";
+import { Assignment } from "@/types";
 import { useRouter, useSearchParams } from "next/navigation";
-import CourseNavigation from "@/components/CourseNavigation";
-import CourseHeader from "@/components/CourseHeader";
-import { getCourse } from "@/lib/api";
-import { Course } from "@/types";
 
 export default function AssignmentsPage() {
-  const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
   const [showForm, setShowForm] = useState(false);
-  const [course, setCourse] = useState<Course | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (courseId) {
-      const fetchCourseData = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const courseData = await getCourse(courseId);
-          setCourse(courseData);
-        } catch (err: any) {
-          console.error("Failed to fetch course data:", err);
-          setError(
-            "Failed to load course information. Please try again later."
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchCourseData();
-    }
-  }, [courseId]);
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(
+    null
+  );
 
   if (!courseId) {
-    return <ErrorMessage message="Course ID is required" />;
-  }
-
-  if (loading) {
-    return <Loading />;
-  }
-
-  if (error || !course) {
-    return <ErrorMessage message={error || "Course not found"} />;
+    return <Box p={4}>Course ID is required</Box>;
   }
 
   const handleCreateClick = () => {
+    setEditingAssignment(null);
     setShowForm(true);
   };
 
-  const handleAssignmentClick = (assignment: any) => {
-    if (user?.role === "teacher" || user?.role === "admin") {
-      router.push(`/assignments/${assignment._id}/grade?courseId=${courseId}`);
-    } else {
-      router.push(`/assignments/${assignment._id}/submit?courseId=${courseId}`);
-    }
+  const handleEditClick = (assignment: Assignment) => {
+    setEditingAssignment(assignment);
+    setShowForm(true);
   };
 
   const handleFormSuccess = () => {
     setShowForm(false);
-    // Refresh the assignments list
-    router.refresh();
+    setEditingAssignment(null);
+  };
+
+  const handleFormCancel = () => {
+    setShowForm(false);
+    setEditingAssignment(null);
+  };
+
+  const handleAssignmentClick = (assignment: Assignment) => {
+    router.push(`/assignments/${assignment._id}`);
   };
 
   return (
-    <Box as="div" className="container" py={4}>
-      <CourseHeader course={course} />
-      <CourseNavigation courseId={courseId} activeTab="assignments" />
+    <Box p={4}>
+      <Heading as="h1" mb={4}>
+        Course Assignments
+      </Heading>
 
       {showForm ? (
         <AssignmentForm
           courseId={courseId}
+          assignment={editingAssignment || undefined}
           onSuccess={handleFormSuccess}
-          onCancel={() => setShowForm(false)}
+          onCancel={handleFormCancel}
         />
       ) : (
         <AssignmentList
           courseId={courseId}
           onCreateClick={handleCreateClick}
+          onEditClick={handleEditClick}
           onAssignmentClick={handleAssignmentClick}
         />
       )}

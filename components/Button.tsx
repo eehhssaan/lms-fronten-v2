@@ -3,7 +3,7 @@ import { Button as RebassButton } from "rebass";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   variant?: "primary" | "secondary" | "danger";
   size?: "small" | "medium" | "large";
   fullWidth?: boolean;

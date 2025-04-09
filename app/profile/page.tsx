@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Box, Flex, Heading, Text } from "rebass";
-import { Label, Input } from "@rebass/forms";
+import { Label, Input, Textarea } from "@rebass/forms";
 import { useAuth } from "@/context/AuthContext";
 import {
   getUserProfile,
@@ -33,6 +33,12 @@ export default function ProfilePage() {
     newPassword: "",
     grade: "",
     subject: "",
+    gender: "",
+    bio: "",
+    contactNumber: "",
+    preferredLanguage: "english",
+    dateOfBirth: "",
+    school: "",
     profilePicture: null as File | null,
   });
 
@@ -51,6 +57,14 @@ export default function ProfilePage() {
         newPassword: "",
         grade: userData.grade || "",
         subject: userData.subject || "",
+        gender: userData.gender || "",
+        bio: userData.bio || "",
+        contactNumber: userData.contactNumber || "",
+        preferredLanguage: userData.preferredLanguage || "english",
+        dateOfBirth: userData.dateOfBirth
+          ? new Date(userData.dateOfBirth).toISOString().split("T")[0]
+          : "",
+        school: userData.school || "",
         profilePicture: null,
       });
 
@@ -159,6 +173,16 @@ export default function ProfilePage() {
                   />
                 </Box>
 
+                <Box mb={3}>
+                  <Label htmlFor="school">School/Institution</Label>
+                  <Input
+                    id="school"
+                    name="school"
+                    value={formData.school}
+                    onChange={handleInputChange}
+                  />
+                </Box>
+
                 {user.role === "student" && (
                   <Box mb={3}>
                     <Label htmlFor="grade">Grade</Label>
@@ -184,17 +208,90 @@ export default function ProfilePage() {
                 )}
 
                 <Box mb={3}>
-                  <Label htmlFor="profilePicture">Profile Picture</Label>
+                  <Label htmlFor="gender">Gender</Label>
+                  <Box
+                    as="select"
+                    id="gender"
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    sx={{
+                      display: "block",
+                      width: "100%",
+                      p: 2,
+                      appearance: "none",
+                      fontSize: "inherit",
+                      lineHeight: "inherit",
+                      border: "1px solid",
+                      borderColor: "gray.2",
+                      borderRadius: 4,
+                      bg: "white",
+                    }}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </Box>
+                </Box>
+
+                <Box mb={3}>
+                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
                   <Input
-                    id="profilePicture"
-                    name="profilePicture"
-                    type="file"
-                    accept="image/jpeg,image/png"
+                    id="dateOfBirth"
+                    name="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
                     onChange={handleInputChange}
                   />
-                  <Text fontSize={1} color="gray.6" mt={1}>
-                    Max size: 2MB. Allowed types: JPEG, PNG
-                  </Text>
+                </Box>
+
+                <Box mb={3}>
+                  <Label htmlFor="contactNumber">Contact Number</Label>
+                  <Input
+                    id="contactNumber"
+                    name="contactNumber"
+                    value={formData.contactNumber}
+                    onChange={handleInputChange}
+                  />
+                </Box>
+
+                <Box mb={3}>
+                  <Label htmlFor="preferredLanguage">Preferred Language</Label>
+                  <Box
+                    as="select"
+                    id="preferredLanguage"
+                    name="preferredLanguage"
+                    value={formData.preferredLanguage}
+                    onChange={handleInputChange}
+                    sx={{
+                      display: "block",
+                      width: "100%",
+                      p: 2,
+                      appearance: "none",
+                      fontSize: "inherit",
+                      lineHeight: "inherit",
+                      border: "1px solid",
+                      borderColor: "gray.2",
+                      borderRadius: 4,
+                      bg: "white",
+                    }}
+                  >
+                    <option value="english">English</option>
+                    <option value="cantonese">Cantonese</option>
+                    <option value="mandarin">Mandarin</option>
+                  </Box>
+                </Box>
+
+                <Box mb={3}>
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleInputChange}
+                    rows={4}
+                  />
                 </Box>
 
                 <Box mb={3}>
@@ -239,13 +336,71 @@ export default function ProfilePage() {
                 </Flex>
               </Box>
             ) : (
-              <Box
-                as="button"
-                className="btn btn-primary"
-                onClick={() => setIsEditing(true)}
-              >
-                Edit Profile
-              </Box>
+              <>
+                <Box mb={4}>
+                  <Text color="gray.6" mb={1}>
+                    School/Institution
+                  </Text>
+                  <Text>{user.school || "Not specified"}</Text>
+                </Box>
+
+                <Box mb={4}>
+                  <Text color="gray.6" mb={1}>
+                    Gender
+                  </Text>
+                  <Text>
+                    {user.gender
+                      ? user.gender.charAt(0).toUpperCase() +
+                        user.gender.slice(1)
+                      : "Not specified"}
+                  </Text>
+                </Box>
+
+                <Box mb={4}>
+                  <Text color="gray.6" mb={1}>
+                    Date of Birth
+                  </Text>
+                  <Text>
+                    {user.dateOfBirth
+                      ? new Date(user.dateOfBirth).toLocaleDateString()
+                      : "Not specified"}
+                  </Text>
+                </Box>
+
+                <Box mb={4}>
+                  <Text color="gray.6" mb={1}>
+                    Contact Number
+                  </Text>
+                  <Text>{user.contactNumber || "Not specified"}</Text>
+                </Box>
+
+                <Box mb={4}>
+                  <Text color="gray.6" mb={1}>
+                    Preferred Language
+                  </Text>
+                  <Text>
+                    {user.preferredLanguage
+                      ? user.preferredLanguage.charAt(0).toUpperCase() +
+                        user.preferredLanguage.slice(1)
+                      : "English"}
+                  </Text>
+                </Box>
+
+                <Box mb={4}>
+                  <Text color="gray.6" mb={1}>
+                    Bio
+                  </Text>
+                  <Text>{user.bio || "No bio provided"}</Text>
+                </Box>
+
+                <Box
+                  as="button"
+                  className="btn btn-primary"
+                  onClick={() => setIsEditing(true)}
+                >
+                  Edit Profile
+                </Box>
+              </>
             )}
           </Box>
 

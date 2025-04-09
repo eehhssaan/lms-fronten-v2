@@ -1179,9 +1179,35 @@ export const updateAssignment = async (id: string, formData: FormData) => {
   return response.data;
 };
 
-export const deleteAssignment = async (id: string) => {
-  const response = await api.delete(`/api/assignments/${id}`);
-  return response.data;
+export const deleteAssignment = async (id: string): Promise<void> => {
+  try {
+    console.log(`API Client: Deleting assignment with ID ${id}`);
+    const response = await api.delete(`/api/assignments/${id}`);
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Failed to delete assignment");
+    }
+  } catch (error: any) {
+    console.error("API Client: Error deleting assignment:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    // Handle specific error cases
+    switch (error.response?.status) {
+      case 401:
+        throw new Error("Please log in to delete assignments");
+      case 403:
+        throw new Error("You don't have permission to delete this assignment");
+      case 404:
+        throw new Error("Assignment not found");
+      default:
+        throw new Error(
+          error.response?.data?.message || "Failed to delete assignment"
+        );
+    }
+  }
 };
 
 // Assignment Submission APIs

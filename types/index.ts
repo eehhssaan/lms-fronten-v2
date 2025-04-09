@@ -9,6 +9,12 @@ export interface User {
   studentId?: string; // For students
   grade?: string; // For students
   subject?: string; // For teachers
+  gender?: "male" | "female" | "other";
+  bio?: string;
+  contactNumber?: string;
+  preferredLanguage?: "english" | "cantonese" | "mandarin";
+  dateOfBirth?: string;
+  school?: string;
   enrolledCourses?: {
     // For students
     _id: string;

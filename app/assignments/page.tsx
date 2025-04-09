@@ -9,6 +9,9 @@ import ErrorMessage from "@/components/ErrorMessage";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import CourseNavigation from "@/components/CourseNavigation";
+import CourseHeader from "@/components/CourseHeader";
+import { getCourse } from "@/lib/api";
+import { Course } from "@/types";
 
 export default function AssignmentsPage() {
   const { user } = useAuth();
@@ -16,9 +19,42 @@ export default function AssignmentsPage() {
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
   const [showForm, setShowForm] = useState(false);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (courseId) {
+      const fetchCourseData = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          const courseData = await getCourse(courseId);
+          setCourse(courseData);
+        } catch (err: any) {
+          console.error("Failed to fetch course data:", err);
+          setError(
+            "Failed to load course information. Please try again later."
+          );
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchCourseData();
+    }
+  }, [courseId]);
 
   if (!courseId) {
     return <ErrorMessage message="Course ID is required" />;
+  }
+
+  if (loading) {
+    return <Loading />;
+  }
+
+  if (error || !course) {
+    return <ErrorMessage message={error || "Course not found"} />;
   }
 
   const handleCreateClick = () => {
@@ -40,11 +76,8 @@ export default function AssignmentsPage() {
   };
 
   return (
-    <Box p={4}>
-      <Heading as="h1" mb={4}>
-        Course Assignments
-      </Heading>
-
+    <Box as="div" className="container" py={4}>
+      <CourseHeader course={course} />
       <CourseNavigation courseId={courseId} activeTab="assignments" />
 
       {showForm ? (

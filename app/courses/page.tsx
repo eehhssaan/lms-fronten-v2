@@ -146,7 +146,12 @@ export default function CoursesPage() {
   }
 
   return (
-    <Box as="div" className="container" py={4}>
+    <Box
+      as="div"
+      className="container"
+      py={4}
+      style={{ backgroundColor: "#f0f0f0", width: "100%" }}
+    >
       <Flex justifyContent="space-between" alignItems="center" mb={4}>
         <Heading as="h1">
           {user?.role === "student" ? "My Courses" : "All Courses"}

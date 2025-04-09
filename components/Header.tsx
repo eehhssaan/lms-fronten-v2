@@ -39,6 +39,10 @@ export default function Header() {
         alignItems="center"
         justifyContent="space-between"
         className="container"
+        sx={{
+          width: "100%",
+          margin: "0 auto",
+        }}
       >
         <Link href="/" style={{ textDecoration: "none" }}>
           <Flex alignItems="center">

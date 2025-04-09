@@ -62,10 +62,13 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error(`API Error from: ${error.config?.url}`, {
-      message: error.message,
-      status: error.response?.status,
-    });
+    // Don't log errors for logout endpoint since we expect it might not exist
+    if (!error.config?.url?.includes("/api/users/logout")) {
+      console.error(`API Error from: ${error.config?.url}`, {
+        message: error.message,
+        status: error.response?.status,
+      });
+    }
     return Promise.reject(error);
   }
 );
@@ -143,10 +146,16 @@ export const loginUser = async (credentials: {
 
 export const logoutUser = async (): Promise<void> => {
   try {
-    // Call logout endpoint to clear the cookie
-    await api.post("/api/users/logout");
+    // Try to call logout endpoint, but don't throw if it fails
+    try {
+      await api.post("/api/users/logout");
+    } catch (error) {
+      console.log(
+        "Backend logout endpoint not available - clearing local state only"
+      );
+    }
 
-    // Clear both localStorage and cookie
+    // Always clear local storage and cookies
     if (typeof window !== "undefined") {
       console.log("Removing token from localStorage and cookie");
       localStorage.removeItem("auth_token");
@@ -154,8 +163,7 @@ export const logoutUser = async (): Promise<void> => {
     }
   } catch (error) {
     console.error("Logout error:", error);
-
-    // Still clear localStorage and cookie even if API call fails
+    // Still clear localStorage and cookie even if something fails
     if (typeof window !== "undefined") {
       localStorage.removeItem("auth_token");
       document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
@@ -180,15 +188,58 @@ export const getCurrentUser = async (): Promise<User> => {
   }
 };
 
-export const updateUserProfile = async (userData: FormData): Promise<User> => {
+export const updateUserProfile = async (userData: {
+  name?: string;
+  profilePicture?: File;
+  school?: string;
+  grade?: string;
+  gender?: "male" | "female" | "other";
+  bio?: string;
+  contactNumber?: string;
+  preferredLanguage?: "english" | "cantonese" | "mandarin";
+  dateOfBirth?: string;
+}): Promise<User> => {
   try {
-    const response = await api.put("/api/users/me", userData, {
+    // If there's a profile picture, use FormData
+    if (userData.profilePicture instanceof File) {
+      const formData = new FormData();
+      formData.append("profilePicture", userData.profilePicture);
+
+      // Add other fields to FormData
+      Object.entries(userData).forEach(([key, value]) => {
+        if (
+          key !== "profilePicture" &&
+          value !== undefined &&
+          value !== null &&
+          value !== ""
+        ) {
+          formData.append(key, value);
+        }
+      });
+
+      const response = await api.put("/api/users/profile", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data.data;
+    }
+
+    // For regular updates without file, use JSON
+    const response = await api.put("/api/users/profile", userData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        "Content-Type": "application/json",
       },
     });
     return response.data.data;
   } catch (error: any) {
+    // Handle specific error cases
+    if (error.response?.status === 401) {
+      throw new Error("Please log in to update your profile");
+    }
+    if (error.response?.status === 400) {
+      throw new Error(error.response?.data?.message || "Invalid profile data");
+    }
     throw new Error(
       error.response?.data?.message || "Failed to update profile"
     );
@@ -1004,17 +1055,6 @@ export const getStudentCourses = async () => {
     return response.data.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to fetch courses");
-  }
-};
-
-export const getStudentProgress = async () => {
-  try {
-    const response = await api.get("/api/users/me/progress");
-    return response.data.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch progress"
-    );
   }
 };
 

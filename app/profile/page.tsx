@@ -7,13 +7,12 @@ import { useAuth } from "@/context/AuthContext";
 import {
   getUserProfile,
   updateUserProfile,
-  getStudentProgress,
   getStudentCourses,
   getTeachingCourses,
 } from "@/lib/api";
 import ErrorMessage from "@/components/ErrorMessage";
 import Image from "next/image";
-import { User, StudentProgress } from "@/types";
+import { User } from "@/types";
 import ProfilePicture from "@/components/ProfilePicture";
 
 export default function ProfilePage() {
@@ -21,8 +20,6 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [studentProgress, setStudentProgress] =
-    useState<StudentProgress | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   // Form state
@@ -68,11 +65,6 @@ export default function ProfilePage() {
         profilePicture: null,
       });
 
-      if (userData.role === "student") {
-        const progress = await getStudentProgress();
-        setStudentProgress(progress);
-      }
-
       setLoading(false);
     } catch (err: any) {
       setError(err.message);
@@ -95,14 +87,24 @@ export default function ProfilePage() {
     setLoading(true);
 
     try {
-      const formDataToSend = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value) {
-          formDataToSend.append(key, value);
-        }
-      });
+      // Create an object with the form data, excluding empty values
+      const updateData: Parameters<typeof updateUserProfile>[0] = {
+        name: formData.name || undefined,
+        school: formData.school || undefined,
+        grade: formData.grade || undefined,
+        gender: formData.gender as "male" | "female" | "other" | undefined,
+        bio: formData.bio || undefined,
+        contactNumber: formData.contactNumber || undefined,
+        preferredLanguage: formData.preferredLanguage as
+          | "english"
+          | "cantonese"
+          | "mandarin"
+          | undefined,
+        dateOfBirth: formData.dateOfBirth || undefined,
+        profilePicture: formData.profilePicture || undefined,
+      };
 
-      const updatedUser = await updateUserProfile(formDataToSend);
+      const updatedUser = await updateUserProfile(updateData);
       setUser(updatedUser);
       setIsEditing(false);
     } catch (err: any) {
@@ -405,36 +407,14 @@ export default function ProfilePage() {
           </Box>
 
           {/* Role-specific information */}
-          {user.role === "student" && studentProgress && (
+          {user.role === "student" && (
             <Box className="card" p={4}>
               <Heading as="h3" fontSize={2} mb={3}>
-                Academic Progress
-              </Heading>
-              <Box mb={4}>
-                <Text fontWeight="bold">Overall Completion Rate</Text>
-                <Text>{studentProgress.overall.completionRate}%</Text>
-                <Text fontWeight="bold" mt={2}>
-                  Average Score
-                </Text>
-                <Text>{studentProgress.overall.averageScore}%</Text>
-              </Box>
-
-              <Heading as="h4" fontSize={2} mb={3}>
                 Course Progress
               </Heading>
-              {studentProgress.courses.map((course) => (
-                <Box key={course.courseId} mb={3} p={3} bg="gray.0">
-                  <Text fontWeight="bold">{course.title}</Text>
-                  <Text>Progress: {course.progress}%</Text>
-                  <Text>
-                    Assignments: {course.assignments.completed}/
-                    {course.assignments.total}
-                  </Text>
-                  <Text>
-                    Quizzes: {course.quizzes.completed}/{course.quizzes.total}
-                  </Text>
-                </Box>
-              ))}
+              <Text color="gray.6">
+                Course progress information will be displayed here.
+              </Text>
             </Box>
           )}
 

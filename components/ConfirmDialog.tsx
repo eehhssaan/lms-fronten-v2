@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import {
   Modal,
   ModalOverlay,
@@ -12,7 +12,7 @@ import {
 interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
-  message: string;
+  message: ReactNode;
   confirmLabel: string;
   cancelLabel: string;
   onConfirm: () => void;

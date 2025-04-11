@@ -392,6 +392,7 @@ export const createCourse = async (courseData: {
   title: string;
   description: string;
   code: string;
+  curriculumType: "HKDSE" | "A-levels";
   subject: string;
   grade: string;
   teacher?: string;
@@ -420,6 +421,7 @@ export const createCourse = async (courseData: {
       "title",
       "description",
       "code",
+      "curriculumType",
       "subject",
       "grade",
       "startDate",
@@ -428,6 +430,13 @@ export const createCourse = async (courseData: {
     const missingFields = requiredFields.filter((field) => !courseData[field]);
     if (missingFields.length > 0) {
       throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+    }
+
+    // Validate curriculum type
+    if (!["HKDSE", "A-levels"].includes(courseData.curriculumType)) {
+      throw new Error(
+        "Invalid curriculum type. Must be either HKDSE or A-levels"
+      );
     }
 
     // Set default values if not provided
@@ -704,6 +713,12 @@ export const enrollClassInCourse = async (
     });
     return response.data.data;
   } catch (error: any) {
+    // Handle specific curriculum-related errors
+    if (error.response?.data?.code === "CLASS_ENROLLMENT_LIMIT") {
+      throw new Error(
+        "Course has limited capacity. Cannot enroll all students."
+      );
+    }
     throw new Error(
       error.response?.data?.message || "Failed to enroll class in course"
     );
@@ -744,18 +759,18 @@ export const getAvailableClasses = async (): Promise<
 export const createClass = async (classData: {
   name: string;
   code: string;
+  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
   academicYear: string;
   department?: string;
-  gradeLevel?: string;
   description?: string;
   classTeacher?: string;
 }): Promise<{
   _id: string;
   name: string;
   code: string;
+  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
   academicYear: string;
   department?: string;
-  gradeLevel?: string;
   description?: string;
   classTeacher: string;
   students: string[];
@@ -764,6 +779,15 @@ export const createClass = async (classData: {
   updatedAt: Date;
 }> => {
   try {
+    // Validate form level
+    if (
+      !["Form 4", "Form 5", "Form 6", "AS", "A2"].includes(classData.formLevel)
+    ) {
+      throw new Error(
+        "Invalid form level. Must be one of: Form 4, Form 5, Form 6, AS, A2"
+      );
+    }
+
     const response = await api.post("/api/classes", classData);
     return response.data.data; // Extract the data from the success response
   } catch (error: any) {
@@ -1089,6 +1113,9 @@ export const updateCourse = async (
   try {
     console.log("Updating course:", courseId, "with data:", courseData);
 
+    // Get current course data first
+    const currentCourse = await getCourse(courseId);
+
     // Get current user to check role
     const currentUser = await getCurrentUser();
 
@@ -1104,6 +1131,15 @@ export const updateCourse = async (
         }
       });
     }
+
+    // Merge current course data with update data
+    const finalData = {
+      ...currentCourse,
+      ...courseData,
+      // Ensure code and teacher are always included
+      code: courseData.code || currentCourse.code,
+      teacher: courseData.teacher || currentCourse.teacher._id,
+    };
 
     // Validate maxStudents if provided
     if (courseData.maxStudents !== undefined) {
@@ -1123,9 +1159,10 @@ export const updateCourse = async (
 
     // Validate dates if provided
     if (courseData.startDate || courseData.endDate) {
-      const course = await getCourse(courseId); // Get current course data
-      const startDate = new Date(courseData.startDate || course.startDate);
-      const endDate = new Date(courseData.endDate || course.endDate);
+      const startDate = new Date(
+        courseData.startDate || currentCourse.startDate
+      );
+      const endDate = new Date(courseData.endDate || currentCourse.endDate);
 
       if (startDate >= endDate) {
         throw new Error("End date must be after start date");
@@ -1133,7 +1170,7 @@ export const updateCourse = async (
     }
 
     // Make the update request
-    const response = await api.put(`/api/courses/${courseId}`, courseData);
+    const response = await api.put(`/api/courses/${courseId}`, finalData);
 
     if (!response.data.success) {
       throw new Error(response.data.message || "Failed to update course");

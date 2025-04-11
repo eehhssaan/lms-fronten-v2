@@ -14,6 +14,7 @@ export default function SubmitAssignmentPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
+  const assignmentId = typeof params?.id === "string" ? params.id : "";
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +24,7 @@ export default function SubmitAssignmentPage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await getAssignment(params.id as string);
+        const response = await getAssignment(assignmentId);
         setAssignment(response.data);
       } catch (err: any) {
         setError(err.message || "Failed to load assignment");
@@ -32,10 +33,10 @@ export default function SubmitAssignmentPage() {
       }
     };
 
-    if (params.id) {
+    if (assignmentId) {
       fetchAssignment();
     }
-  }, [params.id]);
+  }, [assignmentId]);
 
   if (!courseId) {
     return <ErrorMessage message="Course ID is required" />;

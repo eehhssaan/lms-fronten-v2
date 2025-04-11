@@ -15,6 +15,7 @@ interface BulkEnrollmentProps {
 interface Class {
   _id: string;
   name: string;
+  formLevel?: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
 }
 
 export default function BulkEnrollment({

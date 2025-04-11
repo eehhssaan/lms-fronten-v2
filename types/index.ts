@@ -74,6 +74,7 @@ export interface Course {
   title: string;
   description: string;
   code: string;
+  curriculumType: "HKDSE" | "A-levels";
   subject: string;
   grade: string;
   teacher: {
@@ -104,9 +105,9 @@ export interface Class {
   _id: string;
   name: string;
   code: string;
+  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
   academicYear: string;
   department?: string;
-  gradeLevel?: string;
   description?: string;
   classTeacher: {
     _id: string;

@@ -16,6 +16,7 @@ export default function GradeAssignmentPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
+  const assignmentId = typeof params?.id === "string" ? params.id : "";
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

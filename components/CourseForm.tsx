@@ -21,14 +21,16 @@ export default function CourseForm({
     description: initialData?.description || "",
     subject: initialData?.subject || "",
     grade: initialData?.grade || "",
+    curriculumType: initialData?.curriculumType || "HKDSE",
     startDate: initialData?.startDate
       ? new Date(initialData.startDate).toISOString().split("T")[0]
       : "",
     endDate: initialData?.endDate
       ? new Date(initialData.endDate).toISOString().split("T")[0]
       : "",
-    maxStudents: initialData?.maxStudents || 30,
-    isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
+    maxStudents: initialData?.maxStudents || 50,
+    isActive: initialData?.isActive ?? true,
+    language: initialData?.language || "english",
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +82,9 @@ export default function CourseForm({
       if (!formData.grade.trim()) {
         throw new Error("Grade level is required");
       }
+      if (!formData.curriculumType) {
+        throw new Error("Curriculum type is required");
+      }
 
       // Format data for API
       const courseData = {
@@ -88,13 +93,14 @@ export default function CourseForm({
         description: formData.description.trim(),
         subject: formData.subject.trim(),
         grade: formData.grade.trim(),
+        curriculumType: formData.curriculumType,
         startDate: formData.startDate || new Date().toISOString(),
         endDate:
           formData.endDate ||
           new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default to 30 days from now
         maxStudents: formData.maxStudents,
         isActive: formData.isActive,
-        language: "english" as const, // Default to English if not specified
+        language: formData.language as "english" | "cantonese" | "mandarin",
       };
 
       let course;
@@ -303,6 +309,31 @@ export default function CourseForm({
           >
             Active course (visible to students)
           </label>
+        </div>
+
+        <div>
+          <label
+            htmlFor="curriculumType"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Curriculum Type *
+          </label>
+          <select
+            id="curriculumType"
+            name="curriculumType"
+            value={formData.curriculumType}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                curriculumType: e.target.value as "HKDSE" | "A-levels",
+              }))
+            }
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            required
+          >
+            <option value="HKDSE">HKDSE</option>
+            <option value="A-levels">A-levels</option>
+          </select>
         </div>
 
         <div className="flex justify-end pt-4">

@@ -16,7 +16,7 @@ import CourseHeader from "@/components/CourseHeader";
 
 export default function CourseInformation() {
   const params = useParams();
-  const courseId = params.id as string;
+  const courseId = typeof params?.id === "string" ? params.id : "";
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);

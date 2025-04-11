@@ -7,6 +7,7 @@ interface Class {
   code: string;
   academicYear: string;
   department?: string;
+  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
   gradeLevel?: string;
   description?: string;
   students?: any[];

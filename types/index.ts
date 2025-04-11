@@ -21,6 +21,26 @@ export interface User {
   __v?: number; // MongoDB version field
 }
 
+// Subject-first approach types
+export interface Subject {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  curriculum?: string;
+  iconUrl?: string;
+  courseCount?: number;
+  courses?: Course[];
+}
+
+export interface FormLevel {
+  id: string;
+  name: string; // e.g., "Form 5"
+  grade: string;
+  courseCount?: number;
+  courses?: Course[];
+}
+
 export interface StudentProgress {
   overall: {
     completionRate: number;

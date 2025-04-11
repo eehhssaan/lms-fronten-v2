@@ -26,6 +26,7 @@ export default function FormLevelDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [subjectName, setSubjectName] = useState<string>("");
   const [formLevelName, setFormLevelName] = useState<string>("");
+  const [decodedFormLevelId, setDecodedFormLevelId] = useState<string>("");
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.subjectId as string;
@@ -45,14 +46,21 @@ export default function FormLevelDetailPage() {
           setLoading(true);
           // Decode the URL-encoded IDs to get actual names
           const decodedSubjectName = decodeURIComponent(subjectId);
-          const decodedFormLevelId = decodeURIComponent(formLevelId);
+          const formLevelDecoded = decodeURIComponent(
+            decodeURIComponent(formLevelId)
+          );
 
           setSubjectName(decodedSubjectName);
-          setFormLevelName(`Form ${decodedFormLevelId}`);
+          setFormLevelName(
+            formLevelDecoded.includes("Form")
+              ? formLevelDecoded
+              : `Form ${formLevelDecoded}`
+          );
+          setDecodedFormLevelId(formLevelDecoded);
 
           const response = await getClassesBySubjectAndFormLevel(
             decodedSubjectName,
-            decodedFormLevelId
+            formLevelDecoded
           );
 
           setClasses(response.data);
@@ -112,7 +120,7 @@ export default function FormLevelDetailPage() {
                     id: cls.id,
                     name: cls.name,
                     section: cls.section,
-                    grade: decodeURIComponent(formLevelId).replace("Form ", ""),
+                    grade: decodedFormLevelId.replace("Form ", ""),
                     studentCount: cls.studentCount,
                   }}
                   linkUrl={`/subjects/${encodeURIComponent(

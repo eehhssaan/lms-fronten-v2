@@ -18,7 +18,7 @@ interface Class {
   code: string;
   academicYear: string;
   department?: string;
-  gradeLevel?: string;
+  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
   description?: string;
   students?: any[];
   classTeacher: {
@@ -54,7 +54,7 @@ export default function ClassesPage() {
     code: "",
     academicYear: new Date().getFullYear().toString(),
     department: "",
-    gradeLevel: "",
+    formLevel: "Form 4",
     description: "",
   });
   const [createLoading, setCreateLoading] = useState(false);
@@ -107,7 +107,9 @@ export default function ClassesPage() {
   }, [isAuthenticated]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
     setNewClass((prev) => ({
@@ -142,7 +144,7 @@ export default function ClassesPage() {
         code: newClass.code.trim(),
         academicYear: newClass.academicYear.trim(),
         department: newClass.department?.trim() || undefined,
-        gradeLevel: newClass.gradeLevel?.trim() || undefined,
+        formLevel: newClass.formLevel,
         description: newClass.description?.trim() || undefined,
         classTeacher: user?._id,
       };
@@ -173,7 +175,7 @@ export default function ClassesPage() {
         code: "",
         academicYear: new Date().getFullYear().toString(),
         department: "",
-        gradeLevel: "",
+        formLevel: "Form 4",
         description: "",
       });
     } catch (err: any) {
@@ -390,6 +392,29 @@ export default function ClassesPage() {
 
               <Box mb={3}>
                 <Text fontWeight="bold" mb={2}>
+                  Form Level *
+                </Text>
+                <select
+                  name="formLevel"
+                  value={newClass.formLevel}
+                  onChange={handleInputChange}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    borderRadius: "4px",
+                    border: "1px solid #ddd",
+                  }}
+                >
+                  <option value="Form 4">Form 4</option>
+                  <option value="Form 5">Form 5</option>
+                  <option value="Form 6">Form 6</option>
+                  <option value="AS">AS</option>
+                  <option value="A2">A2</option>
+                </select>
+              </Box>
+
+              <Box mb={3}>
+                <Text fontWeight="bold" mb={2}>
                   Academic Year *
                 </Text>
                 <input
@@ -397,7 +422,7 @@ export default function ClassesPage() {
                   name="academicYear"
                   value={newClass.academicYear}
                   onChange={handleInputChange}
-                  placeholder="Enter academic year (e.g., 2024)"
+                  placeholder="Enter academic year (e.g., 2024-2025)"
                   style={{
                     width: "100%",
                     padding: "8px",
@@ -417,25 +442,6 @@ export default function ClassesPage() {
                   value={newClass.department}
                   onChange={handleInputChange}
                   placeholder="Enter department name"
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    borderRadius: "4px",
-                    border: "1px solid #ddd",
-                  }}
-                />
-              </Box>
-
-              <Box mb={3}>
-                <Text fontWeight="bold" mb={2}>
-                  Grade Level (Optional)
-                </Text>
-                <input
-                  type="text"
-                  name="gradeLevel"
-                  value={newClass.gradeLevel}
-                  onChange={handleInputChange}
-                  placeholder="Enter grade level"
                   style={{
                     width: "100%",
                     padding: "8px",
@@ -475,7 +481,7 @@ export default function ClassesPage() {
               code: "",
               academicYear: new Date().getFullYear().toString(),
               department: "",
-              gradeLevel: "",
+              formLevel: "Form 4",
               description: "",
             });
           }}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Box, Heading, Text, Flex } from "rebass";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
 import Button from "@/components/Button";
@@ -46,12 +46,15 @@ interface EditClassData {
   code: string;
   academicYear: string;
   department?: string;
-  gradeLevel?: string;
+  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
   description?: string;
 }
 
-export default function ClassDetails({ params }: ClassDetailsProps) {
+export default function ClassDetails() {
+  const router = useRouter();
+  const params = useParams();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const classId = typeof params?.id === "string" ? params.id : "";
   const [classData, setClassData] = useState<Class | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +67,7 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
     code: "",
     academicYear: "",
     department: "",
-    gradeLevel: "",
+    formLevel: "Form 4",
     description: "",
   });
   const [availableStudents, setAvailableStudents] = useState<
@@ -78,7 +81,6 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
   const [showUnassignDialog, setShowUnassignDialog] = useState(false);
   const [selectedCourseToUnassign, setSelectedCourseToUnassign] =
     useState<Course | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -101,7 +103,7 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
     try {
       setLoading(true);
       setError(null);
-      const classData = await getClass(params.id);
+      const classData = await getClass(classId);
       setClassData(classData);
 
       // Initialize editedClass with current values
@@ -110,7 +112,7 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
         code: classData.code,
         academicYear: classData.academicYear,
         department: classData.department || "",
-        gradeLevel: classData.gradeLevel || "",
+        formLevel: classData.formLevel,
         description: classData.description || "",
       });
     } catch (err: any) {
@@ -122,13 +124,15 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
   };
 
   useEffect(() => {
-    if (isAuthenticated && params.id) {
+    if (isAuthenticated && classId) {
       fetchClassDetails();
     }
-  }, [isAuthenticated, params.id]);
+  }, [isAuthenticated, classId]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
     setEditedClass((prev) => ({
@@ -142,7 +146,7 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
       setLoading(true);
       setError(null);
 
-      const updatedClass = await updateClass(params.id, editedClass);
+      const updatedClass = await updateClass(classId, editedClass);
       setClassData(updatedClass);
       setShowEditDialog(false);
     } catch (err: any) {
@@ -154,14 +158,14 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
   };
 
   const handleAddStudents = async (studentIds: string[]) => {
-    if (!studentIds.length || !params.id) return;
+    if (!studentIds.length || !classId) return;
 
     try {
       // Add all selected students
-      await addStudentsToClass(params.id, studentIds);
+      await addStudentsToClass(classId, studentIds);
 
       // Refresh class details to get updated student list
-      const updatedClass = await getClass(params.id);
+      const updatedClass = await getClass(classId);
       setClassData(updatedClass);
 
       setNotification({
@@ -180,13 +184,13 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
   };
 
   const handleRemoveStudent = async (studentId: string) => {
-    if (!params.id) return;
+    if (!classId) return;
 
     try {
-      await removeStudentFromClass(params.id, studentId);
+      await removeStudentFromClass(classId, studentId);
 
       // Refresh class details to get updated student list
-      const updatedClass = await getClass(params.id);
+      const updatedClass = await getClass(classId);
       setClassData(updatedClass);
 
       setNotification({
@@ -204,7 +208,7 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
 
   const handleShowAddStudentDialog = async () => {
     try {
-      const students = await getAvailableStudents(params.id);
+      const students = await getAvailableStudents(classId);
       setAvailableStudents(students as AvailableStudent[]);
       setShowAddStudentDialog(true);
     } catch (err: any) {
@@ -219,10 +223,10 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
   // Update useEffect for fetching available students
   useEffect(() => {
     const fetchAvailableStudents = async () => {
-      if (!params.id) return;
+      if (!classId) return;
 
       try {
-        const students = await getAvailableStudents(params.id);
+        const students = await getAvailableStudents(classId);
         setAvailableStudents(students as AvailableStudent[]);
       } catch (err: any) {
         console.error("Failed to fetch available students:", err);
@@ -234,7 +238,7 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
     };
 
     fetchAvailableStudents();
-  }, [params.id]);
+  }, [classId]);
 
   const handleStudentSelect = (studentId: string) => {
     setSelectedStudents((prev) => {
@@ -259,11 +263,11 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
 
     try {
       console.log("Starting course unassignment...");
-      console.log("Class ID:", params.id);
+      console.log("Class ID:", classId);
       console.log("Course ID:", selectedCourseToUnassign._id);
 
       setLoading(true);
-      await removeCourseFromClass(params.id, selectedCourseToUnassign._id);
+      await removeCourseFromClass(classId, selectedCourseToUnassign._id);
 
       console.log("Course unassigned successfully");
 
@@ -325,11 +329,9 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
             Department: {classData.department}
           </Text>
         )}
-        {classData.gradeLevel && (
-          <Text fontSize={2} mb={2}>
-            Grade Level: {classData.gradeLevel}
-          </Text>
-        )}
+        <Text fontSize={2} mb={2}>
+          Form Level: {classData.formLevel}
+        </Text>
         {classData.description && (
           <Text fontSize={2} mb={2}>
             Description: {classData.description}
@@ -343,7 +345,7 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
       {/* Student Management Section */}
       <Box mt={4}>
         <StudentManagement
-          classId={params.id}
+          classId={classId}
           currentStudents={classData?.students || []}
           availableStudents={availableStudents}
           onAddStudents={handleAddStudents}
@@ -426,7 +428,7 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
       {/* Course Assignment Dialog */}
       {showAssignCourseDialog && (
         <CourseAssignment
-          classId={params.id}
+          classId={classId}
           assignedCourses={classData.courses || []}
           onSuccess={handleCourseAssignmentSuccess}
           onCancel={() => setShowAssignCourseDialog(false)}
@@ -527,6 +529,29 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
 
             <Box mb={3}>
               <Text fontWeight="bold" mb={2}>
+                Form Level *
+              </Text>
+              <select
+                name="formLevel"
+                value={editedClass.formLevel}
+                onChange={handleInputChange}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                }}
+              >
+                <option value="Form 4">Form 4</option>
+                <option value="Form 5">Form 5</option>
+                <option value="Form 6">Form 6</option>
+                <option value="AS">AS</option>
+                <option value="A2">A2</option>
+              </select>
+            </Box>
+
+            <Box mb={3}>
+              <Text fontWeight="bold" mb={2}>
                 Academic Year *
               </Text>
               <input
@@ -534,7 +559,7 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
                 name="academicYear"
                 value={editedClass.academicYear}
                 onChange={handleInputChange}
-                placeholder="Enter academic year (e.g., 2024)"
+                placeholder="Enter academic year (e.g., 2024-2025)"
                 style={{
                   width: "100%",
                   padding: "8px",
@@ -554,25 +579,6 @@ export default function ClassDetails({ params }: ClassDetailsProps) {
                 value={editedClass.department}
                 onChange={handleInputChange}
                 placeholder="Enter department name"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                }}
-              />
-            </Box>
-
-            <Box mb={3}>
-              <Text fontWeight="bold" mb={2}>
-                Grade Level (Optional)
-              </Text>
-              <input
-                type="text"
-                name="gradeLevel"
-                value={editedClass.gradeLevel}
-                onChange={handleInputChange}
-                placeholder="Enter grade level"
                 style={{
                   width: "100%",
                   padding: "8px",

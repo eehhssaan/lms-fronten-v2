@@ -1010,29 +1010,101 @@ export async function getClass(classId: string): Promise<Class> {
     );
     const classData = classResponse.data.data;
 
-    // If there are course IDs, fetch the full course details
-    if (classData.courses && classData.courses.length > 0) {
-      // Get all courses
-      const coursesResponse = await api.get("/api/courses");
-      const allCourses = coursesResponse.data.data;
+    // Normalize the class data to ensure id consistency
+    const normalizedData = {
+      ...classData,
+      id: classData.id || classData._id,
+    };
 
-      // Map the course IDs to full course objects
-      const populatedCourses = classData.courses
-        .map((courseId: string) =>
-          allCourses.find((course: Course) => course.id === courseId)
-        )
-        .filter(Boolean); // Remove any undefined values
+    // Normalize student IDs if they exist
+    if (normalizedData.students && Array.isArray(normalizedData.students)) {
+      normalizedData.students = normalizedData.students.map((student: any) => ({
+        ...student,
+        id: student.id || student._id,
+      }));
+    }
 
-      // Return the class data with populated courses
-      return {
-        ...classData,
-        courses: populatedCourses,
+    // Normalize classTeacher if it exists
+    if (normalizedData.classTeacher) {
+      normalizedData.classTeacher = {
+        ...normalizedData.classTeacher,
+        id: normalizedData.classTeacher.id || normalizedData.classTeacher._id,
       };
     }
 
-    // If no courses, return the class data as is with empty courses array
+    // Check if courses are already populated objects or just IDs
+    if (normalizedData.courses && normalizedData.courses.length > 0) {
+      // Check if the first course is already a fully populated object
+      if (
+        typeof normalizedData.courses[0] === "object" &&
+        normalizedData.courses[0].title
+      ) {
+        // Courses are already populated, ensure they have both id and _id for consistency
+        normalizedData.courses = normalizedData.courses.map((course: any) => {
+          // Normalize the course object
+          const normalizedCourse = {
+            ...course,
+            id: course.id || course._id,
+          };
+
+          // Also normalize teacher if present
+          if (normalizedCourse.teacher) {
+            normalizedCourse.teacher = {
+              ...normalizedCourse.teacher,
+              id: normalizedCourse.teacher.id || normalizedCourse.teacher._id,
+            };
+          }
+
+          return normalizedCourse;
+        });
+
+        return normalizedData;
+      } else {
+        // Courses are just IDs, fetch the full details
+        const coursesResponse = await api.get("/api/courses");
+        const allCourses = coursesResponse.data.data;
+
+        // Map the course IDs to full course objects
+        const courseIds = normalizedData.courses.map((course: any) =>
+          typeof course === "string" ? course : course._id || course.id
+        );
+
+        const populatedCourses = courseIds
+          .map((courseId: string) =>
+            allCourses.find(
+              (course: any) => course.id === courseId || course._id === courseId
+            )
+          )
+          .filter(Boolean); // Remove any undefined values
+
+        // Normalize the populated courses
+        const normalizedCourses = populatedCourses.map((course: any) => {
+          const normalizedCourse = {
+            ...course,
+            id: course.id || course._id,
+          };
+
+          if (normalizedCourse.teacher) {
+            normalizedCourse.teacher = {
+              ...normalizedCourse.teacher,
+              id: normalizedCourse.teacher.id || normalizedCourse.teacher._id,
+            };
+          }
+
+          return normalizedCourse;
+        });
+
+        // Return the class data with populated courses
+        return {
+          ...normalizedData,
+          courses: normalizedCourses,
+        };
+      }
+    }
+
+    // If no courses, return the normalized class data with empty courses array
     return {
-      ...classData,
+      ...normalizedData,
       courses: [],
     };
   } catch (error: any) {
@@ -1485,5 +1557,191 @@ export const updateCourseContent = async (
           error.response?.data?.message || "Failed to update content"
         );
     }
+  }
+};
+
+// Subject-first approach API services
+
+export const getSubjects = async (params?: {
+  page?: number;
+  limit?: number;
+  teacherId?: string;
+}): Promise<{
+  data: { id: string; name: string; code?: string; courseCount: number }[];
+  count: number;
+  pagination: { page: number; limit: number; totalPages: number };
+}> => {
+  try {
+    // Construct query string
+    let queryParams = new URLSearchParams();
+
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.teacherId) queryParams.append("teacher", params.teacherId);
+
+    const queryString = queryParams.toString();
+    const url = `/api/courses${queryString ? `?${queryString}` : ""}`;
+
+    console.log(`Fetching subjects from: ${url}`);
+    const response = await api.get(url);
+
+    // Process the response data to group courses by subject
+    const courseData = response.data.data || [];
+    const subjectMap = courseData.reduce(
+      (acc: Record<string, any>, course: any) => {
+        const subjectName = course.subject || "Unknown Subject";
+
+        if (!acc[subjectName]) {
+          acc[subjectName] = {
+            id: subjectName, // Use the subject name as ID (you might want a better approach in production)
+            name: subjectName,
+            code: subjectName.substring(0, 3).toUpperCase(), // Simple code generation
+            courses: [],
+            courseCount: 0,
+          };
+        }
+
+        acc[subjectName].courses.push(course);
+        acc[subjectName].courseCount += 1;
+
+        return acc;
+      },
+      {}
+    );
+
+    // Convert to array and ensure correct type
+    const subjects = Object.values(subjectMap) as {
+      id: string;
+      name: string;
+      code?: string;
+      courseCount: number;
+    }[];
+
+    return {
+      data: subjects,
+      count: subjects.length,
+      pagination: response.data.pagination || {
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      },
+    };
+  } catch (error: any) {
+    console.error("Error fetching subjects:", error);
+    throw new Error("Failed to retrieve subjects. Please try again later.");
+  }
+};
+
+export const getFormLevelsBySubject = async (
+  subjectName: string
+): Promise<{
+  data: { id: string; name: string; grade: string; courseCount: number }[];
+}> => {
+  try {
+    // Fetch courses for the selected subject
+    const response = await api.get(
+      `/api/courses?subject=${encodeURIComponent(subjectName)}`
+    );
+    const courseData = response.data.data || [];
+
+    // Group courses by form level/grade
+    const formLevelMap = courseData.reduce(
+      (acc: Record<string, any>, course: any) => {
+        const grade = course.grade || "Unspecified Grade";
+
+        if (!acc[grade]) {
+          acc[grade] = {
+            id: grade,
+            name: `Form ${grade}`,
+            grade: grade,
+            courses: [],
+            courseCount: 0,
+          };
+        }
+
+        acc[grade].courses.push(course);
+        acc[grade].courseCount += 1;
+
+        return acc;
+      },
+      {}
+    );
+
+    // Convert to array and ensure correct type
+    const formLevels = Object.values(formLevelMap) as {
+      id: string;
+      name: string;
+      grade: string;
+      courseCount: number;
+    }[];
+
+    return {
+      data: formLevels,
+    };
+  } catch (error: any) {
+    console.error("Error fetching form levels by subject:", error);
+    throw new Error("Failed to retrieve form levels. Please try again later.");
+  }
+};
+
+export const getClassesBySubjectAndFormLevel = async (
+  subjectName: string,
+  formLevel: string
+): Promise<{
+  data: { id: string; name: string; section?: string; studentCount: number }[];
+}> => {
+  try {
+    // Fetch courses for the selected subject and form level
+    const coursesResponse = await api.get(
+      `/api/courses?subject=${encodeURIComponent(
+        subjectName
+      )}&grade=${encodeURIComponent(formLevel)}`
+    );
+    const courseData = coursesResponse.data.data || [];
+
+    // If no courses found, return empty array
+    if (!courseData || courseData.length === 0) {
+      return { data: [] };
+    }
+
+    // Define the class interface to match the return type
+    interface ClassData {
+      id: string;
+      name: string;
+      section?: string;
+      studentCount: number;
+    }
+
+    // Extract enrolled classes directly from the course data
+    const formattedClasses: ClassData[] = [];
+
+    // Go through each course and extract its enrolled classes
+    for (const course of courseData) {
+      if (course.enrolledClasses && Array.isArray(course.enrolledClasses)) {
+        // Map the enrolledClasses to the expected format
+        const classes = course.enrolledClasses.map((cls: any) => ({
+          id: cls._id || cls.id,
+          name: cls.name,
+          section: cls.code, // Use code as section if needed
+          studentCount: cls.studentCount || 0,
+        }));
+
+        // Add these classes to our result, avoiding duplicates
+        for (const cls of classes) {
+          if (
+            !formattedClasses.some((existingCls) => existingCls.id === cls.id)
+          ) {
+            formattedClasses.push(cls);
+          }
+        }
+      }
+    }
+
+    return {
+      data: formattedClasses,
+    };
+  } catch (error: any) {
+    console.error("Error fetching classes by subject and form level:", error);
+    throw new Error("Failed to retrieve classes. Please try again later.");
   }
 };

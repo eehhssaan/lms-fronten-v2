@@ -1,49 +1,24 @@
 // User types
 export interface User {
-  _id: string;
+  id: string; // Frontend standardized ID
+  _id?: string; // Backend original ID
   name: string;
   email: string;
   role: "student" | "teacher" | "admin";
   profilePicture?: string;
   isActive?: boolean;
-  studentId?: string; // For students
-  grade?: string; // For students
-  subject?: string; // For teachers
-  gender?: "male" | "female" | "other";
+  school?: string;
+  grade?: string;
+  gender?: string;
   bio?: string;
   contactNumber?: string;
-  preferredLanguage?: "english" | "cantonese" | "mandarin";
+  preferredLanguage?: string;
   dateOfBirth?: string;
-  school?: string;
-  enrolledCourses?: {
-    // For students
-    _id: string;
-    title: string;
-    code: string;
-    teacher: {
-      name: string;
-    };
-    progress: number;
-    assignments: {
-      total: number;
-      completed: number;
-    };
-    quizzes: {
-      total: number;
-      completed: number;
-    };
-  }[];
-  teachingCourses?: {
-    // For teachers
-    _id: string;
-    title: string;
-    code: string;
-    studentCount: number;
-    pendingAssignments: number;
-    pendingQuizzes: number;
-  }[];
   createdAt?: string;
   updatedAt?: string;
+  // Compatibility with backend
+  active?: boolean; // Some backends use active instead of isActive
+  __v?: number; // MongoDB version field
 }
 
 export interface StudentProgress {
@@ -70,168 +45,138 @@ export interface StudentProgress {
 
 // Course types
 export interface Course {
-  _id: string;
+  id: string;
   title: string;
   description: string;
   code: string;
-  curriculumType: "HKDSE" | "A-levels";
-  subject: string;
-  grade: string;
-  teacher: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  students: User[];
-  enrolledClasses: {
-    _id: string;
-    name: string;
-  }[];
-  individualEnrollments: User[];
-  startDate: string;
-  endDate: string;
   isActive: boolean;
-  thumbnail: string;
-  language: "english" | "cantonese" | "mandarin";
-  maxStudents: number;
-  createdAt: string;
-  updatedAt: string;
-  contents?: Content[];
-  assignments?: Assignment[];
-  quizzes?: Quiz[];
+  coverImage?: string;
+  category?: string;
+  createdBy?: {
+    id: string;
+    name: string;
+  };
+  modules?: {
+    moduleNumber: number;
+    title: string;
+    lessons: {
+      lessonNumber: number;
+      title: string;
+      contentId: string;
+    }[];
+  }[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Class {
-  _id: string;
+  id: string;
   name: string;
-  code: string;
-  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
-  academicYear: string;
-  department?: string;
-  description?: string;
-  classTeacher: {
-    _id: string;
+  grade: string;
+  section?: string;
+  teacher?: {
+    id: string;
+    name: string;
+  };
+  students?: {
+    id: string;
     name: string;
     email: string;
-  };
-  students: User[];
-  courses: Course[];
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  }[];
+  courses?: {
+    id: string;
+    title: string;
+    code: string;
+  }[];
+  studentCount?: number;
 }
 
 // Content types
 export interface Content {
-  _id: string;
+  id: string;
   title: string;
   description: string;
-  type: "document" | "video" | "link" | "text" | "other";
   moduleNumber: number;
   lessonNumber: number;
-  courseId: string;
-  file: string;
-  link: string;
-  textContent: string;
-  duration: number;
   order: number;
-  isPublished: boolean;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  htmlContent?: string;
+  attachments?: string[];
+  courseId?: {
+    id: string;
+    title: string;
+    code: string;
+  };
+  createdBy?: {
+    id: string;
+    name: string;
+  };
 }
 
 // Assignment types
 export interface Assignment {
-  _id: string;
+  id: string;
   title: string;
   description: string;
-  courseId: string;
-  dueDate: Date;
+  dueDate: string;
   totalPoints: number;
-  attachments: {
+  instructions?: string;
+  attachments?: string[];
+  allowLateSubmission?: boolean;
+  courseId?: {
+    id: string;
+    title: string;
+  };
+  createdBy?: {
+    id: string;
     name: string;
-    file: string;
-    mimeType: string;
-    uploadedAt: Date;
-  }[];
-  allowLateSubmissions: boolean;
-  latePenalty: number;
-  instructions: string;
-  rubric: {
-    criterion: string;
-    points: number;
-    description: string;
-  }[];
-  isPublished: boolean;
-  moduleNumber: number;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
+  };
 }
 
 export interface AssignmentSubmission {
-  _id: string;
-  student:
-    | string
-    | {
-        _id: string;
-        name: string;
-        email: string;
-      };
-  courseId: string;
-  assignmentId: string;
-  submittedAt: Date;
+  id: string;
+  text?: string;
+  attachments?: string[];
+  submittedAt: string;
   status: "submitted" | "graded" | "returned" | "late";
-  score?: number;
-  feedback?: string;
-  textResponse?: string;
-  attachments: {
-    name: string;
-    file: string;
-    mimeType: string;
-    uploadedAt: Date;
-  }[];
-  gradedBy?: {
-    _id: string;
-    name: string;
+  assignment?: {
+    id: string;
+    title: string;
   };
-  gradedAt?: Date;
 }
 
 // Quiz types
 export interface Quiz {
-  _id: string;
+  id: string;
   title: string;
   description: string;
+  moduleNumber: number;
+  lessonNumber: number;
   timeLimit?: number;
-  dueDate: string;
-  points: number;
-  course: string;
-  questions: QuizQuestion[];
-  attempts?: QuizAttempt[];
-  createdAt: string;
-  updatedAt: string;
+  passingScore?: number;
+  questions?: QuizQuestion[];
+  courseId?: {
+    id: string;
+    title: string;
+  };
 }
 
 export interface QuizQuestion {
-  _id: string;
-  question: string;
-  type: "multiple-choice" | "true-false" | "short-answer";
+  id: string;
+  text: string;
+  type: "multipleChoice" | "trueOrFalse" | "shortAnswer";
   options?: string[];
-  correctAnswer: string | string[];
+  correctAnswer: string | number;
   points: number;
 }
 
-export interface QuizAttempt {
-  _id: string;
-  quiz: string;
-  student: User;
-  answers: {
-    question: string;
-    answer: string | string[];
-  }[];
+export interface QuizSubmission {
   score: number;
+  totalPoints: number;
+  percentage: number;
+  passed: boolean;
+  timeSpent: string;
+  questionsCorrect: number;
+  totalQuestions: number;
   submittedAt: string;
 }
 
@@ -240,6 +185,7 @@ export interface APIResponse<T> {
   success: boolean;
   data: T;
   message?: string;
+  token?: string;
 }
 
 export interface PaginatedResponse<T> {

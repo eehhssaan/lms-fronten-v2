@@ -9,6 +9,7 @@ import {
   updateUserProfile,
   getStudentCourses,
   getTeachingCourses,
+  updateUserPassword,
 } from "@/lib/api";
 import ErrorMessage from "@/components/ErrorMessage";
 import Image from "next/image";
@@ -29,7 +30,6 @@ export default function ProfilePage() {
     currentPassword: "",
     newPassword: "",
     grade: "",
-    subject: "",
     gender: "",
     bio: "",
     contactNumber: "",
@@ -38,6 +38,14 @@ export default function ProfilePage() {
     school: "",
     profilePicture: null as File | null,
   });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -53,7 +61,6 @@ export default function ProfilePage() {
         currentPassword: "",
         newPassword: "",
         grade: userData.grade || "",
-        subject: userData.subject || "",
         gender: userData.gender || "",
         bio: userData.bio || "",
         contactNumber: userData.contactNumber || "",
@@ -111,6 +118,49 @@ export default function ProfilePage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (!passwordData.currentPassword) {
+      setPasswordError("Current password is required");
+      return;
+    }
+
+    if (!passwordData.newPassword) {
+      setPasswordError("New password is required");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters");
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      await updateUserPassword(passwordData);
+      setPasswordSuccess(true);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+      });
+    } catch (err: any) {
+      setPasswordError(err.message || "Failed to update password");
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -192,18 +242,6 @@ export default function ProfilePage() {
                       id="grade"
                       name="grade"
                       value={formData.grade}
-                      onChange={handleInputChange}
-                    />
-                  </Box>
-                )}
-
-                {user.role === "teacher" && (
-                  <Box mb={3}>
-                    <Label htmlFor="subject">Subject</Label>
-                    <Input
-                      id="subject"
-                      name="subject"
-                      value={formData.subject}
                       onChange={handleInputChange}
                     />
                   </Box>
@@ -406,6 +444,59 @@ export default function ProfilePage() {
             )}
           </Box>
 
+          {/* Password Change Section */}
+          <Box className="card" p={4} mb={4}>
+            <Heading as="h3" fontSize={3} mb={3}>
+              Change Password
+            </Heading>
+            {passwordError && <ErrorMessage message={passwordError} />}
+            {passwordSuccess && (
+              <Box
+                p={3}
+                bg="green"
+                color="white"
+                sx={{ borderRadius: "4px" }}
+                mb={3}
+              >
+                <Text fontWeight="bold">Password updated successfully!</Text>
+              </Box>
+            )}
+            <Box as="form" onSubmit={handlePasswordSubmit}>
+              <Box mb={3}>
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  name="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  required
+                />
+              </Box>
+              <Box mb={3}>
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  name="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  required
+                />
+              </Box>
+              <Box>
+                <Box
+                  as="button"
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={passwordLoading}
+                >
+                  {passwordLoading ? "Updating Password..." : "Update Password"}
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
           {/* Role-specific information */}
           {user.role === "student" && (
             <Box className="card" p={4}>
@@ -418,20 +509,14 @@ export default function ProfilePage() {
             </Box>
           )}
 
-          {user.role === "teacher" && user.teachingCourses && (
+          {user.role === "teacher" && (
             <Box className="card" p={4}>
               <Heading as="h3" fontSize={2} mb={3}>
                 Teaching Overview
               </Heading>
-              {user.teachingCourses.map((course) => (
-                <Box key={course._id} mb={3} p={3} bg="gray.0">
-                  <Text fontWeight="bold">{course.title}</Text>
-                  <Text>Course Code: {course.code}</Text>
-                  <Text>Students: {course.studentCount}</Text>
-                  <Text>Pending Assignments: {course.pendingAssignments}</Text>
-                  <Text>Pending Quizzes: {course.pendingQuizzes}</Text>
-                </Box>
-              ))}
+              <Text color="gray.6">
+                Teaching information will be displayed here.
+              </Text>
             </Box>
           )}
         </Box>
@@ -453,27 +538,10 @@ export default function ProfilePage() {
               {user.role === "student" && (
                 <>
                   <Box as="dt" fontWeight="bold">
-                    Student ID
-                  </Box>
-                  <Box as="dd" mb={2}>
-                    {user.studentId}
-                  </Box>
-                  <Box as="dt" fontWeight="bold">
                     Grade
                   </Box>
                   <Box as="dd" mb={2}>
                     {user.grade}
-                  </Box>
-                </>
-              )}
-
-              {user.role === "teacher" && (
-                <>
-                  <Box as="dt" fontWeight="bold">
-                    Subject
-                  </Box>
-                  <Box as="dd" mb={2}>
-                    {user.subject}
                   </Box>
                 </>
               )}

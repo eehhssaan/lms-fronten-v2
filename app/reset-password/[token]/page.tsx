@@ -5,11 +5,17 @@ import { Box, Heading, Text } from "rebass";
 import { Label, Input } from "@rebass/forms";
 import { useRouter } from "next/navigation";
 import ErrorMessage from "@/components/ErrorMessage";
-import { validateEmail } from "@/utils/helpers";
-import { forgotPassword } from "@/lib/api";
+import { validatePassword } from "@/utils/helpers";
+import { resetPassword } from "@/lib/api";
 
-export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
+export default function ResetPasswordPage({
+  params,
+}: {
+  params: { token: string };
+}) {
+  const { token } = params;
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -19,23 +25,28 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (!email) {
-      setError("Please enter your email address");
+    if (!password || !confirmPassword) {
+      setError("Please enter and confirm your new password");
       return;
     }
 
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address");
+    if (!validatePassword(password)) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
       return;
     }
 
     try {
       setLoading(true);
-      await forgotPassword(email);
+      await resetPassword(token, password);
       setSuccess(true);
     } catch (err: any) {
       setError(
-        err.message || "Failed to process your request. Please try again."
+        err.message || "Failed to reset your password. Please try again."
       );
     } finally {
       setLoading(false);
@@ -58,43 +69,54 @@ export default function ForgotPasswordPage() {
       {success ? (
         <Box p={3} bg="green" color="white" sx={{ borderRadius: "4px" }}>
           <Heading as="h3" fontSize={2} mb={2}>
-            Check Your Email
+            Password Reset Successful
           </Heading>
-          <Text>
-            If an account exists with the email you provided, you will receive
-            password reset instructions.
-          </Text>
+          <Text>Your password has been successfully reset.</Text>
           <Box mt={3}>
             <Box
               as="button"
               onClick={() => router.push("/auth")}
               className="btn btn-secondary"
             >
-              Return to Login
+              Go to Login
             </Box>
           </Box>
         </Box>
       ) : (
         <>
-          <Text mb={4}>
-            Enter your email address and we'll send you instructions to reset
-            your password.
-          </Text>
+          <Text mb={4}>Enter your new password below.</Text>
 
           {error && <ErrorMessage message={error} />}
 
           <Box as="form" onSubmit={handleSubmit}>
             <Box mb={3}>
-              <Label htmlFor="email" mb={2}>
-                Email Address
+              <Label htmlFor="password" mb={2}>
+                New Password
               </Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                value={email}
+                id="password"
+                name="password"
+                type="password"
+                value={password}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setEmail(e.target.value)
+                  setPassword(e.target.value)
+                }
+                required
+                className="form-input"
+              />
+            </Box>
+
+            <Box mb={3}>
+              <Label htmlFor="confirmPassword" mb={2}>
+                Confirm New Password
+              </Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setConfirmPassword(e.target.value)
                 }
                 required
                 className="form-input"
@@ -109,7 +131,7 @@ export default function ForgotPasswordPage() {
                 width="100%"
                 disabled={loading}
               >
-                {loading ? "Processing..." : "Reset Password"}
+                {loading ? "Resetting Password..." : "Reset Password"}
               </Box>
             </Box>
 

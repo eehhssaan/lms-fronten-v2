@@ -15,14 +15,12 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
+  login: (credentials: { email: string; password: string }) => Promise<User>;
   register: (userData: {
-    username: string;
+    name: string;
     email: string;
     password: string;
-    name: string;
-    role?: "student" | "teacher" | "admin";
-  }) => Promise<void>;
+  }) => Promise<User>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -76,46 +74,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         "AuthContext: Attempting login with email:",
         credentials.email
       );
+
       const response = await loginUser(credentials);
       console.log("AuthContext: Login response received:", response);
 
-      if (response.user) {
-        console.log("AuthContext: Setting user data:", response.user);
-        setUser(response.user);
-        setIsAuthenticated(true);
-      } else {
-        console.error("AuthContext: No user data in login response");
+      if (!response || !response.data) {
+        console.error("AuthContext: Invalid login response", response);
         throw new Error("Invalid login response format");
       }
+
+      console.log("AuthContext: Setting user data:", response.data);
+      setUser(response.data);
+      setIsAuthenticated(true);
+
+      return response.data; // Return the user data for the calling component
     } catch (error) {
       console.error("AuthContext: Login failed:", error);
+      // Clear any partial authentication state that might have been set
+      setUser(null);
+      setIsAuthenticated(false);
       throw error;
     }
   };
 
   const register = async (userData: {
-    username: string;
+    name: string;
     email: string;
     password: string;
-    name: string;
-    role?: "student" | "teacher" | "admin";
   }) => {
     try {
-      console.log(
-        "AuthContext: Attempting registration for:",
-        userData.username
-      );
+      console.log("AuthContext: Attempting registration for:", userData.email);
+
       const response = await registerUser(userData);
       console.log("AuthContext: Registration response:", response);
 
-      if (response.data) {
-        setUser(response.data);
-        setIsAuthenticated(true);
-      } else {
+      if (!response || !response.data) {
+        console.error("AuthContext: Invalid registration response", response);
         throw new Error("Invalid registration response format");
       }
+
+      console.log(
+        "AuthContext: Setting user data after registration:",
+        response.data
+      );
+      setUser(response.data);
+      setIsAuthenticated(true);
+
+      return response.data; // Return the user data for the calling component
     } catch (error) {
       console.error("AuthContext: Registration failed:", error);
+      // Clear any partial authentication state that might have been set
+      setUser(null);
+      setIsAuthenticated(false);
       throw error;
     }
   };
@@ -123,15 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       console.log("AuthContext: Initiating logout");
+
+      // First clear the local state before the API call
+      // This ensures the UI updates immediately even if the API call is slow
+      setUser(null);
+      setIsAuthenticated(false);
+
+      // Then call the API to complete the server-side logout
       await logoutUser();
       console.log("AuthContext: Logout successful");
-      setUser(null);
-      setIsAuthenticated(false);
     } catch (error) {
       console.error("AuthContext: Logout failed:", error);
-      // Even if the logout API call fails, we should still clear the local state
-      setUser(null);
-      setIsAuthenticated(false);
+      // Even if the logout API call fails, we've already cleared the local state
+      // No need to do anything else here
     }
   };
 

@@ -76,11 +76,9 @@ api.interceptors.response.use(
 // Authentication API
 
 export const registerUser = async (userData: {
-  username: string;
+  name: string;
   email: string;
   password: string;
-  name: string;
-  role?: "student" | "teacher" | "admin";
 }): Promise<{ token: string; data: User }> => {
   try {
     console.log("Registering user with data:", {
@@ -89,7 +87,54 @@ export const registerUser = async (userData: {
     });
     const response = await api.post("/api/users/register", userData);
     console.log("Registration response:", response.data);
-    return response.data;
+
+    // Store token if it exists
+    if (response.data.token && typeof window !== "undefined") {
+      localStorage.setItem("auth_token", response.data.token);
+      document.cookie = `token=${response.data.token}; path=/; max-age=2592000; SameSite=Lax`; // 30 days
+    }
+
+    // Handle different response formats
+    let userResponseData: User;
+
+    // Case 1: Standard API format with 'data' property
+    if (response.data.data) {
+      userResponseData = response.data.data;
+    }
+    // Case 2: API responds with 'user' property instead
+    else if (response.data.user) {
+      userResponseData = {
+        // Map _id to id if needed
+        id: response.data.user._id || response.data.user.id,
+        name: response.data.user.name,
+        email: response.data.user.email,
+        role: response.data.user.role,
+        profilePicture: response.data.user.profilePicture,
+        isActive: response.data.user.active,
+        school: response.data.user.school,
+        grade: response.data.user.grade,
+        gender: response.data.user.gender,
+        bio: response.data.user.bio,
+        contactNumber: response.data.user.contactNumber,
+        preferredLanguage: response.data.user.preferredLanguage,
+        dateOfBirth: response.data.user.dateOfBirth,
+        createdAt: response.data.user.createdAt,
+        // Include original fields for compatibility
+        _id: response.data.user._id,
+        active: response.data.user.active,
+        __v: response.data.user.__v,
+      };
+    }
+    // Case 3: No user data found
+    else {
+      console.error("Unexpected API response format:", response.data);
+      throw new Error("Invalid registration response format from server");
+    }
+
+    return {
+      token: response.data.token,
+      data: userResponseData,
+    };
   } catch (error: any) {
     console.error("Registration error details:", {
       message: error.message,
@@ -105,42 +150,129 @@ export const registerUser = async (userData: {
       },
     });
 
-    if (error.message === "Network Error") {
+    // Enhanced error reporting
+    if (error.message === "Invalid registration response format from server") {
+      throw error;
+    } else if (error.message === "Network Error") {
       throw new Error(
         "Unable to connect to the server. Please check your network or try again later."
       );
+    } else if (error.response?.status === 409) {
+      throw new Error(
+        "Email already in use. Please use a different email address."
+      );
+    } else if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    } else {
+      throw new Error("Registration failed. Please try again.");
     }
-    throw new Error(error.response?.data?.message || "Registration failed");
   }
 };
 
 export const loginUser = async (credentials: {
   email: string;
   password: string;
-}): Promise<{ token: string; user: User }> => {
+}): Promise<{ token: string; data: User }> => {
   try {
     console.log("Logging in with email:", credentials.email);
-    // Directly calling the backend API
     const response = await api.post("/api/users/login", credentials);
     console.log("Login response:", response.data);
 
+    // Store token if it exists
     if (response.data.token && typeof window !== "undefined") {
       console.log("Storing token in localStorage and setting cookie");
       localStorage.setItem("auth_token", response.data.token);
-
-      // Set the token in a cookie as well
       document.cookie = `token=${response.data.token}; path=/; max-age=2592000; SameSite=Lax`; // 30 days
     }
 
-    return response.data;
+    // Handle different response formats
+    let userData: User;
+
+    // Case 1: Standard API format with 'data' property
+    if (response.data.data) {
+      userData = response.data.data;
+    }
+    // Case 2: API responds with 'user' property instead
+    else if (response.data.user) {
+      userData = {
+        // Map _id to id if needed
+        id: response.data.user._id || response.data.user.id,
+        name: response.data.user.name,
+        email: response.data.user.email,
+        role: response.data.user.role,
+        profilePicture: response.data.user.profilePicture,
+        isActive: response.data.user.active,
+        school: response.data.user.school,
+        grade: response.data.user.grade,
+        gender: response.data.user.gender,
+        bio: response.data.user.bio,
+        contactNumber: response.data.user.contactNumber,
+        preferredLanguage: response.data.user.preferredLanguage,
+        dateOfBirth: response.data.user.dateOfBirth,
+        createdAt: response.data.user.createdAt,
+        // Include original fields for compatibility
+        _id: response.data.user._id,
+        active: response.data.user.active,
+        __v: response.data.user.__v,
+      };
+    }
+    // Case 3: No user data found
+    else {
+      console.error("Unexpected API response format:", response.data);
+      throw new Error("Invalid login response format from server");
+    }
+
+    return {
+      token: response.data.token,
+      data: userData,
+    };
   } catch (error: any) {
     console.error("Login error details:", error);
-    if (error.message === "Network Error") {
+
+    // Enhanced error reporting
+    if (error.message === "Invalid login response format from server") {
+      throw error;
+    } else if (error.message === "Network Error") {
       throw new Error(
         "Unable to connect to the server. Please check your network or try again later."
       );
+    } else if (error.response?.status === 401) {
+      throw new Error("Invalid email or password");
+    } else if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    } else {
+      throw new Error("Login failed. Please try again.");
     }
-    throw new Error(error.response?.data?.message || "Login failed");
+  }
+};
+
+export const forgotPassword = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await api.post("/api/users/forgot-password", { email });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+        "Failed to process password reset request"
+    );
+  }
+};
+
+export const resetPassword = async (
+  token: string,
+  password: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await api.post(`/api/users/reset-password/${token}`, {
+      password,
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to reset password"
+    );
   }
 };
 
@@ -175,16 +307,100 @@ export const getCurrentUser = async (): Promise<User> => {
   try {
     const response = await api.get("/api/users/me");
     console.log("getCurrentUser response:", response.data);
-    // Check if the response has a nested data property
-    return response.data.data || response.data;
+
+    // Handle different response formats
+    let userData: User;
+
+    // Case 1: Standard API format with 'data' property
+    if (response.data.data) {
+      userData = response.data.data;
+
+      // Ensure id is present (mapped from _id if needed)
+      if (!userData.id && userData._id) {
+        userData.id = userData._id;
+      }
+    }
+    // Case 2: Response has user property
+    else if (response.data.user) {
+      userData = {
+        id: response.data.user._id || response.data.user.id,
+        name: response.data.user.name,
+        email: response.data.user.email,
+        role: response.data.user.role,
+        profilePicture: response.data.user.profilePicture,
+        isActive: response.data.user.active,
+        school: response.data.user.school,
+        grade: response.data.user.grade,
+        gender: response.data.user.gender,
+        bio: response.data.user.bio,
+        contactNumber: response.data.user.contactNumber,
+        preferredLanguage: response.data.user.preferredLanguage,
+        dateOfBirth: response.data.user.dateOfBirth,
+        createdAt: response.data.user.createdAt,
+        // Include original properties for compatibility
+        _id: response.data.user._id,
+        active: response.data.user.active,
+        __v: response.data.user.__v,
+      };
+    }
+    // Case 3: User data is directly in the response
+    else if (response.data._id || response.data.id) {
+      userData = {
+        id: response.data._id || response.data.id,
+        name: response.data.name,
+        email: response.data.email,
+        role: response.data.role,
+        profilePicture: response.data.profilePicture,
+        isActive: response.data.active,
+        school: response.data.school,
+        grade: response.data.grade,
+        gender: response.data.gender,
+        bio: response.data.bio,
+        contactNumber: response.data.contactNumber,
+        preferredLanguage: response.data.preferredLanguage,
+        dateOfBirth: response.data.dateOfBirth,
+        createdAt: response.data.createdAt,
+        // Include original properties for compatibility
+        _id: response.data._id,
+        active: response.data.active,
+        __v: response.data.__v,
+      };
+    }
+    // Case 4: No valid user data found
+    else {
+      console.error(
+        "Invalid user data format received from server:",
+        response.data
+      );
+      throw new Error("Invalid user data format received from server");
+    }
+
+    // Ensure all required fields are present
+    if (!userData.id || !userData.name || !userData.email || !userData.role) {
+      console.error("Missing required user fields:", userData);
+      throw new Error("Incomplete user data received from server");
+    }
+
+    return userData;
   } catch (error: any) {
     console.error("getCurrentUser error:", error);
+
+    // Enhanced error handling
     if (error.message === "Network Error") {
       throw new Error(
         "Unable to connect to the server. Please check your network or try again later."
       );
+    } else if (error.response?.status === 401) {
+      throw new Error(
+        "Authentication token expired or invalid. Please log in again."
+      );
+    } else if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    } else if (error.message.includes("Invalid user data")) {
+      throw error; // Pass through our custom errors
+    } else {
+      throw new Error("Failed to get user data. Please try logging in again.");
     }
-    throw new Error(error.response?.data?.message || "Failed to get user data");
   }
 };
 
@@ -193,10 +409,10 @@ export const updateUserProfile = async (userData: {
   profilePicture?: File;
   school?: string;
   grade?: string;
-  gender?: "male" | "female" | "other";
+  gender?: string;
   bio?: string;
   contactNumber?: string;
-  preferredLanguage?: "english" | "cantonese" | "mandarin";
+  preferredLanguage?: string;
   dateOfBirth?: string;
 }): Promise<User> => {
   try {
@@ -226,11 +442,7 @@ export const updateUserProfile = async (userData: {
     }
 
     // For regular updates without file, use JSON
-    const response = await api.put("/api/users/profile", userData, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await api.put("/api/users/profile", userData);
     return response.data.data;
   } catch (error: any) {
     // Handle specific error cases
@@ -242,6 +454,20 @@ export const updateUserProfile = async (userData: {
     }
     throw new Error(
       error.response?.data?.message || "Failed to update profile"
+    );
+  }
+};
+
+export const updateUserPassword = async (passwordData: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await api.put("/api/users/password", passwordData);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to update password"
     );
   }
 };
@@ -301,7 +527,7 @@ export const getCourse = async (courseId: string): Promise<Course> => {
     // Check for the expected data structure
     if (!response.data.data) {
       // First check if the data itself is directly a course object (some APIs don't wrap in data property)
-      if (response.data._id) {
+      if (response.data.id) {
         console.log(
           "API Client: Response contains course directly instead of in .data property"
         );
@@ -392,74 +618,17 @@ export const createCourse = async (courseData: {
   title: string;
   description: string;
   code: string;
-  curriculumType: "HKDSE" | "A-levels";
-  subject: string;
-  grade: string;
-  teacher?: string;
-  startDate: string;
-  endDate: string;
   isActive?: boolean;
-  thumbnail?: string;
-  language?: "english" | "cantonese" | "mandarin";
-  maxStudents?: number;
+  coverImage?: string;
+  category?: string;
 }): Promise<Course> => {
   try {
-    // If teacher is not provided, we'll use the current user's ID
-    // (assuming they're a teacher or admin)
-    if (!courseData.teacher) {
-      try {
-        const currentUser = await getCurrentUser();
-        courseData.teacher = currentUser._id;
-      } catch (err) {
-        console.error("Failed to get current user for teacher ID:", err);
-        throw new Error("Teacher ID is required for course creation");
-      }
-    }
-
-    // Validate required fields
-    const requiredFields = [
-      "title",
-      "description",
-      "code",
-      "curriculumType",
-      "subject",
-      "grade",
-      "startDate",
-      "endDate",
-    ] as const;
-    const missingFields = requiredFields.filter((field) => !courseData[field]);
-    if (missingFields.length > 0) {
-      throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
-    }
-
-    // Validate curriculum type
-    if (!["HKDSE", "A-levels"].includes(courseData.curriculumType)) {
-      throw new Error(
-        "Invalid curriculum type. Must be either HKDSE or A-levels"
-      );
-    }
-
-    // Set default values if not provided
-    const finalData = {
-      ...courseData,
-      isActive: courseData.isActive ?? true,
-      language: courseData.language || "english",
-      maxStudents: courseData.maxStudents || 50,
-      thumbnail: courseData.thumbnail || "",
-    };
-
-    console.log("Creating course with data:", {
-      ...finalData,
-      description: finalData.description.substring(0, 100) + "...", // Truncate long description in logs
-    });
-
-    const response = await api.post("/api/courses", finalData);
+    const response = await api.post("/api/courses", courseData);
     return response.data.data;
   } catch (error: any) {
-    console.error(
-      "Course creation error:",
-      error.response?.data || error.message
-    );
+    if (error.response?.status === 401) {
+      throw new Error("You must be logged in to create a course");
+    }
     throw new Error(error.response?.data?.message || "Failed to create course");
   }
 };
@@ -743,7 +912,7 @@ export const addStudentsToClass = async (
 
 // Class APIs
 export const getAvailableClasses = async (): Promise<
-  { _id: string; name: string }[]
+  { id: string; name: string }[]
 > => {
   try {
     const response = await api.get("/api/classes/available");
@@ -765,7 +934,7 @@ export const createClass = async (classData: {
   description?: string;
   classTeacher?: string;
 }): Promise<{
-  _id: string;
+  id: string;
   name: string;
   code: string;
   formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
@@ -809,7 +978,7 @@ export const getClasses = async (params?: {
   limit?: number;
 }): Promise<{
   data: {
-    _id: string;
+    id: string;
     name: string;
     code: string;
     academicYear: string;
@@ -850,7 +1019,7 @@ export async function getClass(classId: string): Promise<Class> {
       // Map the course IDs to full course objects
       const populatedCourses = classData.courses
         .map((courseId: string) =>
-          allCourses.find((course: Course) => course._id === courseId)
+          allCourses.find((course: Course) => course.id === courseId)
         )
         .filter(Boolean); // Remove any undefined values
 
@@ -880,7 +1049,7 @@ export async function getClass(classId: string): Promise<Class> {
 export async function updateClass(
   classId: string,
   classData: Partial<
-    Omit<Class, "_id" | "students" | "courses" | "createdAt" | "updatedAt">
+    Omit<Class, "id" | "students" | "courses" | "createdAt" | "updatedAt">
   >
 ): Promise<Class> {
   try {
@@ -914,7 +1083,7 @@ export const removeStudentFromClass = async (
 
 export const getAllUsers = async (): Promise<
   {
-    _id: string;
+    id: string;
     username: string;
     email: string;
     name: string;
@@ -934,7 +1103,7 @@ export const getAvailableStudents = async (
   classId: string
 ): Promise<
   {
-    _id: string;
+    id: string;
     name: string;
     email: string;
     role: string;
@@ -1098,100 +1267,16 @@ export const updateCourse = async (
   courseData: Partial<{
     title: string;
     description: string;
-    code: string; // admin only
-    subject: string;
-    grade: string;
-    teacher: string; // admin only
-    startDate: string;
-    endDate: string;
+    code: string;
     isActive: boolean;
-    thumbnail: string;
-    language: "english" | "cantonese" | "mandarin";
-    maxStudents: number;
+    coverImage: string;
+    category: string;
   }>
 ): Promise<Course> => {
   try {
-    console.log("Updating course:", courseId, "with data:", courseData);
-
-    // Get current course data first
-    const currentCourse = await getCourse(courseId);
-
-    // Get current user to check role
-    const currentUser = await getCurrentUser();
-
-    // If not admin, remove admin-only fields
-    if (currentUser.role !== "admin") {
-      const adminOnlyFields = ["code", "teacher"] as const;
-      adminOnlyFields.forEach((field) => {
-        if (courseData.hasOwnProperty(field)) {
-          console.log(
-            `Non-admin user attempting to update ${field}. Field will be ignored.`
-          );
-          delete courseData[field as keyof typeof courseData];
-        }
-      });
-    }
-
-    // Merge current course data with update data
-    const finalData = {
-      ...currentCourse,
-      ...courseData,
-      // Ensure code and teacher are always included
-      code: courseData.code || currentCourse.code,
-      teacher: courseData.teacher || currentCourse.teacher._id,
-    };
-
-    // Validate maxStudents if provided
-    if (courseData.maxStudents !== undefined) {
-      if (courseData.maxStudents < 0) {
-        throw new Error("Maximum students cannot be negative");
-      }
-      if (courseData.maxStudents > 1000) {
-        // reasonable upper limit
-        throw new Error("Maximum students cannot exceed 1000");
-      }
-    }
-
-    // Validate title length if provided
-    if (courseData.title && courseData.title.length > 100) {
-      throw new Error("Course title cannot be more than 100 characters");
-    }
-
-    // Validate dates if provided
-    if (courseData.startDate || courseData.endDate) {
-      const startDate = new Date(
-        courseData.startDate || currentCourse.startDate
-      );
-      const endDate = new Date(courseData.endDate || currentCourse.endDate);
-
-      if (startDate >= endDate) {
-        throw new Error("End date must be after start date");
-      }
-    }
-
-    // Make the update request
-    const response = await api.put(`/api/courses/${courseId}`, finalData);
-
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to update course");
-    }
-
-    console.log("Course update response:", response.data);
+    const response = await api.put(`/api/courses/${courseId}`, courseData);
     return response.data.data;
   } catch (error: any) {
-    console.error(
-      "Course update error:",
-      error.response?.data || error.message
-    );
-
-    // Handle specific error cases
-    if (error.response?.status === 403) {
-      throw new Error("You are not authorized to update this course");
-    }
-    if (error.response?.status === 404) {
-      throw new Error("Course not found");
-    }
-
     throw new Error(error.response?.data?.message || "Failed to update course");
   }
 };

@@ -17,12 +17,10 @@ export default function AuthForm() {
   const [loginPassword, setLoginPassword] = useState("");
 
   // Registration form
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<"student" | "teacher" | "admin">("student");
 
   const { login, register } = useAuth();
 
@@ -92,7 +90,7 @@ export default function AuthForm() {
     setError(null);
 
     // Validate all fields
-    if (!username || !email || !password || !confirmPassword || !name) {
+    if (!email || !password || !confirmPassword || !name) {
       setError("All fields are required");
       return;
     }
@@ -103,7 +101,7 @@ export default function AuthForm() {
     }
 
     if (!validatePassword(password)) {
-      setError("Password must be at least 8 characters");
+      setError("Password must be at least 6 characters");
       return;
     }
 
@@ -115,18 +113,14 @@ export default function AuthForm() {
     try {
       setLoading(true);
       console.log("Registering user with data:", {
-        username,
         email,
         password,
         name,
-        role,
       });
       await register({
-        username,
         email,
         password,
         name,
-        role,
       });
     } catch (err: any) {
       console.error("Registration failed:", err);
@@ -295,22 +289,6 @@ export default function AuthForm() {
           </Box>
 
           <Box mb={3}>
-            <Label htmlFor="username" mb={2}>
-              Username
-            </Label>
-            <Input
-              id="username"
-              name="username"
-              value={username}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setUsername(e.target.value)
-              }
-              required
-              className="form-input"
-            />
-          </Box>
-
-          <Box mb={3}>
             <Label htmlFor="email" mb={2}>
               Email
             </Label>
@@ -344,7 +322,7 @@ export default function AuthForm() {
             />
           </Box>
 
-          <Box mb={4}>
+          <Box mb={3}>
             <Label htmlFor="confirmPassword" mb={2}>
               Confirm Password
             </Label>
@@ -361,50 +339,6 @@ export default function AuthForm() {
             />
           </Box>
 
-          <Box mb={4}>
-            <Label htmlFor="role" mb={2}>
-              Account Type
-            </Label>
-            <Box
-              as="select"
-              id="role"
-              name="role"
-              value={role}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                // TypeScript is having issues with the string union, so we need to cast it
-                const roleValue = e.target.value;
-                if (roleValue === "student") {
-                  setRole(roleValue);
-                }
-              }}
-              sx={{
-                display: "block",
-                width: "100%",
-                p: 2,
-                appearance: "none",
-                fontSize: "inherit",
-                lineHeight: "inherit",
-                border: "1px solid",
-                borderColor: "gray",
-                borderRadius: "4px",
-                color: "inherit",
-                backgroundColor: "background",
-              }}
-              disabled
-              title="Only student accounts can be created through public registration"
-            >
-              <option value="student">Student</option>
-            </Box>
-            <Box
-              as="div"
-              mt={1}
-              sx={{ fontSize: "sm", color: "gray", fontStyle: "italic" }}
-            >
-              Note: Teacher and admin accounts must be created by an
-              administrator
-            </Box>
-          </Box>
-
           <Box>
             <Box
               as="button"
@@ -413,7 +347,7 @@ export default function AuthForm() {
               width="100%"
               disabled={loading}
             >
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? "Creating Account..." : "Create Account"}
             </Box>
           </Box>
         </Box>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Box, Heading, Flex, Text } from "rebass";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
@@ -10,7 +10,7 @@ import SubjectBreadcrumb, {
 } from "@/components/SubjectBreadcrumb";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
-import { getClassesBySubjectAndFormLevel } from "@/lib/api";
+import { getClassesBySubjectAndFormLevel, getSubjectById } from "@/lib/api";
 
 interface ClassData {
   id: string;
@@ -31,7 +31,9 @@ export default function FormLevelDetailPage() {
   const params = useParams();
   const subjectId = params?.subjectId as string;
   const formLevelId = params?.formLevelId as string;
-  const breadcrumbItems = useSubjectBreadcrumb();
+
+  // Move the hook outside of useMemo
+  const breadcrumbItems = useSubjectBreadcrumb(subjectName);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -44,13 +46,22 @@ export default function FormLevelDetailPage() {
       const fetchClasses = async () => {
         try {
           setLoading(true);
-          // Decode the URL-encoded IDs to get actual names
-          const decodedSubjectName = decodeURIComponent(subjectId);
+
+          // First fetch the subject to get the subject name
+          try {
+            const subjectData = await getSubjectById(subjectId);
+            setSubjectName(subjectData.name);
+          } catch (err) {
+            console.error("Failed to fetch subject:", err);
+            // Fallback to decoded ID if we can't get the subject name
+            setSubjectName(decodeURIComponent(subjectId));
+          }
+
+          // Decode the form level ID
           const formLevelDecoded = decodeURIComponent(
             decodeURIComponent(formLevelId)
           );
 
-          setSubjectName(decodedSubjectName);
           setFormLevelName(
             formLevelDecoded.includes("Form")
               ? formLevelDecoded
@@ -59,7 +70,7 @@ export default function FormLevelDetailPage() {
           setDecodedFormLevelId(formLevelDecoded);
 
           const response = await getClassesBySubjectAndFormLevel(
-            decodedSubjectName,
+            subjectName,
             formLevelDecoded
           );
 

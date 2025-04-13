@@ -11,6 +11,7 @@ import SubjectBreadcrumb, {
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
 import { getSubjects } from "@/lib/api";
+import Button from "@/components/Button";
 
 interface SubjectData {
   id: string;
@@ -78,6 +79,16 @@ export default function SubjectsPage() {
             Select a subject to view form levels and classes
           </Text>
         </Box>
+
+        {/* Only show Create Subject button for admin users */}
+        {user && user.role === "admin" && (
+          <Button
+            onClick={() => router.push("/subjects/create")}
+            variant="primary"
+          >
+            Create Subject
+          </Button>
+        )}
       </Flex>
 
       {error && <ErrorMessage message={error} />}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box, Heading, Flex, Text } from "rebass";
+import { Box, Heading, Flex, Text, Button as RebassButton } from "rebass";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import CourseContent from "@/components/CourseContent";
@@ -15,6 +15,7 @@ import CourseContentManager from "@/components/CourseContentManager";
 import CourseForm from "@/components/CourseForm";
 import CourseNavigation from "@/components/CourseNavigation";
 import CourseHeader from "@/components/CourseHeader";
+import Button from "@/components/Button";
 
 export default function CoursePage({
   params,
@@ -32,6 +33,7 @@ export default function CoursePage({
   const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showContentManager, setShowContentManager] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,6 +71,23 @@ export default function CoursePage({
     }
   }, [isAuthenticated, courseId]);
 
+  const canManageCourse =
+    user &&
+    (user.role === "teacher" ||
+      user.role === "admin" ||
+      (course?.teacher &&
+        typeof course.teacher !== "string" &&
+        course.teacher._id === user._id));
+
+  const refreshContents = async () => {
+    try {
+      const contentsData = await getCourseContents(courseId);
+      setContents(contentsData);
+    } catch (err) {
+      console.error("Failed to refresh contents:", err);
+    }
+  };
+
   if (authLoading) {
     return <Loading />;
   }
@@ -90,41 +109,104 @@ export default function CoursePage({
           <CourseHeader course={course} />
           <CourseNavigation courseId={courseId} activeTab="content" />
 
-          {user?.role === "teacher" && (
-            <Box mt={4} mb={4}>
-              <CourseContentManager
-                courseId={courseId}
-                contents={contents}
-                onContentAdded={() => {
-                  // Refresh course contents
-                  getCourseContents(courseId)
-                    .then(setContents)
-                    .catch(console.error);
-                }}
-              />
-            </Box>
-          )}
+          {canManageCourse && (
+            <Box
+              mt={4}
+              mb={4}
+              p={3}
+              bg="white"
+              sx={{
+                borderRadius: "8px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              }}
+            >
+              <Flex justifyContent="space-between" alignItems="center">
+                <Heading as="h3" fontSize={3}>
+                  Course Management
+                </Heading>
+                <Flex>
+                  {!showContentManager ? (
+                    <Button
+                      onClick={() => setShowContentManager(true)}
+                      variant="primary"
+                    >
+                      Manage Content
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => setShowContentManager(false)}
+                      variant="secondary"
+                    >
+                      Hide Content Manager
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => router.push(`/courses/${courseId}/edit`)}
+                    variant="secondary"
+                    sx={{ marginLeft: "10px" }}
+                  >
+                    Edit Course
+                  </Button>
+                </Flex>
+              </Flex>
 
-          <Flex flexDirection={["column", "row"]} mt={4}>
-            <Box width={[1, 2 / 3]} pr={[0, 4]}>
-              <Heading as="h2" fontSize={3} mb={3}>
-                Course Content
-              </Heading>
-
-              {contents.length > 0 ? (
-                <CourseContent contents={contents} courseId={courseId} />
-              ) : (
-                <Box
-                  p={4}
-                  bg="lightGray"
-                  borderRadius="default"
-                  textAlign="center"
-                >
-                  <Text>No content available for this course yet.</Text>
+              {showContentManager && (
+                <Box mt={3}>
+                  <CourseContentManager
+                    courseId={courseId}
+                    contents={contents}
+                    onContentAdded={refreshContents}
+                  />
                 </Box>
               )}
             </Box>
-          </Flex>
+          )}
+
+          <Box>
+            <Heading as="h2" fontSize={3} mb={3}>
+              Course Content
+            </Heading>
+
+            {contents.length > 0 ? (
+              <Box
+                bg="white"
+                p={4}
+                sx={{
+                  borderRadius: "8px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                }}
+              >
+                <CourseContent contents={contents} courseId={courseId} />
+              </Box>
+            ) : (
+              <Box
+                p={4}
+                bg="white"
+                sx={{
+                  borderRadius: "8px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                  textAlign: "center",
+                }}
+              >
+                <Text
+                  color="gray.600"
+                  fontSize={2}
+                  mb={canManageCourse ? 3 : 0}
+                >
+                  No content available for this course yet.
+                </Text>
+                {canManageCourse && !showContentManager && (
+                  <Button
+                    onClick={() => setShowContentManager(true)}
+                    variant="secondary"
+                    size="small"
+                  >
+                    Add Course Content
+                  </Button>
+                )}
+              </Box>
+            )}
+          </Box>
         </>
       )}
     </Box>

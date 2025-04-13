@@ -230,7 +230,14 @@ export default function ClassesPage() {
         }}
       >
         <Flex justifyContent="space-between" alignItems="center" mb={4}>
-          <Heading as="h1">Classes</Heading>
+          <Box>
+            <Heading as="h1">Classes</Heading>
+            <Text color="gray.600" fontSize={1} mt={1}>
+              {user?.role === "admin"
+                ? "Manage all classes in the system"
+                : "Manage your assigned classes"}
+            </Text>
+          </Box>
           <Button onClick={() => setShowCreateDialog(true)} variant="primary">
             Create Class
           </Button>

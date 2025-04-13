@@ -53,20 +53,24 @@ const SubjectBreadcrumb: React.FC<SubjectBreadcrumbProps> = ({ items }) => {
               {item.label}
             </Text>
           ) : (
-            <Link href={item.href} passHref>
-              <Text
-                as="a"
-                sx={{
-                  color: "gray.700",
+            <Link href={item.href} className="breadcrumb-link">
+              <span
+                style={{
+                  color: "var(--colors-gray-700)",
                   textDecoration: "none",
-                  "&:hover": {
-                    color: "primary",
-                    textDecoration: "underline",
-                  },
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--colors-primary)";
+                  e.currentTarget.style.textDecoration = "underline";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--colors-gray-700)";
+                  e.currentTarget.style.textDecoration = "none";
                 }}
               >
                 {item.label}
-              </Text>
+              </span>
             </Link>
           )}
         </React.Fragment>
@@ -76,7 +80,7 @@ const SubjectBreadcrumb: React.FC<SubjectBreadcrumbProps> = ({ items }) => {
 };
 
 // Utility hook to generate breadcrumb items based on the current route
-export const useSubjectBreadcrumb = () => {
+export const useSubjectBreadcrumb = (subjectName?: string) => {
   const params = useParams();
   const { subjectId, formLevelId, classId } = params;
 
@@ -110,7 +114,8 @@ export const useSubjectBreadcrumb = () => {
   if (subjectId) {
     breadcrumbItems.push({
       label:
-        typeof subjectId === "string" ? safelyDecode(subjectId) : "Subject",
+        subjectName ||
+        (typeof subjectId === "string" ? safelyDecode(subjectId) : "Subject"),
       href: `/subjects/${subjectId}`,
       isActive: !!subjectId && !formLevelId,
     });

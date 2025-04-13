@@ -65,9 +65,31 @@ export const getDecodedToken = (): DecodedToken | null => {
   }
 };
 
-export const hasRole = (role: string): boolean => {
+export const hasRole = (role: string | string[]): boolean => {
   const decoded = getDecodedToken();
-  return decoded ? decoded.role === role : false;
+  if (!decoded) return false;
+
+  if (Array.isArray(role)) {
+    return role.includes(decoded.role);
+  }
+
+  return decoded.role === role;
+};
+
+export const isTeacher = (): boolean => {
+  return hasRole("teacher");
+};
+
+export const isHeadTeacher = (): boolean => {
+  return hasRole("head_teacher");
+};
+
+export const isAdmin = (): boolean => {
+  return hasRole("admin");
+};
+
+export const isStudent = (): boolean => {
+  return hasRole("student");
 };
 
 export const getUserId = (): string | null => {

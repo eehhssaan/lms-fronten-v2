@@ -45,11 +45,12 @@ export default function CourseContentManager({
   };
 
   const handleStartEdit = (content: Content) => {
+    if (!content._id) return;
     setIsEditing(content._id);
     setTitle(content.title);
     setDescription(content.description || "");
-    setModuleNumber(content.moduleNumber);
-    setLessonNumber(content.lessonNumber);
+    setModuleNumber(content.moduleNumber || 1);
+    setLessonNumber(content.lessonNumber || 1);
     setOrder(content.order || 1);
     setFile(null);
   };
@@ -165,9 +166,11 @@ export default function CourseContentManager({
         formData.append("file", file);
       }
 
+      console.log("formData", formData);
+
       console.log("Sending request to create course content...");
       const response = await createCourseContent(courseId, formData);
-      console.log("Content created successfully:", response);
+      console.log("Course Content created successfully:", response);
 
       // Clear form
       setTitle("");
@@ -248,228 +251,248 @@ export default function CourseContentManager({
       {/* Display existing contents with edit and delete buttons */}
       {contents.length > 0 && (
         <Box mb={4}>
-          {contents.map((content) => (
-            <Box
-              key={content._id}
-              p={3}
-              mb={2}
-              sx={{
-                border: "1px solid",
-                borderColor: "gray.200",
-                borderRadius: "6px",
-                bg: "white",
-                opacity: deletingContentIds.includes(content._id) ? 0.7 : 1,
-                transition: "opacity 0.2s ease-in-out",
-              }}
-            >
-              {isEditing === content._id ? (
-                <form onSubmit={(e) => handleUpdate(content._id, e)}>
-                  <Box mb={3}>
-                    <Text as="label" display="block" mb={2} fontWeight="bold">
-                      Title{" "}
-                      <Box as="span" color="red">
-                        *
+          {contents
+            .filter(
+              (content): content is Content & { _id: string } =>
+                content !== null && !!content._id
+            )
+            .map((content) => (
+              <Box
+                key={content._id}
+                p={3}
+                mb={2}
+                sx={{
+                  border: "1px solid",
+                  borderColor: "gray.200",
+                  borderRadius: "6px",
+                  bg: "white",
+                  opacity: deletingContentIds.includes(content._id) ? 0.7 : 1,
+                  transition: "opacity 0.2s ease-in-out",
+                }}
+              >
+                {isEditing === content._id ? (
+                  <form onSubmit={(e) => handleUpdate(content._id, e)}>
+                    <Box mb={3}>
+                      <Text as="label" display="block" mb={2} fontWeight="bold">
+                        Title{" "}
+                        <Box as="span" color="red">
+                          *
+                        </Box>
+                      </Text>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        required
+                        className="form-input"
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: "6px",
+                          border: "1px solid #ddd",
+                          fontSize: "16px",
+                        }}
+                      />
+                    </Box>
+
+                    <Box mb={3}>
+                      <Text as="label" display="block" mb={2} fontWeight="bold">
+                        Description
+                      </Text>
+                      <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={3}
+                        className="form-textarea"
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: "6px",
+                          border: "1px solid #ddd",
+                          fontSize: "16px",
+                          resize: "vertical",
+                        }}
+                      />
+                    </Box>
+
+                    <Box mb={3}>
+                      <Text as="label" display="block" mb={2} fontWeight="bold">
+                        New File (Optional)
+                      </Text>
+                      <input
+                        type="file"
+                        onChange={handleFileChange}
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.mp4,.zip"
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: "6px",
+                          border: "1px solid #ddd",
+                          fontSize: "16px",
+                        }}
+                      />
+                    </Box>
+
+                    <Flex mx={-2} flexWrap="wrap" mb={3}>
+                      <Box width={[1, 1 / 3]} px={2}>
+                        <Text
+                          as="label"
+                          display="block"
+                          mb={2}
+                          fontWeight="bold"
+                        >
+                          Module Number{" "}
+                          <Box as="span" color="red">
+                            *
+                          </Box>
+                        </Text>
+                        <input
+                          type="number"
+                          min="1"
+                          value={moduleNumber}
+                          onChange={(e) =>
+                            setModuleNumber(parseInt(e.target.value))
+                          }
+                          required
+                          style={{
+                            width: "100%",
+                            padding: "10px",
+                            borderRadius: "6px",
+                            border: "1px solid #ddd",
+                            fontSize: "16px",
+                          }}
+                        />
                       </Box>
-                    </Text>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      required
-                      className="form-input"
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        borderRadius: "6px",
-                        border: "1px solid #ddd",
-                        fontSize: "16px",
-                      }}
-                    />
-                  </Box>
 
-                  <Box mb={3}>
-                    <Text as="label" display="block" mb={2} fontWeight="bold">
-                      Description
-                    </Text>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={3}
-                      className="form-textarea"
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        borderRadius: "6px",
-                        border: "1px solid #ddd",
-                        fontSize: "16px",
-                        resize: "vertical",
-                      }}
-                    />
-                  </Box>
+                      <Box width={[1, 1 / 3]} px={2}>
+                        <Text
+                          as="label"
+                          display="block"
+                          mb={2}
+                          fontWeight="bold"
+                        >
+                          Lesson Number{" "}
+                          <Box as="span" color="red">
+                            *
+                          </Box>
+                        </Text>
+                        <input
+                          type="number"
+                          min="1"
+                          value={lessonNumber}
+                          onChange={(e) =>
+                            setLessonNumber(parseInt(e.target.value))
+                          }
+                          required
+                          style={{
+                            width: "100%",
+                            padding: "10px",
+                            borderRadius: "6px",
+                            border: "1px solid #ddd",
+                            fontSize: "16px",
+                          }}
+                        />
+                      </Box>
 
-                  <Box mb={3}>
-                    <Text as="label" display="block" mb={2} fontWeight="bold">
-                      New File (Optional)
-                    </Text>
-                    <input
-                      type="file"
-                      onChange={handleFileChange}
-                      accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.mp4,.zip"
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        borderRadius: "6px",
-                        border: "1px solid #ddd",
-                        fontSize: "16px",
-                      }}
-                    />
-                  </Box>
+                      <Box width={[1, 1 / 3]} px={2}>
+                        <Text
+                          as="label"
+                          display="block"
+                          mb={2}
+                          fontWeight="bold"
+                        >
+                          Order
+                        </Text>
+                        <input
+                          type="number"
+                          min="1"
+                          value={order}
+                          onChange={(e) => setOrder(parseInt(e.target.value))}
+                          style={{
+                            width: "100%",
+                            padding: "10px",
+                            borderRadius: "6px",
+                            border: "1px solid #ddd",
+                            fontSize: "16px",
+                          }}
+                        />
+                      </Box>
+                    </Flex>
 
-                  <Flex mx={-2} flexWrap="wrap" mb={3}>
-                    <Box width={[1, 1 / 3]} px={2}>
-                      <Text as="label" display="block" mb={2} fontWeight="bold">
-                        Module Number{" "}
-                        <Box as="span" color="red">
-                          *
-                        </Box>
-                      </Text>
-                      <input
-                        type="number"
-                        min="1"
-                        value={moduleNumber}
-                        onChange={(e) =>
-                          setModuleNumber(parseInt(e.target.value))
-                        }
-                        required
+                    {error && (
+                      <Box
+                        mb={3}
+                        p={2}
+                        bg="red.50"
+                        color="red.600"
+                        borderRadius="md"
+                      >
+                        {error}
+                      </Box>
+                    )}
+
+                    <Flex justifyContent="flex-end" mt={3}>
+                      <Button
+                        onClick={handleCancelEdit}
+                        variant="secondary"
+                        size="small"
+                        type="button"
+                        sx={{ mr: 2 }}
+                      >
+                        Cancel
+                      </Button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={loading}
                         style={{
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: "6px",
-                          border: "1px solid #ddd",
-                          fontSize: "16px",
+                          padding: "8px 16px",
+                          fontSize: "14px",
+                          borderRadius: "4px",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          opacity: loading ? 0.7 : 1,
+                          backgroundColor: "#007bff",
+                          color: "white",
+                          border: "1px solid #0056b3",
                         }}
-                      />
-                    </Box>
-
-                    <Box width={[1, 1 / 3]} px={2}>
-                      <Text as="label" display="block" mb={2} fontWeight="bold">
-                        Lesson Number{" "}
-                        <Box as="span" color="red">
-                          *
-                        </Box>
+                      >
+                        {loading ? "Saving..." : "Save Changes"}
+                      </button>
+                    </Flex>
+                  </form>
+                ) : (
+                  <Flex justifyContent="space-between" alignItems="center">
+                    <Box>
+                      <Text fontWeight="bold">{content.title}</Text>
+                      <Text fontSize="sm" color="gray.600">
+                        Module {content.moduleNumber}, Lesson{" "}
+                        {content.lessonNumber}
                       </Text>
-                      <input
-                        type="number"
-                        min="1"
-                        value={lessonNumber}
-                        onChange={(e) =>
-                          setLessonNumber(parseInt(e.target.value))
-                        }
-                        required
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: "6px",
-                          border: "1px solid #ddd",
-                          fontSize: "16px",
-                        }}
-                      />
                     </Box>
-
-                    <Box width={[1, 1 / 3]} px={2}>
-                      <Text as="label" display="block" mb={2} fontWeight="bold">
-                        Order
-                      </Text>
-                      <input
-                        type="number"
-                        min="1"
-                        value={order}
-                        onChange={(e) => setOrder(parseInt(e.target.value))}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: "6px",
-                          border: "1px solid #ddd",
-                          fontSize: "16px",
-                        }}
-                      />
-                    </Box>
+                    <Flex>
+                      <Button
+                        onClick={() => handleStartEdit(content)}
+                        variant="secondary"
+                        size="small"
+                        sx={{ mr: 2 }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        onClick={() => handleDelete(content._id)}
+                        variant="danger"
+                        size="small"
+                        disabled={deletingContentIds.includes(content._id)}
+                      >
+                        {deletingContentIds.includes(content._id)
+                          ? "Deleting..."
+                          : "Delete"}
+                      </Button>
+                    </Flex>
                   </Flex>
-
-                  {error && (
-                    <Box
-                      mb={3}
-                      p={2}
-                      bg="red.50"
-                      color="red.600"
-                      borderRadius="md"
-                    >
-                      {error}
-                    </Box>
-                  )}
-
-                  <Flex justifyContent="flex-end" mt={3}>
-                    <Button
-                      onClick={handleCancelEdit}
-                      variant="secondary"
-                      size="small"
-                      type="button"
-                      sx={{ mr: 2 }}
-                    >
-                      Cancel
-                    </Button>
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                      disabled={loading}
-                      style={{
-                        padding: "8px 16px",
-                        fontSize: "14px",
-                        borderRadius: "4px",
-                        cursor: loading ? "not-allowed" : "pointer",
-                        opacity: loading ? 0.7 : 1,
-                        backgroundColor: "#007bff",
-                        color: "white",
-                        border: "1px solid #0056b3",
-                      }}
-                    >
-                      {loading ? "Saving..." : "Save Changes"}
-                    </button>
-                  </Flex>
-                </form>
-              ) : (
-                <Flex justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Text fontWeight="bold">{content.title}</Text>
-                    <Text fontSize="sm" color="gray.600">
-                      Module {content.moduleNumber}, Lesson{" "}
-                      {content.lessonNumber}
-                    </Text>
-                  </Box>
-                  <Flex>
-                    <Button
-                      onClick={() => handleStartEdit(content)}
-                      variant="secondary"
-                      size="small"
-                      sx={{ mr: 2 }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={() => handleDelete(content._id)}
-                      variant="danger"
-                      size="small"
-                      disabled={deletingContentIds.includes(content._id)}
-                    >
-                      {deletingContentIds.includes(content._id)
-                        ? "Deleting..."
-                        : "Delete"}
-                    </Button>
-                  </Flex>
-                </Flex>
-              )}
-            </Box>
-          ))}
+                )}
+              </Box>
+            ))}
 
           {deleteError && (
             <Box

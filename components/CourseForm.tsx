@@ -19,7 +19,10 @@ export default function CourseForm({
     title: initialData?.title || "",
     code: initialData?.code || "",
     description: initialData?.description || "",
-    subject: initialData?.subject || "",
+    subject:
+      typeof initialData?.subject === "object" && initialData?.subject !== null
+        ? initialData.subject._id || ""
+        : initialData?.subject || "",
     grade: initialData?.grade || "",
     curriculumType: initialData?.curriculumType || "HKDSE",
     startDate: initialData?.startDate
@@ -31,6 +34,10 @@ export default function CourseForm({
     maxStudents: initialData?.maxStudents || 50,
     isActive: initialData?.isActive ?? true,
     language: initialData?.language || "english",
+    teacher:
+      typeof initialData?.teacher === "object" && initialData?.teacher !== null
+        ? initialData.teacher._id || ""
+        : initialData?.teacher || "",
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +83,7 @@ export default function CourseForm({
       if (!formData.description.trim()) {
         throw new Error("Course description is required");
       }
-      if (!formData.subject.trim()) {
+      if (!formData.subject) {
         throw new Error("Subject is required");
       }
       if (!formData.grade.trim()) {
@@ -85,13 +92,16 @@ export default function CourseForm({
       if (!formData.curriculumType) {
         throw new Error("Curriculum type is required");
       }
+      if (!formData.teacher) {
+        throw new Error("Teacher is required");
+      }
 
       // Format data for API
       const courseData = {
         title: formData.title.trim(),
         code: formData.code.trim(),
         description: formData.description.trim(),
-        subject: formData.subject.trim(),
+        subject: formData.subject,
         grade: formData.grade.trim(),
         curriculumType: formData.curriculumType,
         startDate: formData.startDate || new Date().toISOString(),
@@ -101,6 +111,7 @@ export default function CourseForm({
         maxStudents: formData.maxStudents,
         isActive: formData.isActive,
         language: formData.language as "english" | "cantonese" | "mandarin",
+        teacher: formData.teacher,
       };
 
       let course;
@@ -310,6 +321,9 @@ export default function CourseForm({
             Active course (visible to students)
           </label>
         </div>
+
+        {/* Hidden input for teacher ID */}
+        <input type="hidden" name="teacher" value={formData.teacher} />
 
         <div>
           <label

@@ -157,8 +157,8 @@ export default function CoursesPage() {
           {user?.role === "student" ? "My Courses" : "All Courses"}
         </Heading>
 
-        {/* Show Create Course button only for teachers and admins */}
-        {user && (user.role === "teacher" || user.role === "admin") && (
+        {/* Show Create Course button only for head teachers and admins */}
+        {user && (user.role === "admin" || user.role === "head_teacher") && (
           <Button
             onClick={() => router.push("/courses/create")}
             variant="primary"

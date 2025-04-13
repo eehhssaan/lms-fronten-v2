@@ -58,7 +58,9 @@ export function middleware(request: NextRequest) {
     if (
       path.includes("/api/auth") ||
       path.includes("/api/users/login") ||
-      path.includes("/api/users/register")
+      path.includes("/api/users/register") ||
+      path.includes("/users/login") ||
+      path.includes("/users/register")
     ) {
       console.log("Middleware: Allowing auth-related API request:", path);
       return NextResponse.next();
@@ -110,5 +112,12 @@ export const config = {
     "/api/users/:path*",
     "/api/contents/:path*",
     "/api/assignments/:path*",
+    "/courses/:path*",
+    "/users/:path*",
+    "/contents/:path*",
+    "/assignments/:path*",
+    "/subjects/:path*",
+    "/quizzes/:path*",
+    "/classes/:path*",
   ],
 };

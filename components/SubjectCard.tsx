@@ -11,12 +11,18 @@ interface SubjectCardProps {
     description?: string;
     courseCount: number;
     iconUrl?: string;
+    headTeacher?: {
+      _id: string;
+      name: string;
+      email: string;
+    };
   };
   onClick?: () => void;
 }
 
 const SubjectCard: React.FC<SubjectCardProps> = ({ subject, onClick }) => {
-  const { id, name, code, description, courseCount, iconUrl } = subject;
+  const { id, name, code, description, courseCount, iconUrl, headTeacher } =
+    subject;
 
   return (
     <Link href={`/subjects/${encodeURIComponent(id)}`} passHref>
@@ -83,6 +89,12 @@ const SubjectCard: React.FC<SubjectCardProps> = ({ subject, onClick }) => {
             {description.length > 100
               ? `${description.substring(0, 100)}...`
               : description}
+          </Text>
+        )}
+
+        {headTeacher && (
+          <Text as="p" fontSize={1} color="gray.600" mb={2}>
+            Head Teacher: {headTeacher.name}
           </Text>
         )}
 

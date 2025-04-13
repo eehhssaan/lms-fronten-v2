@@ -1,10 +1,10 @@
 import axios from "axios";
-import { Course, User, Content, Class } from "@/types";
+import { Course, User, Content, Class, Subject } from "@/types";
 
 // Determine the base URL for API requests
 const getBaseUrl = () => {
   // Always use the API URL from environment variables
-  return process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
 };
 
 // Create axios instance with default config
@@ -19,7 +19,7 @@ const api = axios.create({
 });
 
 // Function to get stored token
-const getStoredToken = () => {
+export const getStoredToken = () => {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("auth_token") || null;
 };
@@ -31,6 +31,7 @@ api.interceptors.request.use(
     console.log(`API Request to: ${config.baseURL}${config.url}`, {
       method: config.method,
       withCredentials: config.withCredentials,
+      headers: config.headers,
     });
 
     // Try to get token from local storage (as a backup)
@@ -41,6 +42,10 @@ api.interceptors.request.use(
     if (token) {
       console.log("Adding Authorization header with token from local storage");
       config.headers = config.headers || {};
+      // Don't override Content-Type if it's multipart/form-data
+      if (config.headers["Content-Type"] !== "multipart/form-data") {
+        config.headers["Content-Type"] = "application/json";
+      }
       config.headers.Authorization = `Bearer ${token}`;
     } else {
       console.log("No token found in local storage for request");
@@ -79,13 +84,16 @@ export const registerUser = async (userData: {
   name: string;
   email: string;
   password: string;
+  role?: string;
+  school?: string;
+  grade?: string;
 }): Promise<{ token: string; data: User }> => {
   try {
     console.log("Registering user with data:", {
       ...userData,
       password: "[REDACTED]",
     });
-    const response = await api.post("/api/users/register", userData);
+    const response = await api.post("/users/register", userData);
     console.log("Registration response:", response.data);
 
     // Store token if it exists
@@ -175,7 +183,7 @@ export const loginUser = async (credentials: {
 }): Promise<{ token: string; data: User }> => {
   try {
     console.log("Logging in with email:", credentials.email);
-    const response = await api.post("/api/users/login", credentials);
+    const response = await api.post("/users/login", credentials);
     console.log("Login response:", response.data);
 
     // Store token if it exists
@@ -189,8 +197,28 @@ export const loginUser = async (credentials: {
     let userData: User;
 
     // Case 1: Standard API format with 'data' property
-    if (response.data.data) {
-      userData = response.data.data;
+    if (response.data.data && response.data.data.user) {
+      userData = {
+        // Map _id to id if needed
+        id: response.data.data.user._id || response.data.data.user.id,
+        name: response.data.data.user.name,
+        email: response.data.data.user.email,
+        role: response.data.data.user.role,
+        profilePicture: response.data.data.user.profilePicture,
+        isActive: response.data.data.user.isActive,
+        school: response.data.data.user.school,
+        grade: response.data.data.user.grade,
+        gender: response.data.data.user.gender,
+        bio: response.data.data.user.bio,
+        contactNumber: response.data.data.user.contactNumber,
+        preferredLanguage: response.data.data.user.preferredLanguage,
+        dateOfBirth: response.data.data.user.dateOfBirth,
+        createdAt: response.data.data.user.createdAt,
+        // Include original fields for compatibility
+        _id: response.data.data.user._id,
+        active: response.data.data.user.active,
+        __v: response.data.data.user.__v,
+      };
     }
     // Case 2: API responds with 'user' property instead
     else if (response.data.user) {
@@ -250,12 +278,11 @@ export const forgotPassword = async (
   email: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await api.post("/api/users/forgot-password", { email });
+    const response = await api.post("/users/forgot-password", { email });
     return response.data;
   } catch (error: any) {
     throw new Error(
-      error.response?.data?.message ||
-        "Failed to process password reset request"
+      error.response?.data?.message || "Failed to process request"
     );
   }
 };
@@ -265,47 +292,48 @@ export const resetPassword = async (
   password: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await api.post(`/api/users/reset-password/${token}`, {
+    const response = await api.post("/users/reset-password", {
+      token,
       password,
     });
     return response.data;
   } catch (error: any) {
     throw new Error(
-      error.response?.data?.message || "Failed to reset password"
+      error.response?.data?.message || "Failed to process request"
     );
   }
 };
 
 export const logoutUser = async (): Promise<void> => {
   try {
-    // Try to call logout endpoint, but don't throw if it fails
+    // First try to hit the logout endpoint
     try {
-      await api.post("/api/users/logout");
-    } catch (error) {
+      await api.post("/users/logout");
+      console.log("Successfully logged out via API");
+    } catch (e) {
       console.log(
-        "Backend logout endpoint not available - clearing local state only"
+        "Backend logout endpoint error (expected in some configs):",
+        e
       );
     }
 
-    // Always clear local storage and cookies
+    // Always clear local storage and cookies, even if API call fails
     if (typeof window !== "undefined") {
-      console.log("Removing token from localStorage and cookie");
+      console.log("Clearing local auth data");
       localStorage.removeItem("auth_token");
+
+      // Clear the token cookie by setting it to expire in the past
       document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
   } catch (error) {
     console.error("Logout error:", error);
-    // Still clear localStorage and cookie even if something fails
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("auth_token");
-      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    }
+    // Don't throw error on logout issues
   }
 };
 
 export const getCurrentUser = async (): Promise<User> => {
   try {
-    const response = await api.get("/api/users/me");
+    const response = await api.get("/users/me");
     console.log("getCurrentUser response:", response.data);
 
     // Handle different response formats
@@ -433,7 +461,7 @@ export const updateUserProfile = async (userData: {
         }
       });
 
-      const response = await api.put("/api/users/profile", formData, {
+      const response = await api.put("/users/profile", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -442,7 +470,7 @@ export const updateUserProfile = async (userData: {
     }
 
     // For regular updates without file, use JSON
-    const response = await api.put("/api/users/profile", userData);
+    const response = await api.put("/users/profile", userData);
     return response.data.data;
   } catch (error: any) {
     // Handle specific error cases
@@ -463,7 +491,7 @@ export const updateUserPassword = async (passwordData: {
   newPassword: string;
 }): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await api.put("/api/users/password", passwordData);
+    const response = await api.put("/users/change-password", passwordData);
     return response.data;
   } catch (error: any) {
     throw new Error(
@@ -477,89 +505,90 @@ export const updateUserPassword = async (passwordData: {
 export const getCourses = async (params?: {
   page?: number;
   limit?: number;
+  subject?: string;
+  teacher?: string;
+  grade?: string;
   isActive?: boolean;
+  search?: string;
 }): Promise<{
   data: Course[];
   count: number;
   pagination: { page: number; limit: number; totalPages: number };
 }> => {
   try {
-    const response = await api.get("/api/courses", { params });
-    return response.data;
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.subject) queryParams.append("subject", params.subject);
+    if (params?.teacher) queryParams.append("teacher", params.teacher);
+    if (params?.grade) queryParams.append("grade", params.grade);
+    if (params?.isActive !== undefined)
+      queryParams.append("isActive", params.isActive.toString());
+    if (params?.search) queryParams.append("search", params.search);
+
+    const queryString = queryParams.toString()
+      ? `?${queryParams.toString()}`
+      : "";
+
+    const response = await api.get(`/courses${queryString}`);
+    return {
+      data: response.data.data.map((course: any) => ({
+        id: course._id,
+        _id: course._id,
+        title: course.title,
+        code: course.code,
+        description: course.description,
+        curriculumType: course.curriculumType,
+        subject: course.subject,
+        grade: course.grade,
+        teacher: course.teacher,
+        students: course.students,
+        enrolledClasses: course.enrolledClasses,
+        materials: course.materials,
+        startDate: course.startDate,
+        endDate: course.endDate,
+        isActive: course.isActive,
+        maxStudents: course.maxStudents,
+      })),
+      count: response.data.count || 0,
+      pagination: {
+        page: response.data.pagination?.page || 1,
+        limit: response.data.pagination?.limit || params?.limit || 10,
+        totalPages: response.data.pagination?.totalPages || 1,
+      },
+    };
   } catch (error: any) {
-    // Handle CORS errors which might not have a response
-    if (error.message === "Network Error") {
-      throw new Error(
-        "Unable to connect to the server. Please check your network or try again later."
-      );
-    }
+    console.error("Error fetching courses:", error);
     throw new Error(error.response?.data?.message || "Failed to fetch courses");
   }
 };
 
 export const getCourse = async (courseId: string): Promise<Course> => {
   try {
-    console.log(`API Client: Getting course with ID ${courseId}`);
-    const response = await api.get(`/api/courses/${courseId}`, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    console.log("API Client: Course response received", response.status);
+    const response = await api.get(`courses/${courseId}`);
+    const courseData = response.data.data;
 
-    // Handle the case when we get a successful response but invalid data structure
-    if (!response.data) {
-      console.error("API Client: Empty response data");
-      throw new Error("Server returned an empty response");
-    }
-
-    // Special handling for the success flag from our API
-    if (response.data.success === false) {
-      console.error(
-        "API Client: Server returned error response",
-        response.data
-      );
-      throw new Error(
-        response.data.message || "Server returned an error response"
-      );
-    }
-
-    // Check for the expected data structure
-    if (!response.data.data) {
-      // First check if the data itself is directly a course object (some APIs don't wrap in data property)
-      if (response.data.id) {
-        console.log(
-          "API Client: Response contains course directly instead of in .data property"
-        );
-        return response.data;
-      }
-
-      console.error(
-        "API Client: Invalid course data format (missing data property)",
-        response.data
-      );
-      throw new Error("Invalid response format from server");
-    }
-
-    return response.data.data;
+    return {
+      id: courseData._id,
+      _id: courseData._id,
+      title: courseData.title,
+      code: courseData.code,
+      description: courseData.description,
+      curriculumType: courseData.curriculumType,
+      subject: courseData.subject,
+      grade: courseData.grade,
+      teacher: courseData.teacher,
+      students: courseData.students,
+      enrolledClasses: courseData.enrolledClasses,
+      materials: courseData.materials,
+      startDate: courseData.startDate,
+      endDate: courseData.endDate,
+      isActive: courseData.isActive,
+      maxStudents: courseData.maxStudents,
+    };
   } catch (error: any) {
-    console.error("API Client: Error fetching course details:", {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      config: error.config
-        ? {
-            url: error.config.url,
-            method: error.config.method,
-          }
-        : "No config",
-    });
-
-    // Check for authentication errors specifically
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      throw new Error("You are not logged in. Please log in to get access");
-    }
-
+    console.error("Error fetching course:", error);
     throw new Error(error.response?.data?.message || "Failed to fetch course");
   }
 };
@@ -586,7 +615,7 @@ export const getCourseContents = async (
       ...(params?.type && { type: params.type }),
     });
 
-    const response = await api.get(`/api/contents?${queryParams.toString()}`);
+    const response = await api.get(`contents?${queryParams.toString()}`);
 
     if (!response.data.success) {
       console.log("API Client: Server returned error response for contents");
@@ -614,22 +643,177 @@ export const getCourseContents = async (
   }
 };
 
-export const createCourse = async (courseData: {
-  title: string;
-  description: string;
-  code: string;
-  isActive?: boolean;
-  coverImage?: string;
-  category?: string;
-}): Promise<Course> => {
+export const createCourseContent = async (
+  courseId: string,
+  formData: FormData
+): Promise<Content> => {
   try {
-    const response = await api.post("/api/courses", courseData);
+    console.log(`API Client: Creating content for course ${courseId}`);
+
+    const response = await api.post(`contents`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    if (!response.data.success) {
+      throw new Error(
+        response.data.message || "Failed to create course content"
+      );
+    }
+
     return response.data.data;
   } catch (error: any) {
+    console.error("API Client: Error creating course content:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    // Handle specific error cases
     if (error.response?.status === 401) {
-      throw new Error("You must be logged in to create a course");
+      throw new Error("Please log in to add course content.");
+    } else if (error.response?.status === 403) {
+      throw new Error(
+        "You don't have permission to add content to this course."
+      );
+    } else if (error.response?.status === 413) {
+      throw new Error("The file you're trying to upload is too large.");
     }
+
+    throw new Error(
+      error.response?.data?.message || "Failed to create course content"
+    );
+  }
+};
+
+export const updateCourseContent = async (
+  contentId: string,
+  data: FormData | any
+): Promise<Content> => {
+  try {
+    console.log(`API Client: Updating content with ID ${contentId}`);
+
+    let response;
+    if (data instanceof FormData) {
+      response = await api.put(`contents/${contentId}`, data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    } else {
+      response = await api.put(`contents/${contentId}`, data);
+    }
+
+    if (!response.data.success) {
+      throw new Error(
+        response.data.message || "Failed to update course content"
+      );
+    }
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error("API Client: Error updating course content:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    // Handle specific error cases
+    if (error.response?.status === 401) {
+      throw new Error("Please log in to update course content.");
+    } else if (error.response?.status === 403) {
+      throw new Error("You don't have permission to update this content.");
+    }
+
+    throw new Error(
+      error.response?.data?.message || "Failed to update course content"
+    );
+  }
+};
+
+export const createCourse = async (courseData: {
+  title: string;
+  code: string;
+  description: string;
+  curriculumType: "HKDSE" | "A-levels";
+  subject: string;
+  grade: string;
+  teacher: string;
+  isClassSpecific?: boolean;
+  startDate?: string;
+  endDate?: string;
+  maxStudents?: number;
+  language?: "english" | "cantonese" | "mandarin";
+}): Promise<Course> => {
+  try {
+    const response = await api.post("/courses", courseData);
+    const createdCourse = response.data.data;
+
+    return {
+      id: createdCourse._id,
+      _id: createdCourse._id,
+      title: createdCourse.title,
+      code: createdCourse.code,
+      description: createdCourse.description,
+      curriculumType: createdCourse.curriculumType,
+      subject: createdCourse.subject,
+      grade: createdCourse.grade,
+      teacher: createdCourse.teacher,
+      isActive: createdCourse.isActive,
+      startDate: createdCourse.startDate,
+      endDate: createdCourse.endDate,
+      maxStudents: createdCourse.maxStudents,
+    };
+  } catch (error: any) {
+    console.error("Error creating course:", error);
     throw new Error(error.response?.data?.message || "Failed to create course");
+  }
+};
+
+export const updateCourse = async (
+  courseId: string,
+  courseData: Partial<{
+    title: string;
+    code: string;
+    description: string;
+    curriculumType: "HKDSE" | "A-levels";
+    subject: string;
+    grade: string;
+    teacher: string;
+    isClassSpecific: boolean;
+    startDate: string;
+    endDate: string;
+    isActive: boolean;
+    maxStudents: number;
+    language: "english" | "cantonese" | "mandarin";
+  }>
+): Promise<Course> => {
+  try {
+    const response = await api.put(`/courses/${courseId}`, courseData);
+    const updatedCourse = response.data.data;
+
+    return {
+      id: updatedCourse._id,
+      _id: updatedCourse._id,
+      title: updatedCourse.title,
+      code: updatedCourse.code,
+      description: updatedCourse.description,
+      curriculumType: updatedCourse.curriculumType,
+      subject: updatedCourse.subject,
+      grade: updatedCourse.grade,
+      teacher: updatedCourse.teacher,
+      students: updatedCourse.students,
+      enrolledClasses: updatedCourse.enrolledClasses,
+      materials: updatedCourse.materials,
+      startDate: updatedCourse.startDate,
+      endDate: updatedCourse.endDate,
+      isActive: updatedCourse.isActive,
+      maxStudents: updatedCourse.maxStudents,
+    };
+  } catch (error: any) {
+    console.error("Error updating course:", error);
+    throw new Error(error.response?.data?.message || "Failed to update course");
   }
 };
 
@@ -641,7 +825,7 @@ export const downloadContent = async (
 ): Promise<void> => {
   try {
     const response = await fetch(
-      `${getBaseUrl()}/api/contents/${contentId}/download`,
+      `${getBaseUrl()}/contents/${contentId}/download`,
       {
         method: "GET",
         headers: {
@@ -725,7 +909,7 @@ export const downloadContent = async (
 export const deleteCourseContent = async (contentId: string): Promise<void> => {
   try {
     console.log(`API Client: Deleting content with ID ${contentId}`);
-    const response = await api.delete(`/api/contents/${contentId}`);
+    const response = await api.delete(`contents/${contentId}`);
 
     if (!response.data.success) {
       throw new Error(
@@ -832,7 +1016,7 @@ export const downloadSubmission = async (
 
 export const enrollInCourse = async (courseId: string): Promise<Course> => {
   try {
-    const response = await api.post(`/api/courses/${courseId}/enroll`);
+    const response = await api.post(`courses/${courseId}/enroll`);
     return response.data.data;
   } catch (error: any) {
     throw new Error(
@@ -843,7 +1027,7 @@ export const enrollInCourse = async (courseId: string): Promise<Course> => {
 
 export const unenrollFromCourse = async (courseId: string): Promise<Course> => {
   try {
-    const response = await api.post(`/api/courses/${courseId}/unenroll`);
+    const response = await api.post(`courses/${courseId}/unenroll`);
     return response.data.data;
   } catch (error: any) {
     throw new Error(
@@ -861,7 +1045,7 @@ export const getEnrolledCourses = async (params?: {
   pagination: { page: number; limit: number; totalPages: number };
 }> => {
   try {
-    const response = await api.get("/api/courses/enrolled", { params });
+    const response = await api.get("courses/enrolled", { params });
     return response.data;
   } catch (error: any) {
     throw new Error(
@@ -877,7 +1061,7 @@ export const enrollClassInCourse = async (
   classId: string
 ): Promise<Course> => {
   try {
-    const response = await api.post(`/api/courses/${courseId}/enroll-class`, {
+    const response = await api.post(`courses/${courseId}/enroll-class`, {
       classId,
     });
     return response.data.data;
@@ -899,7 +1083,7 @@ export const addStudentsToClass = async (
   studentIds: string[]
 ): Promise<any> => {
   try {
-    const response = await api.post(`/api/classes/${classId}/students`, {
+    const response = await api.post(`classes/${classId}/students`, {
       students: studentIds,
     });
     return response.data.data;
@@ -915,7 +1099,7 @@ export const getAvailableClasses = async (): Promise<
   { id: string; name: string }[]
 > => {
   try {
-    const response = await api.get("/api/classes/available");
+    const response = await api.get("classes/available");
     return response.data.data;
   } catch (error: any) {
     throw new Error(
@@ -925,823 +1109,660 @@ export const getAvailableClasses = async (): Promise<
 };
 
 // Class Management APIs
-export const createClass = async (classData: {
-  name: string;
-  code: string;
-  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
-  academicYear: string;
-  department?: string;
-  description?: string;
-  classTeacher?: string;
-}): Promise<{
-  id: string;
-  name: string;
-  code: string;
-  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
-  academicYear: string;
-  department?: string;
-  description?: string;
-  classTeacher: string;
-  students: string[];
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}> => {
-  try {
-    // Validate form level
-    if (
-      !["Form 4", "Form 5", "Form 6", "AS", "A2"].includes(classData.formLevel)
-    ) {
-      throw new Error(
-        "Invalid form level. Must be one of: Form 4, Form 5, Form 6, AS, A2"
-      );
-    }
-
-    const response = await api.post("/api/classes", classData);
-    return response.data.data; // Extract the data from the success response
-  } catch (error: any) {
-    // Check for specific error about duplicate class code
-    if (
-      error.response?.status === 400 &&
-      error.response.data?.message?.includes("already exists")
-    ) {
-      throw new Error(
-        `A class with this code already exists. Please choose a different code.`
-      );
-    }
-    throw new Error(error.response?.data?.message || "Failed to create class");
-  }
-};
-
 export const getClasses = async (params?: {
   page?: number;
   limit?: number;
 }): Promise<{
-  data: {
-    id: string;
+  data: Class[];
+  count: number;
+}> => {
+  try {
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+
+    const queryString = queryParams.toString()
+      ? `?${queryParams.toString()}`
+      : "";
+
+    const response = await api.get(`/classes${queryString}`);
+    return {
+      data: response.data.data.map((classData: any) => ({
+        id: classData._id,
+        _id: classData._id,
+        name: classData.name,
+        grade: classData.grade,
+        academicYear: classData.academicYear,
+        classTeacher: classData.classTeacher,
+        students: classData.students,
+        isActive: classData.isActive,
+      })),
+      count: response.data.count || 0,
+    };
+  } catch (error: any) {
+    console.error("Error fetching classes:", error);
+    throw new Error(error.response?.data?.message || "Failed to fetch classes");
+  }
+};
+
+export const getClass = async (classId: string): Promise<Class> => {
+  try {
+    const response = await api.get(`/classes/${classId}`);
+    const classData = response.data.data;
+
+    return {
+      id: classData._id,
+      _id: classData._id,
+      name: classData.name,
+      grade: classData.grade,
+      academicYear: classData.academicYear,
+      classTeacher: classData.classTeacher,
+      students: classData.students,
+      courses: classData.courses,
+      isActive: classData.isActive,
+    };
+  } catch (error: any) {
+    console.error("Error fetching class:", error);
+    throw new Error(error.response?.data?.message || "Failed to fetch class");
+  }
+};
+
+export const createClass = async (classData: {
+  name: string;
+  grade: string;
+  academicYear: string;
+  classTeacher: string;
+  students?: string[];
+}): Promise<Class> => {
+  try {
+    const response = await api.post("/classes", classData);
+    const createdClass = response.data.data;
+
+    return {
+      id: createdClass._id,
+      _id: createdClass._id,
+      name: createdClass.name,
+      grade: createdClass.grade,
+      academicYear: createdClass.academicYear,
+      classTeacher: createdClass.classTeacher,
+      students: createdClass.students,
+      isActive: createdClass.isActive,
+    };
+  } catch (error: any) {
+    console.error("Error creating class:", error);
+    throw new Error(error.response?.data?.message || "Failed to create class");
+  }
+};
+
+export const updateClass = async (
+  classId: string,
+  classData: Partial<{
     name: string;
-    code: string;
+    grade: string;
     academicYear: string;
-    department?: string;
-    gradeLevel?: string;
-    description?: string;
     classTeacher: string;
-    students: string[];
     isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+  }>
+): Promise<Class> => {
+  try {
+    const response = await api.put(`/classes/${classId}`, classData);
+    const updatedClass = response.data.data;
+
+    return {
+      id: updatedClass._id,
+      _id: updatedClass._id,
+      name: updatedClass.name,
+      grade: updatedClass.grade,
+      academicYear: updatedClass.academicYear,
+      classTeacher: updatedClass.classTeacher,
+      students: updatedClass.students,
+      isActive: updatedClass.isActive,
+    };
+  } catch (error: any) {
+    console.error("Error updating class:", error);
+    throw new Error(error.response?.data?.message || "Failed to update class");
+  }
+};
+
+export const deleteClass = async (classId: string): Promise<void> => {
+  try {
+    await api.delete(`/classes/${classId}`);
+  } catch (error: any) {
+    console.error("Error deleting class:", error);
+    throw new Error(error.response?.data?.message || "Failed to delete class");
+  }
+};
+
+export const markClassAttendance = async (
+  classId: string,
+  attendanceData: {
+    date: string;
+    records: {
+      studentId: string;
+      status: "present" | "absent" | "late";
+      remark?: string;
+    }[];
+  }
+): Promise<any> => {
+  try {
+    const response = await api.post(
+      `/classes/${classId}/attendance`,
+      attendanceData
+    );
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error marking attendance:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to mark attendance"
+    );
+  }
+};
+
+export const getClassAttendanceReport = async (
+  classId: string
+): Promise<any> => {
+  try {
+    const response = await api.get(`/classes/${classId}/attendance/report`);
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error fetching attendance report:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch attendance report"
+    );
+  }
+};
+
+// File Management APIs
+
+export const uploadFile = async (
+  file: File,
+  type: "profile" | "material" | "assignment" | "submission"
+): Promise<{
+  fileUrl: string;
+  fileName: string;
+}> => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", type);
+
+    const response = await api.post("/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error uploading file:", error);
+    throw new Error(error.response?.data?.message || "Failed to upload file");
+  }
+};
+
+// Quiz Management APIs
+
+export const getQuizzes = async (params?: {
+  courseId?: string;
+  status?: string;
+}): Promise<{
+  data: any[];
+  count: number;
+}> => {
+  try {
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params?.courseId) queryParams.append("course", params.courseId);
+    if (params?.status) queryParams.append("status", params.status);
+
+    const queryString = queryParams.toString()
+      ? `?${queryParams.toString()}`
+      : "";
+
+    const response = await api.get(`/quizzes${queryString}`);
+    return {
+      data: response.data.data,
+      count: response.data.count || 0,
+    };
+  } catch (error: any) {
+    console.error("Error fetching quizzes:", error);
+    throw new Error(error.response?.data?.message || "Failed to fetch quizzes");
+  }
+};
+
+export const createQuiz = async (quizData: {
+  title: string;
+  description: string;
+  courseId: string;
+  duration: number;
+  totalPoints: number;
+  startDate: string;
+  endDate: string;
+  questions: {
+    question: string;
+    type: "multiple_choice" | "true_false" | "short_answer";
+    options?: string[];
+    correctAnswer: string | number;
+    points: number;
+    explanation?: string;
   }[];
+  settings?: {
+    shuffleQuestions?: boolean;
+    showResults?: boolean;
+    allowRetake?: boolean;
+    passingScore?: number;
+  };
+}): Promise<any> => {
+  try {
+    const response = await api.post("/quizzes", quizData);
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error creating quiz:", error);
+    throw new Error(error.response?.data?.message || "Failed to create quiz");
+  }
+};
+
+export const getQuiz = async (quizId: string): Promise<any> => {
+  try {
+    const response = await api.get(`/quizzes/${quizId}`);
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error fetching quiz:", error);
+    throw new Error(error.response?.data?.message || "Failed to fetch quiz");
+  }
+};
+
+export const updateQuiz = async (
+  quizId: string,
+  quizData: Partial<{
+    title: string;
+    description: string;
+    duration: number;
+    totalPoints: number;
+    startDate: string;
+    endDate: string;
+    questions: any[];
+    settings: any;
+    isPublished: boolean;
+  }>
+): Promise<any> => {
+  try {
+    const response = await api.put(`/quizzes/${quizId}`, quizData);
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error updating quiz:", error);
+    throw new Error(error.response?.data?.message || "Failed to update quiz");
+  }
+};
+
+export const deleteQuiz = async (quizId: string): Promise<void> => {
+  try {
+    await api.delete(`/quizzes/${quizId}`);
+  } catch (error: any) {
+    console.error("Error deleting quiz:", error);
+    throw new Error(error.response?.data?.message || "Failed to delete quiz");
+  }
+};
+
+export const getQuizResults = async (quizId: string): Promise<any[]> => {
+  try {
+    const response = await api.get(`/quizzes/${quizId}/results`);
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error fetching quiz results:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch quiz results"
+    );
+  }
+};
+
+export const getStudentQuizResult = async (
+  quizId: string,
+  studentId: string
+): Promise<any> => {
+  try {
+    const response = await api.get(`/quizzes/${quizId}/results/${studentId}`);
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error fetching student quiz result:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch student quiz result"
+    );
+  }
+};
+
+// Communication APIs
+
+export const getAnnouncements = async (): Promise<any[]> => {
+  try {
+    const response = await api.get("/announcements");
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error fetching announcements:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch announcements"
+    );
+  }
+};
+
+export const createAnnouncement = async (announcementData: {
+  title: string;
+  content: string;
+  targetAudience: {
+    roles?: string[];
+    grades?: string[];
+    classes?: string[];
+  };
+  attachments?: {
+    fileUrl: string;
+    fileName: string;
+  }[];
+}): Promise<any> => {
+  try {
+    const response = await api.post("/announcements", announcementData);
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error creating announcement:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to create announcement"
+    );
+  }
+};
+
+export const getNotifications = async (): Promise<any[]> => {
+  try {
+    const response = await api.get("/notifications");
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error fetching notifications:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch notifications"
+    );
+  }
+};
+
+export const markNotificationAsRead = async (
+  notificationId: string
+): Promise<void> => {
+  try {
+    await api.put(`/notifications/${notificationId}/read`);
+  } catch (error: any) {
+    console.error("Error marking notification as read:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to mark notification as read"
+    );
+  }
+};
+
+// Subject API functions
+export const getSubjects = async (params?: {
+  page?: number;
+  limit?: number;
+  teacherId?: string;
+}): Promise<{
+  data: Subject[];
+  count: number;
+}> => {
+  try {
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.teacherId) queryParams.append("teacherId", params.teacherId);
+
+    const queryString = queryParams.toString()
+      ? `?${queryParams.toString()}`
+      : "";
+
+    const response = await api.get(`/subjects${queryString}`);
+    return {
+      data: response.data.data.map((subject: any) => ({
+        id: subject._id,
+        _id: subject._id,
+        name: subject.name,
+        code: subject.code,
+        description: subject.description,
+        headTeacher: subject.headTeacher,
+        grade: subject.grade,
+        courseCount: subject.courseCount || 0,
+        iconUrl: subject.iconUrl,
+      })),
+      count: response.data.count || 0,
+    };
+  } catch (error: any) {
+    console.error("Error fetching subjects:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch subjects"
+    );
+  }
+};
+
+export const createSubject = async (subjectData: {
+  name: string;
+  code?: string;
+  description?: string;
+  headTeacher?: string;
+  iconUrl?: string;
+}): Promise<Subject> => {
+  try {
+    const response = await api.post("/subjects", subjectData);
+    const createdSubject = response.data.data;
+
+    return {
+      id: createdSubject._id,
+      _id: createdSubject._id,
+      name: createdSubject.name,
+      code: createdSubject.code,
+      description: createdSubject.description,
+      headTeacher: createdSubject.headTeacher,
+      courseCount: 0, // New subject has no courses
+      iconUrl: createdSubject.iconUrl,
+    };
+  } catch (error: any) {
+    console.error("Error creating subject:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to create subject"
+    );
+  }
+};
+
+export const getSubjectById = async (subjectId: string): Promise<Subject> => {
+  try {
+    const response = await api.get(`/subjects/${subjectId}`);
+    const subjectData = response.data.data;
+
+    return {
+      id: subjectData._id,
+      _id: subjectData._id,
+      name: subjectData.name,
+      code: subjectData.code,
+      description: subjectData.description,
+      headTeacher: subjectData.headTeacher,
+      grade: subjectData.grade,
+      courseCount: subjectData.courseCount || 0,
+      iconUrl: subjectData.iconUrl,
+    };
+  } catch (error: any) {
+    console.error("Error fetching subject:", error);
+    throw new Error(error.response?.data?.message || "Failed to fetch subject");
+  }
+};
+
+export const getCoursesBySubject = async (
+  subjectId: string,
+  params?: {
+    page?: number;
+    limit?: number;
+  }
+): Promise<{
+  data: Course[];
   count: number;
   pagination: { page: number; limit: number; totalPages: number };
 }> => {
   try {
-    const response = await api.get("/api/classes", { params });
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+
+    const queryString = queryParams.toString()
+      ? `?${queryParams.toString()}`
+      : "";
+
+    const response = await api.get(
+      `/subjects/${subjectId}/courses${queryString}`
+    );
+
+    return {
+      data: response.data.data.map((course: any) => ({
+        id: course._id,
+        _id: course._id,
+        title: course.title,
+        code: course.code,
+        description: course.description,
+        curriculumType: course.curriculumType,
+        subject: course.subject,
+        grade: course.grade,
+        teacher: course.teacher,
+        students: course.students,
+        enrolledClasses: course.enrolledClasses,
+        materials: course.materials,
+        startDate: course.startDate,
+        endDate: course.endDate,
+        isActive: course.isActive,
+        maxStudents: course.maxStudents,
+      })),
+      count: response.data.count || 0,
+      pagination: {
+        page: response.data.pagination?.page || 1,
+        limit: response.data.pagination?.limit || params?.limit || 10,
+        totalPages: response.data.pagination?.totalPages || 1,
+      },
+    };
+  } catch (error: any) {
+    console.error("Error fetching courses by subject:", error);
+    throw new Error(
+      error.response?.data?.message ||
+        "Failed to fetch courses for this subject"
+    );
+  }
+};
+
+// Add dummy implementation for the functions currently used in the UI
+export const getFormLevelsBySubject = async (
+  subjectId: string
+): Promise<{
+  data: any[];
+}> => {
+  try {
+    // This is a temporary function to prevent errors
+    // In the future, this should be implemented properly
+    return { data: [] };
+  } catch (error: any) {
+    console.error("Error fetching form levels:", error);
+    throw new Error("Failed to fetch form levels");
+  }
+};
+
+export const getClassesBySubjectAndFormLevel = async (
+  subjectId: string,
+  formLevelId: string
+): Promise<{
+  data: any[];
+}> => {
+  try {
+    const response = await api.get(
+      `/subjects/${subjectId}/form-levels/${formLevelId}/classes`
+    );
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to fetch classes");
   }
 };
 
-export async function getClass(classId: string): Promise<Class> {
+export const getSubjectContents = async (
+  subjectId: string
+): Promise<Content[]> => {
   try {
-    // First get the class details with populated students
-    const classResponse = await api.get(
-      `/api/classes/${classId}?populate=students`
-    );
-    const classData = classResponse.data.data;
-
-    // Normalize the class data to ensure id consistency
-    const normalizedData = {
-      ...classData,
-      id: classData.id || classData._id,
-    };
-
-    // Normalize student IDs if they exist
-    if (normalizedData.students && Array.isArray(normalizedData.students)) {
-      normalizedData.students = normalizedData.students.map((student: any) => ({
-        ...student,
-        id: student.id || student._id,
-      }));
-    }
-
-    // Normalize classTeacher if it exists
-    if (normalizedData.classTeacher) {
-      normalizedData.classTeacher = {
-        ...normalizedData.classTeacher,
-        id: normalizedData.classTeacher.id || normalizedData.classTeacher._id,
-      };
-    }
-
-    // Check if courses are already populated objects or just IDs
-    if (normalizedData.courses && normalizedData.courses.length > 0) {
-      // Check if the first course is already a fully populated object
-      if (
-        typeof normalizedData.courses[0] === "object" &&
-        normalizedData.courses[0].title
-      ) {
-        // Courses are already populated, ensure they have both id and _id for consistency
-        normalizedData.courses = normalizedData.courses.map((course: any) => {
-          // Normalize the course object
-          const normalizedCourse = {
-            ...course,
-            id: course.id || course._id,
-          };
-
-          // Also normalize teacher if present
-          if (normalizedCourse.teacher) {
-            normalizedCourse.teacher = {
-              ...normalizedCourse.teacher,
-              id: normalizedCourse.teacher.id || normalizedCourse.teacher._id,
-            };
-          }
-
-          return normalizedCourse;
-        });
-
-        return normalizedData;
-      } else {
-        // Courses are just IDs, fetch the full details
-        const coursesResponse = await api.get("/api/courses");
-        const allCourses = coursesResponse.data.data;
-
-        // Map the course IDs to full course objects
-        const courseIds = normalizedData.courses.map((course: any) =>
-          typeof course === "string" ? course : course._id || course.id
-        );
-
-        const populatedCourses = courseIds
-          .map((courseId: string) =>
-            allCourses.find(
-              (course: any) => course.id === courseId || course._id === courseId
-            )
-          )
-          .filter(Boolean); // Remove any undefined values
-
-        // Normalize the populated courses
-        const normalizedCourses = populatedCourses.map((course: any) => {
-          const normalizedCourse = {
-            ...course,
-            id: course.id || course._id,
-          };
-
-          if (normalizedCourse.teacher) {
-            normalizedCourse.teacher = {
-              ...normalizedCourse.teacher,
-              id: normalizedCourse.teacher.id || normalizedCourse.teacher._id,
-            };
-          }
-
-          return normalizedCourse;
-        });
-
-        // Return the class data with populated courses
-        return {
-          ...normalizedData,
-          courses: normalizedCourses,
-        };
-      }
-    }
-
-    // If no courses, return the normalized class data with empty courses array
-    return {
-      ...normalizedData,
-      courses: [],
-    };
-  } catch (error: any) {
-    // Check for authentication errors specifically
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      throw new Error("You are not logged in. Please log in to get access");
-    }
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch class details"
-    );
-  }
-}
-
-export async function updateClass(
-  classId: string,
-  classData: Partial<
-    Omit<Class, "id" | "students" | "courses" | "createdAt" | "updatedAt">
-  >
-): Promise<Class> {
-  try {
-    const response = await api.put(`/api/classes/${classId}`, classData);
-    return response.data.data;
-  } catch (error: any) {
-    // Check for specific error about duplicate class code
-    if (error.response?.data?.code === "DUPLICATE_CLASS_CODE") {
-      throw new Error("A class with this code already exists");
-    }
-    // Check for authentication errors
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      throw new Error("You are not logged in. Please log in to get access");
-    }
-    throw new Error(error.response?.data?.message || "Failed to update class");
-  }
-}
-
-export const removeStudentFromClass = async (
-  classId: string,
-  studentId: string
-): Promise<void> => {
-  try {
-    await api.delete(`/api/classes/${classId}/students/${studentId}`);
+    const response = await api.get(`/subjects/${subjectId}`);
+    return response.data.data.materials || [];
   } catch (error: any) {
     throw new Error(
-      error.response?.data?.message || "Failed to remove student from class"
+      error.response?.data?.message || "Failed to fetch subject contents"
     );
   }
 };
 
-export const getAllUsers = async (): Promise<
-  {
-    id: string;
-    username: string;
-    email: string;
-    name: string;
-    role: string;
-  }[]
-> => {
-  try {
-    const response = await api.get("/api/users");
-    return response.data.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Failed to fetch users");
-  }
-};
-
-// Update the getAvailableStudents function to use getAllUsers
-export const getAvailableStudents = async (
-  classId: string
-): Promise<
-  {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-  }[]
-> => {
-  try {
-    const allUsers = await getAllUsers();
-    // Filter for students only
-    return allUsers.filter((user) => user.role === "student");
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch available students"
-    );
-  }
-};
-
-// Update the existing addStudentsToClass function to handle single student
-export const addStudentToClass = async (
-  classId: string,
-  studentId: string
-): Promise<void> => {
-  try {
-    await api.post(`/api/classes/${classId}/students`, {
-      students: [studentId],
-    });
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Failed to add student to class"
-    );
-  }
-};
-
-export const getClassCourses = async (classId: string): Promise<Course[]> => {
-  try {
-    const response = await api.get(`/api/classes/${classId}/courses`);
-    return response.data.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch class courses"
-    );
-  }
-};
-
-// Update the class-course management endpoints
-export const assignCourseToClass = async (
-  classId: string,
-  courseId: string
-): Promise<void> => {
-  try {
-    await api.post(`/api/classes/${classId}/courses`, {
-      courseId,
-    });
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Failed to assign course to class"
-    );
-  }
-};
-
-export const removeCourseFromClass = async (
-  classId: string,
-  courseId: string
-): Promise<void> => {
-  try {
-    await api.delete(`/api/classes/${classId}/courses/${courseId}`);
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Failed to remove course from class"
-    );
-  }
-};
-
-export const createCourseContent = async (
-  courseId: string,
+export const createSubjectContent = async (
+  subjectId: string,
   formData: FormData
 ): Promise<Content> => {
   try {
-    const response = await api.post(`/api/contents`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    // First get the subject details to get the grade
+    const subject = await getSubjectById(subjectId);
 
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to create content");
-    }
+    // Add grade to formData if available
+    if (subject.grade) formData.append("grade", subject.grade.toString());
 
-    return response.data.data;
-  } catch (error: any) {
-    console.error(
-      "Content creation error:",
-      error.response?.data || error.message
-    );
-    throw new Error(
-      error.response?.data?.message || "Failed to create content"
-    );
-  }
-};
+    console.log("createSubjectContent", formData);
 
-export const uploadCourseFile = async (
-  courseId: string,
-  file: File | null,
-  description?: string
-): Promise<void> => {
-  try {
-    if (!file) {
-      throw new Error("No file provided");
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("courseId", courseId);
-    if (description) {
-      formData.append("description", description);
-    }
-    formData.append("type", "file"); // Indicate this is a file upload
-
-    await api.post(`/api/contents`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-  } catch (error: any) {
-    console.error("File upload failed:", error);
-    throw new Error(error.response?.data?.message || "Failed to upload file");
-  }
-};
-
-// User Profile Management APIs
-export const getUserProfile = async (): Promise<User> => {
-  try {
-    const response = await api.get("/api/users/me");
-    return response.data.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Failed to fetch profile");
-  }
-};
-
-export const getStudentCourses = async () => {
-  try {
-    const response = await api.get("/api/users/me/courses");
-    return response.data.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Failed to fetch courses");
-  }
-};
-
-export const getTeachingCourses = async () => {
-  try {
-    const response = await api.get("/api/users/me/teaching");
-    return response.data.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch teaching courses"
-    );
-  }
-};
-
-export const updateCourse = async (
-  courseId: string,
-  courseData: Partial<{
-    title: string;
-    description: string;
-    code: string;
-    isActive: boolean;
-    coverImage: string;
-    category: string;
-  }>
-): Promise<Course> => {
-  try {
-    const response = await api.put(`/api/courses/${courseId}`, courseData);
-    return response.data.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Failed to update course");
-  }
-};
-
-export const deleteCourse = async (courseId: string): Promise<void> => {
-  try {
-    console.log("Attempting to delete course:", courseId);
-    const response = await api.delete(`/api/courses/${courseId}`);
-
-    // Check if the deletion was successful
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to delete course");
-    }
-
-    console.log("Course deleted successfully");
-  } catch (error: any) {
-    console.error(
-      "Course deletion error:",
-      error.response?.data || error.message
-    );
-    throw new Error(error.response?.data?.message || "Failed to delete course");
-  }
-};
-
-// Assignment APIs
-export const createAssignment = async (formData: FormData) => {
-  const response = await api.post("/api/assignments", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
-  return response.data;
-};
-
-export const getAssignments = async (
-  courseId: string,
-  moduleNumber?: number,
-  isPublished?: boolean
-) => {
-  const params = new URLSearchParams();
-  params.append("courseId", courseId);
-  if (moduleNumber !== undefined)
-    params.append("moduleNumber", moduleNumber.toString());
-  if (isPublished !== undefined)
-    params.append("isPublished", isPublished.toString());
-
-  const response = await api.get(`/api/assignments?${params.toString()}`);
-  return response.data;
-};
-
-export const getAssignment = async (id: string) => {
-  const response = await api.get(`/api/assignments/${id}`);
-  return response.data;
-};
-
-export const updateAssignment = async (id: string, formData: FormData) => {
-  const response = await api.put(`/api/assignments/${id}`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
-  return response.data;
-};
-
-export const deleteAssignment = async (id: string): Promise<void> => {
-  try {
-    console.log(`API Client: Deleting assignment with ID ${id}`);
-    const response = await api.delete(`/api/assignments/${id}`);
-
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to delete assignment");
-    }
-  } catch (error: any) {
-    console.error("API Client: Error deleting assignment:", {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
-
-    // Handle specific error cases
-    switch (error.response?.status) {
-      case 401:
-        throw new Error("Please log in to delete assignments");
-      case 403:
-        throw new Error("You don't have permission to delete this assignment");
-      case 404:
-        throw new Error("Assignment not found");
-      default:
-        throw new Error(
-          error.response?.data?.message || "Failed to delete assignment"
-        );
-    }
-  }
-};
-
-// Assignment Submission APIs
-export const submitAssignmentWithFiles = async (
-  assignmentId: string,
-  formData: FormData
-) => {
-  const response = await api.post(
-    `/api/assignments/${assignmentId}/submit`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
-  return response.data;
-};
-
-export const getMyAssignmentSubmission = async (assignmentId: string) => {
-  const response = await api.get(
-    `/api/assignments/${assignmentId}/my-submission`
-  );
-  return response.data;
-};
-
-export const getAllAssignmentSubmissions = async (assignmentId: string) => {
-  const response = await api.get(
-    `/api/assignments/${assignmentId}/submissions`
-  );
-  return response.data;
-};
-
-export const gradeAssignmentSubmission = async (
-  submissionId: string,
-  data: { score: number; feedback?: string }
-) => {
-  const response = await api.put(
-    `/api/assignments/submissions/${submissionId}`,
-    data
-  );
-  return response.data;
-};
-
-export const downloadAssignmentAttachment = async (
-  submissionId: string,
-  attachmentId: string
-) => {
-  const response = await api.get(
-    `/api/assignments/submissions/${submissionId}/download/${attachmentId}`,
-    { responseType: "blob" }
-  );
-  return response.data;
-};
-
-export const updateCourseContent = async (
-  contentId: string,
-  data:
-    | FormData
-    | {
-        title?: string;
-        description?: string;
-        type?: "document" | "video" | "link" | "text";
-        moduleNumber?: number;
-        lessonNumber?: number;
-        order?: number;
-        link?: string;
-        textContent?: string;
-      }
-): Promise<Content> => {
-  try {
-    console.log(`API Client: Updating content with ID ${contentId}`);
-
-    let response;
-    if (data instanceof FormData) {
-      response = await api.put(`/api/contents/${contentId}`, data, {
+    const response = await api.post(
+      `/subjects/${subjectId}/materials`,
+      formData,
+      {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      });
-    } else {
-      response = await api.put(`/api/contents/${contentId}`, data);
-    }
-
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to update content");
-    }
-
-    return response.data.data;
-  } catch (error: any) {
-    console.error("API Client: Error updating course content:", {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
-
-    // Handle specific error cases
-    switch (error.response?.status) {
-      case 401:
-        throw new Error("Please log in to update content");
-      case 403:
-        throw new Error(
-          "You don't have permission to update this content. Only course teachers and admins can update content."
-        );
-      case 404:
-        throw new Error("The content you're trying to update was not found");
-      case 400:
-        throw new Error(
-          error.response?.data?.message || "Invalid update data provided"
-        );
-      default:
-        throw new Error(
-          error.response?.data?.message || "Failed to update content"
-        );
-    }
-  }
-};
-
-// Subject-first approach API services
-
-export const getSubjects = async (params?: {
-  page?: number;
-  limit?: number;
-  teacherId?: string;
-}): Promise<{
-  data: { id: string; name: string; code?: string; courseCount: number }[];
-  count: number;
-  pagination: { page: number; limit: number; totalPages: number };
-}> => {
-  try {
-    // Construct query string
-    let queryParams = new URLSearchParams();
-
-    if (params?.page) queryParams.append("page", params.page.toString());
-    if (params?.limit) queryParams.append("limit", params.limit.toString());
-    if (params?.teacherId) queryParams.append("teacher", params.teacherId);
-
-    const queryString = queryParams.toString();
-    const url = `/api/courses${queryString ? `?${queryString}` : ""}`;
-
-    console.log(`Fetching subjects from: ${url}`);
-    const response = await api.get(url);
-
-    // Process the response data to group courses by subject
-    const courseData = response.data.data || [];
-    const subjectMap = courseData.reduce(
-      (acc: Record<string, any>, course: any) => {
-        const subjectName = course.subject || "Unknown Subject";
-
-        if (!acc[subjectName]) {
-          acc[subjectName] = {
-            id: subjectName, // Use the subject name as ID (you might want a better approach in production)
-            name: subjectName,
-            code: subjectName.substring(0, 3).toUpperCase(), // Simple code generation
-            courses: [],
-            courseCount: 0,
-          };
-        }
-
-        acc[subjectName].courses.push(course);
-        acc[subjectName].courseCount += 1;
-
-        return acc;
-      },
-      {}
-    );
-
-    // Convert to array and ensure correct type
-    const subjects = Object.values(subjectMap) as {
-      id: string;
-      name: string;
-      code?: string;
-      courseCount: number;
-    }[];
-
-    return {
-      data: subjects,
-      count: subjects.length,
-      pagination: response.data.pagination || {
-        page: 1,
-        limit: 10,
-        totalPages: 1,
-      },
-    };
-  } catch (error: any) {
-    console.error("Error fetching subjects:", error);
-    throw new Error("Failed to retrieve subjects. Please try again later.");
-  }
-};
-
-export const getFormLevelsBySubject = async (
-  subjectName: string
-): Promise<{
-  data: { id: string; name: string; grade: string; courseCount: number }[];
-}> => {
-  try {
-    // Fetch courses for the selected subject
-    const response = await api.get(
-      `/api/courses?subject=${encodeURIComponent(subjectName)}`
-    );
-    const courseData = response.data.data || [];
-
-    // Group courses by form level/grade
-    const formLevelMap = courseData.reduce(
-      (acc: Record<string, any>, course: any) => {
-        const grade = course.grade || "Unspecified Grade";
-
-        if (!acc[grade]) {
-          acc[grade] = {
-            id: grade,
-            name: `Form ${grade}`,
-            grade: grade,
-            courses: [],
-            courseCount: 0,
-          };
-        }
-
-        acc[grade].courses.push(course);
-        acc[grade].courseCount += 1;
-
-        return acc;
-      },
-      {}
-    );
-
-    // Convert to array and ensure correct type
-    const formLevels = Object.values(formLevelMap) as {
-      id: string;
-      name: string;
-      grade: string;
-      courseCount: number;
-    }[];
-
-    return {
-      data: formLevels,
-    };
-  } catch (error: any) {
-    console.error("Error fetching form levels by subject:", error);
-    throw new Error("Failed to retrieve form levels. Please try again later.");
-  }
-};
-
-export const getClassesBySubjectAndFormLevel = async (
-  subjectName: string,
-  formLevel: string
-): Promise<{
-  data: { id: string; name: string; section?: string; studentCount: number }[];
-}> => {
-  try {
-    // Fetch courses for the selected subject and form level
-    const coursesResponse = await api.get(
-      `/api/courses?subject=${encodeURIComponent(
-        subjectName
-      )}&grade=${encodeURIComponent(formLevel)}`
-    );
-    const courseData = coursesResponse.data.data || [];
-
-    // If no courses found, return empty array
-    if (!courseData || courseData.length === 0) {
-      return { data: [] };
-    }
-
-    // Define the class interface to match the return type
-    interface ClassData {
-      id: string;
-      name: string;
-      section?: string;
-      studentCount: number;
-    }
-
-    // Extract enrolled classes directly from the course data
-    const formattedClasses: ClassData[] = [];
-
-    // Go through each course and extract its enrolled classes
-    for (const course of courseData) {
-      if (course.enrolledClasses && Array.isArray(course.enrolledClasses)) {
-        // Map the enrolledClasses to the expected format
-        const classes = course.enrolledClasses.map((cls: any) => ({
-          id: cls._id || cls.id,
-          name: cls.name,
-          section: cls.code, // Use code as section if needed
-          studentCount: cls.studentCount || 0,
-        }));
-
-        // Add these classes to our result, avoiding duplicates
-        for (const cls of classes) {
-          if (
-            !formattedClasses.some((existingCls) => existingCls.id === cls.id)
-          ) {
-            formattedClasses.push(cls);
-          }
-        }
       }
-    }
+    );
 
     return {
-      data: formattedClasses,
+      id: response.data._id,
+      _id: response.data._id,
+      title: response.data.title,
+      description: response.data.description,
+      moduleNumber: response.data.moduleNumber,
+      lessonNumber: response.data.lessonNumber,
+      order: response.data.order,
+      fileUrl: response.data.fileUrl,
+      uploadedAt: response.data.uploadedAt,
+      isInherited: response.data.isInherited,
+      inheritedFrom: response.data.inheritedFrom,
+      originalMaterialId: response.data.originalMaterialId,
     };
   } catch (error: any) {
-    console.error("Error fetching classes by subject and form level:", error);
-    throw new Error("Failed to retrieve classes. Please try again later.");
+    console.error("Error creating subject content:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to create subject content"
+    );
+  }
+};
+
+export const deleteSubjectContent = async (
+  subjectId: string,
+  materialId: string
+): Promise<void> => {
+  try {
+    await api.delete(`/subjects/${subjectId}/materials/${materialId}`);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to delete subject content"
+    );
+  }
+};
+
+export const bulkDistributeContent = async (
+  subjectId: string,
+  data: {
+    materialIds: string[];
+    courseIds: string[];
+  }
+): Promise<void> => {
+  try {
+    await api.post(`/subjects/${subjectId}/materials/bulk-distribute`, data);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to distribute content to courses"
+    );
   }
 };

@@ -24,8 +24,12 @@ export default function CourseCard({
 
   // Check if the current user is enrolled in this course
   const isEnrolled =
-    user && course.students
-      ? course.students.some((student) => student._id === user._id)
+    user && course.students && Array.isArray(course.students)
+      ? course.students.some((student: any) =>
+          typeof student === "object" && student._id
+            ? student._id === user._id
+            : student === user._id
+        )
       : false;
 
   return (
@@ -64,6 +68,12 @@ export default function CourseCard({
         <Text color="secondary" fontSize={1} mb={3}>
           {course.code}
         </Text>
+
+        {course.subject && (
+          <Text color="primary" fontSize={1} mb={2}>
+            Subject: {course.subject.name}
+          </Text>
+        )}
 
         <Text
           sx={{
@@ -142,8 +152,10 @@ export default function CourseCard({
             </Box>
 
             <Text fontSize={1} color="secondary">
-              {course.students
-                ? `${course.students.length}/${course.maxStudents} students`
+              {course.students && Array.isArray(course.students)
+                ? `${course.students.length}/${
+                    course.maxStudents || "∞"
+                  } students`
                 : "0/0 students"}
             </Text>
           </Flex>

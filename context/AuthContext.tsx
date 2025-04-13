@@ -20,6 +20,9 @@ interface AuthContextType {
     name: string;
     email: string;
     password: string;
+    role?: string;
+    school?: string;
+    grade?: string;
   }) => Promise<User>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -101,6 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string;
     email: string;
     password: string;
+    role?: string;
+    school?: string;
+    grade?: string;
   }) => {
     try {
       console.log("AuthContext: Attempting registration for:", userData.email);

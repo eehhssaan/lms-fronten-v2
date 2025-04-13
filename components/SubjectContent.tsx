@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Box, Heading, Text, Flex } from "rebass";
 import { Content } from "@/types";
-import { downloadContent } from "@/lib/api";
+import { downloadContent, deleteSubjectContent } from "@/lib/api";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { getStoredToken } from "@/lib/api";
@@ -9,6 +9,7 @@ import { getStoredToken } from "@/lib/api";
 interface SubjectContentProps {
   contents: Content[];
   subjectId: string;
+  onContentDeleted?: () => void;
 }
 
 interface ModuleContent {
@@ -22,10 +23,12 @@ interface ModuleContent {
 export default function SubjectContent({
   contents,
   subjectId,
+  onContentDeleted,
 }: SubjectContentProps) {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   // Organize contents by module and lesson
   const organizedContents = contents
@@ -129,6 +132,35 @@ export default function SubjectContent({
     }
   };
 
+  const handleDelete = async (contentId: string) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this material? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeleting(contentId);
+      setError(null);
+
+      await deleteSubjectContent(subjectId, contentId);
+      toast.success("Material deleted successfully");
+
+      // Refresh the content list
+      if (onContentDeleted) {
+        onContentDeleted();
+      }
+    } catch (error: any) {
+      console.error("Error deleting material:", error);
+      toast.error(error.message || "Failed to delete material");
+      setError(error.message || "Failed to delete material");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   return (
     <Box>
       {error && (
@@ -195,15 +227,50 @@ export default function SubjectContent({
                       </Text>
                     </Box>
 
-                    <Box>
-                      {downloading === content._id ? (
-                        <Flex alignItems="center">
-                          <Text fontSize={1} mr={2}>
-                            {downloadProgress.toFixed(0)}%
-                          </Text>
+                    <Flex gap={2}>
+                      <Box>
+                        {downloading === content._id ? (
+                          <Flex alignItems="center">
+                            <Text fontSize={1} mr={2}>
+                              {downloadProgress.toFixed(0)}%
+                            </Text>
+                            <Box
+                              as="button"
+                              className="btn btn-secondary"
+                              sx={{
+                                py: 1,
+                                px: 2,
+                                fontSize: 1,
+                                opacity: 0.7,
+                                cursor: "not-allowed",
+                              }}
+                              disabled
+                            >
+                              Downloading...
+                            </Box>
+                          </Flex>
+                        ) : (
                           <Box
                             as="button"
+                            onClick={() =>
+                              handleDownload(content._id!, content.title)
+                            }
                             className="btn btn-secondary"
+                            sx={{
+                              py: 1,
+                              px: 2,
+                              fontSize: 1,
+                            }}
+                          >
+                            Download
+                          </Box>
+                        )}
+                      </Box>
+                      <Box>
+                        {deleting === content._id ? (
+                          <Box
+                            as="button"
+                            className="btn btn-danger"
                             sx={{
                               py: 1,
                               px: 2,
@@ -213,26 +280,24 @@ export default function SubjectContent({
                             }}
                             disabled
                           >
-                            Downloading...
+                            Deleting...
                           </Box>
-                        </Flex>
-                      ) : (
-                        <Box
-                          as="button"
-                          onClick={() =>
-                            handleDownload(content._id!, content.title)
-                          }
-                          className="btn btn-secondary"
-                          sx={{
-                            py: 1,
-                            px: 2,
-                            fontSize: 1,
-                          }}
-                        >
-                          Download
-                        </Box>
-                      )}
-                    </Box>
+                        ) : (
+                          <Box
+                            as="button"
+                            onClick={() => handleDelete(content._id!)}
+                            className="btn btn-danger"
+                            sx={{
+                              py: 1,
+                              px: 2,
+                              fontSize: 1,
+                            }}
+                          >
+                            Delete
+                          </Box>
+                        )}
+                      </Box>
+                    </Flex>
                   </Flex>
 
                   {content.description && (

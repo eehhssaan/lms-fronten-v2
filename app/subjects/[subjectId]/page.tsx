@@ -217,7 +217,11 @@ export default function SubjectDetailPage() {
                   boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                 }}
               >
-                <SubjectContent contents={contents} subjectId={subjectId} />
+                <SubjectContent
+                  contents={contents}
+                  subjectId={subjectId}
+                  onContentDeleted={refreshContents}
+                />
               </Box>
             ) : (
               <Box

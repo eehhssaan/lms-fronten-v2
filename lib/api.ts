@@ -1743,6 +1743,7 @@ export const deleteSubjectContent = async (
   materialId: string
 ): Promise<void> => {
   try {
+    console.log(subjectId, materialId);
     await api.delete(`/subjects/${subjectId}/materials/${materialId}`);
   } catch (error: any) {
     throw new Error(
@@ -1763,6 +1764,86 @@ export const bulkDistributeContent = async (
   } catch (error: any) {
     throw new Error(
       error.response?.data?.message || "Failed to distribute content to courses"
+    );
+  }
+};
+
+export const updateSubjectContent = async (
+  subjectId: string,
+  materialId: string,
+  data:
+    | FormData
+    | {
+        title?: string;
+        description?: string;
+        type?: "document" | "video" | "link" | "text" | "other";
+        link?: string;
+        textContent?: string;
+        moduleNumber?: number;
+        lessonNumber?: number;
+        order?: number;
+      }
+): Promise<Content> => {
+  try {
+    let response;
+
+    if (data instanceof FormData) {
+      response = await api.put(
+        `/subjects/${subjectId}/materials/${materialId}`,
+        data,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+    } else {
+      response = await api.put(
+        `/subjects/${subjectId}/materials/${materialId}`,
+        data
+      );
+    }
+
+    if (!response.data.success) {
+      throw new Error(
+        response.data.message || "Failed to update subject content"
+      );
+    }
+
+    const updatedContent = response.data.data;
+    return {
+      id: updatedContent._id,
+      _id: updatedContent._id,
+      title: updatedContent.title,
+      description: updatedContent.description,
+      moduleNumber: updatedContent.moduleNumber,
+      lessonNumber: updatedContent.lessonNumber,
+      order: updatedContent.order,
+      type: updatedContent.type,
+      link: updatedContent.link,
+      textContent: updatedContent.textContent,
+      fileUrl: updatedContent.fileUrl,
+      uploadedAt: updatedContent.uploadedAt,
+      isInherited: updatedContent.isInherited,
+      inheritedFrom: updatedContent.inheritedFrom,
+      originalMaterialId: updatedContent.originalMaterialId,
+    };
+  } catch (error: any) {
+    console.error("Error updating subject content:", error);
+
+    // Handle specific error cases
+    if (error.response?.status === 401) {
+      throw new Error("Please log in to update subject content.");
+    } else if (error.response?.status === 403) {
+      throw new Error("You don't have permission to update this content.");
+    } else if (error.response?.status === 404) {
+      throw new Error("Subject content not found.");
+    } else if (error.response?.status === 413) {
+      throw new Error("The file you're trying to upload is too large.");
+    }
+
+    throw new Error(
+      error.response?.data?.message || "Failed to update subject content"
     );
   }
 };

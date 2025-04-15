@@ -170,7 +170,10 @@ export interface Content {
   moduleNumber?: number;
   lessonNumber?: number;
   order?: number;
-  type?: string;
+  type?: "document" | "video" | "link" | "text" | "other";
+  link?: string;
+  textContent?: string;
+  fileUrl?: string;
   courseId?: {
     id: string;
     title: string;

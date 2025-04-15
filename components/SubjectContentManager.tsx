@@ -4,7 +4,11 @@ import Button from "@/components/Button";
 import { Content } from "@/types";
 import ErrorMessage from "@/components/ErrorMessage";
 import Loading from "@/components/Loading";
-import { createSubjectContent, deleteSubjectContent } from "@/lib/api";
+import {
+  createSubjectContent,
+  deleteSubjectContent,
+  updateSubjectContent,
+} from "@/lib/api";
 
 interface SubjectContentManagerProps {
   subjectId: string;
@@ -30,6 +34,7 @@ export default function SubjectContentManager({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentDocument, setCurrentDocument] = useState<string | null>(null);
 
   const resetForm = () => {
     setTitle("");
@@ -42,7 +47,11 @@ export default function SubjectContentManager({
   };
 
   const handleStartEdit = (content: Content) => {
-    if (!content._id) return;
+    console.log("handleStartEdit called with content:", content);
+    if (!content._id) {
+      console.warn("Content _id is missing:", content);
+      return;
+    }
     setIsEditing(content._id);
     setTitle(content.title);
     setDescription(content.description || "");
@@ -50,6 +59,8 @@ export default function SubjectContentManager({
     setLessonNumber(content.lessonNumber || 1);
     setOrder(content.order || 1);
     setFile(null);
+    setCurrentDocument(content.link || null);
+    console.log("Edit mode activated for content:", content._id);
   };
 
   const handleCancelEdit = () => {
@@ -62,6 +73,8 @@ export default function SubjectContentManager({
     setIsSubmitting(true);
     setError("");
 
+    console.log("isEditing");
+
     try {
       const formData = new FormData();
       formData.append("title", title);
@@ -70,21 +83,32 @@ export default function SubjectContentManager({
         formData.append("moduleNumber", moduleNumber.toString());
       if (lessonNumber)
         formData.append("lessonNumber", lessonNumber.toString());
-      formData.append("type", "document");
-
       if (order) formData.append("order", order.toString());
-      if (file) formData.append("file", file);
 
-      console.log("formData", formData);
+      if (!isEditing || file) {
+        formData.append("type", "document");
+        if (file) formData.append("file", file);
+      }
 
-      const response = await createSubjectContent(subjectId, formData);
-      console.log("Subject Content created successfully:", response);
+      let response;
+      if (isEditing) {
+        response = await updateSubjectContent(subjectId, isEditing, formData);
+        console.log("Subject Content updated successfully:", response);
+      } else {
+        response = await createSubjectContent(subjectId, formData);
+        console.log("Subject Content created successfully:", response);
+      }
 
       onContentAdded();
       resetForm();
+      if (isEditing) {
+        setIsEditing(null);
+      } else {
+        setIsAdding(false);
+      }
     } catch (err: any) {
-      console.error("Error creating content:", err);
-      setError(err.message || "Failed to create content");
+      console.error("Error saving content:", err);
+      setError(err.message || "Failed to save content");
     } finally {
       setIsSubmitting(false);
     }
@@ -123,6 +147,47 @@ export default function SubjectContentManager({
     }
   };
 
+  const manualSubmit = () => {
+    console.log("Manual submit triggered");
+    if (isEditing) {
+      const formData = new FormData();
+      formData.append("title", title);
+      if (description) formData.append("description", description);
+      if (moduleNumber)
+        formData.append("moduleNumber", moduleNumber.toString());
+      if (lessonNumber)
+        formData.append("lessonNumber", lessonNumber.toString());
+      if (order) formData.append("order", order.toString());
+
+      console.log("Attempting to update content:", {
+        subjectId,
+        contentId: isEditing,
+        formData: {
+          title: formData.get("title"),
+          description: formData.get("description"),
+          moduleNumber: formData.get("moduleNumber"),
+          lessonNumber: formData.get("lessonNumber"),
+          order: formData.get("order"),
+        },
+      });
+
+      updateSubjectContent(subjectId, isEditing, formData)
+        .then((response) => {
+          console.log("Update successful:", response);
+          onContentAdded();
+          resetForm();
+          setIsEditing(null);
+        })
+        .catch((error) => {
+          console.error("Update failed:", error);
+          setError(error.message || "Failed to update content");
+        })
+        .finally(() => {
+          setIsSubmitting(false);
+        });
+    }
+  };
+
   return (
     <Box>
       <Flex justifyContent="space-between" alignItems="center" mb={3}>
@@ -151,43 +216,60 @@ export default function SubjectContentManager({
               (content): content is Content & { _id: string } =>
                 content !== null && !!content._id
             )
-            .map((content) => (
-              <Box
-                key={content._id}
-                p={3}
-                mb={2}
-                sx={{
-                  border: "1px solid",
-                  borderColor: "gray.200",
-                  borderRadius: "6px",
-                  bg: "white",
-                  opacity: deletingContentIds.includes(content._id) ? 0.7 : 1,
-                  transition: "opacity 0.2s ease-in-out",
-                }}
-              >
-                <Flex justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Text fontWeight="bold">{content.title}</Text>
-                    <Text fontSize="sm" color="gray.600">
-                      Module {content.moduleNumber}, Lesson{" "}
-                      {content.lessonNumber}
-                    </Text>
-                  </Box>
-                  <Flex>
-                    <Button
-                      onClick={() => handleDelete(content._id)}
-                      variant="danger"
-                      size="small"
-                      disabled={deletingContentIds.includes(content._id)}
-                    >
-                      {deletingContentIds.includes(content._id)
-                        ? "Deleting..."
-                        : "Delete"}
-                    </Button>
+            .map((content) => {
+              console.log("Rendering content item:", content);
+              return (
+                <Box
+                  key={content._id}
+                  p={3}
+                  mb={2}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "gray.200",
+                    borderRadius: "6px",
+                    bg: "white",
+                    opacity: deletingContentIds.includes(content._id) ? 0.7 : 1,
+                    transition: "opacity 0.2s ease-in-out",
+                  }}
+                >
+                  <Flex justifyContent="space-between" alignItems="center">
+                    <Box>
+                      <Text fontWeight="bold">{content.title}</Text>
+                      <Text fontSize="sm" color="gray.600">
+                        Module {content.moduleNumber}, Lesson{" "}
+                        {content.lessonNumber}
+                      </Text>
+                    </Box>
+                    <Flex gap={2}>
+                      <Button
+                        onClick={() => {
+                          console.log(
+                            "Edit button clicked for content:",
+                            content
+                          );
+                          handleStartEdit(content);
+                        }}
+                        variant="secondary"
+                        size="small"
+                        disabled={deletingContentIds.includes(content._id)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        onClick={() => handleDelete(content._id)}
+                        variant="danger"
+                        size="small"
+                        disabled={deletingContentIds.includes(content._id)}
+                      >
+                        {deletingContentIds.includes(content._id)
+                          ? "Deleting..."
+                          : "Delete"}
+                      </Button>
+                    </Flex>
                   </Flex>
-                </Flex>
-              </Box>
-            ))}
+                </Box>
+              );
+            })}
 
           {deleteError && (
             <Box
@@ -204,7 +286,7 @@ export default function SubjectContentManager({
         </Box>
       )}
 
-      {isAdding && (
+      {(isAdding || isEditing) && (
         <Box
           className="card"
           mb={4}
@@ -213,10 +295,10 @@ export default function SubjectContentManager({
           sx={{ boxShadow: "sm", border: "1px solid", borderColor: "gray.200" }}
         >
           <Heading as="h4" fontSize={2} mb={3}>
-            Add Subject Material
+            {isEditing ? "Edit Subject Material" : "Add Subject Material"}
           </Heading>
 
-          <form onSubmit={handleSubmit}>
+          <div>
             <Box mb={4}>
               <Text as="label" display="block" mb={2} fontWeight="bold">
                 Title{" "}
@@ -243,16 +325,11 @@ export default function SubjectContentManager({
 
             <Box mb={4}>
               <Text as="label" display="block" mb={2} fontWeight="bold">
-                Description{" "}
-                <Box as="span" color="red" display="inline">
-                  *
-                </Box>
+                Description
               </Text>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                required
                 className="form-textarea"
                 placeholder="Enter material description"
                 style={{
@@ -261,75 +338,13 @@ export default function SubjectContentManager({
                   borderRadius: "6px",
                   border: "1px solid #ddd",
                   fontSize: "16px",
-                  resize: "vertical",
                   minHeight: "100px",
                 }}
               />
             </Box>
 
-            <Box mb={4}>
-              <Text
-                as="label"
-                htmlFor="file-upload"
-                display="block"
-                mb={2}
-                fontWeight="bold"
-              >
-                File{" "}
-                <Box as="span" color="red" display="inline">
-                  *
-                </Box>
-              </Text>
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  width: "100%",
-                }}
-              >
-                <label
-                  htmlFor="file-upload"
-                  style={{
-                    cursor: "pointer",
-                    padding: "10px",
-                    border: "2px dashed #ccc",
-                    borderRadius: "4px",
-                    textAlign: "center",
-                    marginBottom: "10px",
-                  }}
-                >
-                  {file ? file.name : "Click to select a file"}
-                </label>
-                <input
-                  id="file-upload"
-                  name="material-file"
-                  type="file"
-                  onChange={handleFileChange}
-                  required
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.mp4,.zip"
-                  aria-label="Upload subject material"
-                  style={{
-                    position: "absolute",
-                    width: "1px",
-                    height: "1px",
-                    padding: 0,
-                    margin: "-1px",
-                    overflow: "hidden",
-                    clip: "rect(0, 0, 0, 0)",
-                    whiteSpace: "nowrap",
-                    border: 0,
-                  }}
-                />
-                <Text fontSize="sm" color="gray.600" mt={1}>
-                  Supported formats: PDF, Word, PowerPoint, Excel, Text, Images
-                  (JPG/PNG), Video (MP4), ZIP
-                </Text>
-              </Box>
-            </Box>
-
-            <Flex mx={-2} flexWrap="wrap">
-              <Box width={[1, 1 / 3]} px={2} mb={[3, 0]}>
+            <Flex mb={4} gap={4}>
+              <Box flex={1}>
                 <Text as="label" display="block" mb={2} fontWeight="bold">
                   Module Number{" "}
                   <Box as="span" color="red" display="inline">
@@ -338,10 +353,10 @@ export default function SubjectContentManager({
                 </Text>
                 <input
                   type="number"
-                  min="1"
                   value={moduleNumber}
                   onChange={(e) => setModuleNumber(parseInt(e.target.value))}
                   required
+                  min={1}
                   className="form-input"
                   style={{
                     width: "100%",
@@ -353,7 +368,7 @@ export default function SubjectContentManager({
                 />
               </Box>
 
-              <Box width={[1, 1 / 3]} px={2} mb={[3, 0]}>
+              <Box flex={1}>
                 <Text as="label" display="block" mb={2} fontWeight="bold">
                   Lesson Number{" "}
                   <Box as="span" color="red" display="inline">
@@ -362,10 +377,10 @@ export default function SubjectContentManager({
                 </Text>
                 <input
                   type="number"
-                  min="1"
                   value={lessonNumber}
                   onChange={(e) => setLessonNumber(parseInt(e.target.value))}
                   required
+                  min={1}
                   className="form-input"
                   style={{
                     width: "100%",
@@ -377,15 +392,19 @@ export default function SubjectContentManager({
                 />
               </Box>
 
-              <Box width={[1, 1 / 3]} px={2}>
+              <Box flex={1}>
                 <Text as="label" display="block" mb={2} fontWeight="bold">
-                  Order
+                  Order{" "}
+                  <Box as="span" color="red" display="inline">
+                    *
+                  </Box>
                 </Text>
                 <input
                   type="number"
-                  min="1"
                   value={order}
                   onChange={(e) => setOrder(parseInt(e.target.value))}
+                  required
+                  min={1}
                   className="form-input"
                   style={{
                     width: "100%",
@@ -398,48 +417,137 @@ export default function SubjectContentManager({
               </Box>
             </Flex>
 
+            {!isEditing && (
+              <Box mb={4}>
+                <Text as="label" display="block" mb={2} fontWeight="bold">
+                  File{" "}
+                  <Box as="span" color="red" display="inline">
+                    *
+                  </Box>
+                </Text>
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  required={!isEditing}
+                  className="form-input"
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: "6px",
+                    border: "1px solid #ddd",
+                    fontSize: "16px",
+                  }}
+                />
+              </Box>
+            )}
+
+            {isEditing && (
+              <Box mb={4}>
+                <Text as="label" display="block" mb={2} fontWeight="bold">
+                  Current Document
+                </Text>
+                {currentDocument ? (
+                  <Flex alignItems="center" gap={3}>
+                    <a
+                      href={currentDocument}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "#007bff",
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="currentColor"
+                      >
+                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z" />
+                      </svg>
+                      View Current Document
+                    </a>
+                  </Flex>
+                ) : (
+                  <Text color="gray.500">No document currently attached</Text>
+                )}
+
+                <Box mt={3}>
+                  <Text as="label" display="block" mb={2} fontWeight="bold">
+                    Upload New Document (Optional)
+                  </Text>
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    className="form-input"
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      border: "1px solid #ddd",
+                      fontSize: "16px",
+                    }}
+                  />
+                  {file && (
+                    <Text fontSize="sm" color="gray.600" mt={2}>
+                      New file selected: {file.name}
+                    </Text>
+                  )}
+                </Box>
+              </Box>
+            )}
+
             {error && (
-              <Box
-                mt={3}
-                p={3}
-                bg="red.50"
-                color="red.600"
-                borderRadius="md"
-                fontSize="sm"
-              >
+              <Box mb={4} p={3} bg="red.50" color="red.600" borderRadius="md">
                 {error}
               </Box>
             )}
 
-            <Flex mt={4} justifyContent="flex-end">
-              <Button
-                onClick={handleCancel}
-                variant="secondary"
-                size="small"
+            <Flex gap={2} justifyContent="flex-end">
+              <button
                 type="button"
-                sx={{ mr: 2 }}
+                className="btn btn-secondary"
+                onClick={isEditing ? handleCancelEdit : handleCancel}
+                disabled={isSubmitting}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                  background: "#f8f9fa",
+                  cursor: isSubmitting ? "not-allowed" : "pointer",
+                }}
               >
                 Cancel
-              </Button>
+              </button>
               <button
-                type="submit"
+                type="button"
                 className="btn btn-primary"
                 disabled={isSubmitting}
                 style={{
                   padding: "8px 16px",
-                  fontSize: "14px",
                   borderRadius: "4px",
-                  cursor: isSubmitting ? "not-allowed" : "pointer",
-                  opacity: isSubmitting ? 0.7 : 1,
-                  backgroundColor: "#007bff",
+                  border: "none",
+                  background: "#007bff",
                   color: "white",
-                  border: "1px solid #0056b3",
+                  cursor: isSubmitting ? "not-allowed" : "pointer",
+                }}
+                onClick={() => {
+                  console.log("Manual submit button clicked");
+                  setIsSubmitting(true);
+                  manualSubmit();
                 }}
               >
-                {isSubmitting ? "Adding..." : "Add Material"}
+                {isSubmitting
+                  ? "Saving..."
+                  : isEditing
+                  ? "Save Changes"
+                  : "Add Material"}
               </button>
             </Flex>
-          </form>
+          </div>
         </Box>
       )}
     </Box>

@@ -89,8 +89,6 @@ export default function ClassesPage() {
             name: cls.classTeacher.name || cls.classTeacher,
             _id: cls.classTeacher._id || "",
           },
-          createdAt: new Date(cls.createdAt).toISOString(),
-          updatedAt: new Date(cls.updatedAt).toISOString(),
         }));
         setClasses(transformedClasses);
       } catch (err: any) {
@@ -138,28 +136,37 @@ export default function ClassesPage() {
       setCreateLoading(true);
       setError(null);
 
+      if (!user?._id) {
+        setError("User ID is required");
+        return;
+      }
+
       const classData = {
-        ...newClass,
         name: newClass.name.trim(),
-        code: newClass.code.trim(),
+        grade: newClass.formLevel,
         academicYear: newClass.academicYear.trim(),
-        department: newClass.department?.trim() || undefined,
-        formLevel: newClass.formLevel,
-        description: newClass.description?.trim() || undefined,
-        classTeacher: user?._id,
+        classTeacher: user._id,
       };
 
       const response = await createClass(classData);
 
       // Transform the response to match our interface
       const transformedClass: Class = {
-        ...response,
-        classTeacher:
-          typeof response.classTeacher === "string"
-            ? { name: response.classTeacher, _id: "" }
-            : response.classTeacher,
-        createdAt: new Date(response.createdAt).toISOString(),
-        updatedAt: new Date(response.updatedAt).toISOString(),
+        _id: response._id || response.id,
+        name: response.name,
+        code: newClass.code,
+        academicYear: response.academicYear || newClass.academicYear,
+        department: newClass.department,
+        formLevel: newClass.formLevel,
+        description: newClass.description,
+        students: [],
+        classTeacher: {
+          name: user?.name || "Unknown",
+          _id: user?._id || "",
+        },
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       setClasses((prev) => [...prev, transformedClass]);

@@ -34,6 +34,7 @@ export default function CourseForm({
     maxStudents: initialData?.maxStudents || 50,
     isActive: initialData?.isActive ?? true,
     language: initialData?.language || "english",
+    isClassSpecific: initialData?.isClassSpecific ?? true,
     teacher:
       typeof initialData?.teacher === "object" && initialData?.teacher !== null
         ? initialData.teacher._id || ""
@@ -77,6 +78,9 @@ export default function CourseForm({
       if (!formData.title.trim()) {
         throw new Error("Course title is required");
       }
+      if (formData.title.length > 100) {
+        throw new Error("Course title cannot be more than 100 characters");
+      }
       if (!formData.code.trim()) {
         throw new Error("Course code is required");
       }
@@ -86,14 +90,26 @@ export default function CourseForm({
       if (!formData.subject) {
         throw new Error("Subject is required");
       }
-      if (!formData.grade.trim()) {
-        throw new Error("Grade level is required");
+      if (!formData.grade) {
+        throw new Error("Form level is required");
       }
       if (!formData.curriculumType) {
         throw new Error("Curriculum type is required");
       }
       if (!formData.teacher) {
         throw new Error("Teacher is required");
+      }
+      if (!formData.startDate) {
+        throw new Error("Start date is required");
+      }
+      if (!formData.endDate) {
+        throw new Error("End date is required");
+      }
+      if (new Date(formData.endDate) <= new Date(formData.startDate)) {
+        throw new Error("End date must be after start date");
+      }
+      if (formData.maxStudents < 1) {
+        throw new Error("Maximum students must be at least 1");
       }
 
       // Format data for API
@@ -102,30 +118,26 @@ export default function CourseForm({
         code: formData.code.trim(),
         description: formData.description.trim(),
         subject: formData.subject,
-        grade: formData.grade.trim(),
-        curriculumType: formData.curriculumType,
-        startDate: formData.startDate || new Date().toISOString(),
-        endDate:
-          formData.endDate ||
-          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default to 30 days from now
+        grade: formData.grade,
+        curriculumType: formData.curriculumType as "HKDSE" | "A-levels",
+        startDate: formData.startDate,
+        endDate: formData.endDate,
         maxStudents: formData.maxStudents,
         isActive: formData.isActive,
         language: formData.language as "english" | "cantonese" | "mandarin",
+        isClassSpecific: formData.isClassSpecific,
         teacher: formData.teacher,
       };
 
       let course;
       if (initialData?._id) {
-        // Update existing course
         course = await updateCourse(initialData._id, courseData);
       } else {
-        // Create new course
         course = await createCourse(courseData);
       }
 
       setSuccess(true);
 
-      // Call success callback if provided
       if (onSuccess) {
         onSuccess(course);
       }
@@ -159,7 +171,7 @@ export default function CourseForm({
             htmlFor="title"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Course Title <span className="text-red-500">*</span>
+            Course Title* (Required)
           </label>
           <input
             type="text"
@@ -169,6 +181,8 @@ export default function CourseForm({
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
             required
+            maxLength={100}
+            placeholder="Enter course title (max 100 characters)"
           />
         </div>
 
@@ -177,7 +191,7 @@ export default function CourseForm({
             htmlFor="code"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Course Code <span className="text-red-500">*</span>
+            Course Code* (Required)
           </label>
           <input
             type="text"
@@ -187,7 +201,7 @@ export default function CourseForm({
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
             required
-            placeholder="e.g., MATH101"
+            placeholder="Enter unique course code"
           />
         </div>
 
@@ -196,7 +210,7 @@ export default function CourseForm({
             htmlFor="description"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Description <span className="text-red-500">*</span>
+            Description* (Required)
           </label>
           <textarea
             id="description"
@@ -206,27 +220,29 @@ export default function CourseForm({
             rows={4}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
             required
+            placeholder="Enter course description"
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label
-              htmlFor="subject"
+              htmlFor="curriculumType"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Subject <span className="text-red-500">*</span>
+              Curriculum Type* (Required)
             </label>
-            <input
-              type="text"
-              id="subject"
-              name="subject"
-              value={formData.subject}
+            <select
+              id="curriculumType"
+              name="curriculumType"
+              value={formData.curriculumType}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
               required
-              placeholder="e.g., Mathematics, Science, English"
-            />
+            >
+              <option value="HKDSE">HKDSE</option>
+              <option value="A-levels">A-levels</option>
+            </select>
           </div>
 
           <div>
@@ -234,18 +250,24 @@ export default function CourseForm({
               htmlFor="grade"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Grade Level <span className="text-red-500">*</span>
+              Form Level* (Required)
             </label>
-            <input
-              type="text"
+            <select
               id="grade"
               name="grade"
               value={formData.grade}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
               required
-              placeholder="e.g., K-12, College, Professional"
-            />
+            >
+              <option value="">Select Form Level</option>
+              <option value="Form 1">Form 1</option>
+              <option value="Form 2">Form 2</option>
+              <option value="Form 3">Form 3</option>
+              <option value="Form 4">Form 4</option>
+              <option value="Form 5">Form 5</option>
+              <option value="Form 6">Form 6</option>
+            </select>
           </div>
         </div>
 
@@ -255,7 +277,7 @@ export default function CourseForm({
               htmlFor="startDate"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Start Date
+              Start Date* (Required)
             </label>
             <input
               type="date"
@@ -264,6 +286,7 @@ export default function CourseForm({
               value={formData.startDate}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              required
             />
           </div>
 
@@ -272,7 +295,7 @@ export default function CourseForm({
               htmlFor="endDate"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              End Date
+              End Date* (Required)
             </label>
             <input
               type="date"
@@ -281,80 +304,110 @@ export default function CourseForm({
               value={formData.endDate}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              required
+              min={formData.startDate}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label
+              htmlFor="language"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Language
+            </label>
+            <select
+              id="language"
+              name="language"
+              value={formData.language}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="english">English</option>
+              <option value="cantonese">Cantonese</option>
+              <option value="mandarin">Mandarin</option>
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="maxStudents"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Maximum Students
+            </label>
+            <input
+              type="number"
+              id="maxStudents"
+              name="maxStudents"
+              value={formData.maxStudents}
+              onChange={handleChange}
+              min="1"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
         </div>
 
         <div>
           <label
-            htmlFor="maxStudents"
+            htmlFor="teacher"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Maximum Students
+            Teacher ID* (Required)
           </label>
           <input
-            type="number"
-            id="maxStudents"
-            name="maxStudents"
-            value={formData.maxStudents}
+            type="text"
+            id="teacher"
+            name="teacher"
+            value={formData.teacher}
             onChange={handleChange}
-            min={1}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            required
+            placeholder="Enter teacher ID"
           />
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="isClassSpecific"
+            name="isClassSpecific"
+            checked={formData.isClassSpecific}
+            onChange={handleChange}
+            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+          />
+          <label
+            htmlFor="isClassSpecific"
+            className="text-sm font-medium text-gray-700"
+          >
+            Class-specific course
+          </label>
+        </div>
+
+        <div className="flex items-center space-x-2">
           <input
             type="checkbox"
             id="isActive"
             name="isActive"
             checked={formData.isActive}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, isActive: e.target.checked }))
-            }
+            onChange={handleChange}
             className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
           />
           <label
             htmlFor="isActive"
-            className="ml-2 block text-sm text-gray-700"
+            className="text-sm font-medium text-gray-700"
           >
-            Active course (visible to students)
+            Active course
           </label>
         </div>
 
-        {/* Hidden input for teacher ID */}
-        <input type="hidden" name="teacher" value={formData.teacher} />
-
-        <div>
-          <label
-            htmlFor="curriculumType"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Curriculum Type *
-          </label>
-          <select
-            id="curriculumType"
-            name="curriculumType"
-            value={formData.curriculumType}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                curriculumType: e.target.value as "HKDSE" | "A-levels",
-              }))
-            }
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            required
-          >
-            <option value="HKDSE">HKDSE</option>
-            <option value="A-levels">A-levels</option>
-          </select>
-        </div>
-
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end space-x-3">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
           >
             {isSubmitting
               ? "Saving..."

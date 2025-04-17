@@ -149,26 +149,23 @@ export default function SubjectContentManager({
 
   const manualSubmit = () => {
     console.log("Manual submit triggered");
-    if (isEditing) {
-      const formData = new FormData();
-      formData.append("title", title);
-      if (description) formData.append("description", description);
-      if (moduleNumber)
-        formData.append("moduleNumber", moduleNumber.toString());
-      if (lessonNumber)
-        formData.append("lessonNumber", lessonNumber.toString());
-      if (order) formData.append("order", order.toString());
+    const formData = new FormData();
+    formData.append("title", title);
+    if (description) formData.append("description", description);
+    if (moduleNumber) formData.append("moduleNumber", moduleNumber.toString());
+    if (lessonNumber) formData.append("lessonNumber", lessonNumber.toString());
+    if (order) formData.append("order", order.toString());
 
-      console.log("Attempting to update content:", {
+    if (!isEditing || file) {
+      formData.append("type", "document");
+      if (file) formData.append("file", file);
+    }
+
+    if (isEditing) {
+      console.log("Updating existing content:", {
         subjectId,
         contentId: isEditing,
-        formData: {
-          title: formData.get("title"),
-          description: formData.get("description"),
-          moduleNumber: formData.get("moduleNumber"),
-          lessonNumber: formData.get("lessonNumber"),
-          order: formData.get("order"),
-        },
+        formData: Object.fromEntries(formData.entries()),
       });
 
       updateSubjectContent(subjectId, isEditing, formData)
@@ -181,6 +178,22 @@ export default function SubjectContentManager({
         .catch((error) => {
           console.error("Update failed:", error);
           setError(error.message || "Failed to update content");
+        })
+        .finally(() => {
+          setIsSubmitting(false);
+        });
+    } else {
+      console.log("Creating new content");
+      createSubjectContent(subjectId, formData)
+        .then((response) => {
+          console.log("Create successful:", response);
+          onContentAdded();
+          resetForm();
+          setIsAdding(false);
+        })
+        .catch((error) => {
+          console.error("Create failed:", error);
+          setError(error.message || "Failed to create content");
         })
         .finally(() => {
           setIsSubmitting(false);

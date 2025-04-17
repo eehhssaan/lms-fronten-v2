@@ -18,6 +18,7 @@ export default function CreateSubjectPage() {
   const [formData, setFormData] = useState({
     name: "",
     code: "",
+    grade: "",
     description: "",
     headTeacher: "",
     iconUrl: "",
@@ -31,7 +32,7 @@ export default function CreateSubjectPage() {
   const baseBreadcrumbItems = useSubjectBreadcrumb();
   const breadcrumbItems = [
     ...baseBreadcrumbItems,
-    { label: "Create Subject", href: "/subjects/create" },
+    { label: "Create Subject2", href: "/subjects/create" },
   ];
 
   useEffect(() => {
@@ -62,8 +63,15 @@ export default function CreateSubjectPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name) {
-      setError("Subject name is required");
+    if (
+      !formData.name ||
+      !formData.code ||
+      !formData.grade ||
+      !formData.headTeacher
+    ) {
+      setError(
+        "Please fill in all required fields (Name, Code, Grade Level, and Head Teacher)"
+      );
       return;
     }
 
@@ -73,9 +81,10 @@ export default function CreateSubjectPage() {
 
       await createSubject({
         name: formData.name,
-        code: formData.code || undefined,
+        code: formData.code,
+        grade: formData.grade,
         description: formData.description || undefined,
-        headTeacher: formData.headTeacher || undefined,
+        headTeacher: formData.headTeacher,
         iconUrl: formData.iconUrl || undefined,
       });
 
@@ -85,6 +94,7 @@ export default function CreateSubjectPage() {
       setFormData({
         name: "",
         code: "",
+        grade: "",
         description: "",
         headTeacher: "",
         iconUrl: "",
@@ -137,7 +147,7 @@ export default function CreateSubjectPage() {
       >
         <Box mb={3}>
           <Label htmlFor="name" mb={2}>
-            Subject Name*
+            Subject Name* (Required)
           </Label>
           <Input
             id="name"
@@ -145,19 +155,43 @@ export default function CreateSubjectPage() {
             value={formData.name}
             onChange={handleInputChange}
             required
+            placeholder="Enter subject name"
           />
         </Box>
 
         <Box mb={3}>
           <Label htmlFor="code" mb={2}>
-            Subject Code
+            Subject Code* (Required)
           </Label>
           <Input
             id="code"
             name="code"
             value={formData.code}
             onChange={handleInputChange}
+            required
+            placeholder="Enter unique subject code"
           />
+        </Box>
+
+        <Box mb={3}>
+          <Label htmlFor="grade" mb={2}>
+            Grade Level* (Required)
+          </Label>
+          <Select
+            id="grade"
+            name="grade"
+            value={formData.grade}
+            onChange={handleInputChange}
+            required
+          >
+            <option value="">Select Grade Level</option>
+            <option value="1">Form 1</option>
+            <option value="2">Form 2</option>
+            <option value="3">Form 3</option>
+            <option value="4">Form 4</option>
+            <option value="5">Form 5</option>
+            <option value="6">Form 6</option>
+          </Select>
         </Box>
 
         <Box mb={3}>
@@ -175,18 +209,19 @@ export default function CreateSubjectPage() {
 
         <Box mb={3}>
           <Label htmlFor="headTeacher" mb={2}>
-            Head Teacher ID
+            Head Teacher ID* (Required)
           </Label>
           <Input
             id="headTeacher"
             name="headTeacher"
             value={formData.headTeacher}
             onChange={handleInputChange}
+            required
             placeholder="Enter teacher ID to assign as head teacher"
           />
           <Text fontSize={1} color="gray.600" mt={1}>
-            Enter the ID of a teacher to assign them as the head teacher for
-            this subject
+            Enter the ID of an existing teacher to assign them as the head
+            teacher
           </Text>
         </Box>
 
@@ -212,9 +247,21 @@ export default function CreateSubjectPage() {
           >
             Cancel
           </Button>
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? "Creating..." : "Create Subject"}
-          </Button>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              backgroundColor: loading ? "#ccc" : "#0066cc",
+              color: "white",
+              padding: "8px 16px",
+              border: "none",
+              borderRadius: "4px",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: "14px",
+            }}
+          >
+            {loading ? "Creating..." : "Create Subject3"}
+          </button>
         </Flex>
       </Box>
     </Box>

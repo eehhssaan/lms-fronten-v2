@@ -86,7 +86,7 @@ export default function SubjectsPage() {
             onClick={() => router.push("/subjects/create")}
             variant="primary"
           >
-            Create Subject
+            Create Subject1
           </Button>
         )}
       </Flex>

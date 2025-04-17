@@ -12,7 +12,6 @@ import {
   updateClass,
   removeStudentFromClass,
   getAvailableStudents,
-  addStudentToClass,
   addStudentsToClass,
   removeCourseFromClass,
 } from "@/lib/api";
@@ -29,6 +28,7 @@ interface Student {
 }
 
 interface AvailableStudent {
+  id: string;
   _id: string;
   name: string;
   email: string;
@@ -209,7 +209,17 @@ export default function ClassDetails() {
   const handleShowAddStudentDialog = async () => {
     try {
       const students = await getAvailableStudents(classId);
-      setAvailableStudents(students as AvailableStudent[]);
+      setAvailableStudents(
+        students
+          .filter((student) => student._id)
+          .map((student) => ({
+            id: student._id,
+            _id: student._id,
+            name: student.name,
+            email: student.email,
+            role: student.role,
+          })) as AvailableStudent[]
+      );
       setShowAddStudentDialog(true);
     } catch (err: any) {
       console.error("Failed to fetch available students:", err);
@@ -227,7 +237,17 @@ export default function ClassDetails() {
 
       try {
         const students = await getAvailableStudents(classId);
-        setAvailableStudents(students as AvailableStudent[]);
+        setAvailableStudents(
+          students
+            .filter((student) => student._id)
+            .map((student) => ({
+              id: student._id,
+              _id: student._id,
+              name: student.name,
+              email: student.email,
+              role: student.role,
+            })) as AvailableStudent[]
+        );
       } catch (err: any) {
         console.error("Failed to fetch available students:", err);
         setNotification({
@@ -267,6 +287,9 @@ export default function ClassDetails() {
       console.log("Course ID:", selectedCourseToUnassign._id);
 
       setLoading(true);
+      if (!selectedCourseToUnassign?._id) {
+        throw new Error("Course ID is missing");
+      }
       await removeCourseFromClass(classId, selectedCourseToUnassign._id);
 
       console.log("Course unassigned successfully");
@@ -338,7 +361,10 @@ export default function ClassDetails() {
           </Text>
         )}
         <Text fontSize={2} mb={2}>
-          Class Teacher: {classData.classTeacher.name}
+          Class Teacher:{" "}
+          {typeof classData.classTeacher === "string"
+            ? classData.classTeacher
+            : classData.classTeacher.name}
         </Text>
       </Box>
 

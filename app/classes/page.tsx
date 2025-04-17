@@ -12,6 +12,8 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import Notification from "@/components/Notification";
 import ClassList from "@/components/ClassList";
 
+type FormLevel = "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
+
 interface Class {
   _id: string;
   name: string;
@@ -30,6 +32,25 @@ interface Class {
   updatedAt: string;
 }
 
+interface NewClass {
+  name: string;
+  code: string;
+  formLevel: FormLevel | "";
+  academicYear: string;
+  department: string;
+  description: string;
+}
+
+interface CreateClassData {
+  name: string;
+  code: string;
+  formLevel: FormLevel;
+  academicYear: string;
+  department?: string;
+  description?: string;
+  classTeacher: string;
+}
+
 export default function ClassesPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [classes, setClasses] = useState<Class[]>([]);
@@ -39,22 +60,12 @@ export default function ClassesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 6; // Show 6 classes per page
-  const [newClass, setNewClass] = useState<
-    Omit<
-      Class,
-      | "_id"
-      | "students"
-      | "classTeacher"
-      | "isActive"
-      | "createdAt"
-      | "updatedAt"
-    >
-  >({
+  const [newClass, setNewClass] = useState<NewClass>({
     name: "",
     code: "",
-    academicYear: new Date().getFullYear().toString(),
+    formLevel: "",
+    academicYear: "",
     department: "",
-    formLevel: "Form 4",
     description: "",
   });
   const [createLoading, setCreateLoading] = useState(false);
@@ -117,79 +128,40 @@ export default function ClassesPage() {
   };
 
   const handleCreateClass = async () => {
-    if (!newClass.name.trim()) {
-      setError("Class name is required");
-      return;
-    }
-
-    if (!newClass.code.trim()) {
-      setError("Class code is required");
-      return;
-    }
-
-    if (!newClass.academicYear.trim()) {
-      setError("Academic year is required");
-      return;
-    }
-
     try {
       setCreateLoading(true);
-      setError(null);
 
-      if (!user?._id) {
-        setError("User ID is required");
+      if (!newClass.formLevel) {
+        setNotification({
+          message: "Please select a valid form level",
+          type: "error",
+        });
+        setCreateLoading(false);
         return;
       }
 
-      const classData = {
+      const classData: CreateClassData = {
         name: newClass.name.trim(),
-        grade: newClass.formLevel,
+        code: newClass.code.trim(),
+        formLevel: newClass.formLevel,
         academicYear: newClass.academicYear.trim(),
+        department: newClass.department || undefined,
+        description: newClass.description || undefined,
         classTeacher: user._id,
       };
 
       const response = await createClass(classData);
-
-      // Transform the response to match our interface
-      const transformedClass: Class = {
-        _id: response._id || response.id,
-        name: response.name,
-        code: newClass.code,
-        academicYear: response.academicYear || newClass.academicYear,
-        department: newClass.department,
-        formLevel: newClass.formLevel,
-        description: newClass.description,
-        students: [],
-        classTeacher: {
-          name: user?.name || "Unknown",
-          _id: user?._id || "",
-        },
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      setClasses((prev) => [...prev, transformedClass]);
-      setShowCreateDialog(false);
+      if (response.success) {
+        setNotification({
+          message: "Class created successfully",
+          type: "success",
+        });
+        setShowCreateDialog(false);
+        fetchClasses();
+      }
+    } catch (error: any) {
       setNotification({
-        message: "Class created successfully!",
-        type: "success",
-      });
-
-      // Reset form
-      setNewClass({
-        name: "",
-        code: "",
-        academicYear: new Date().getFullYear().toString(),
-        department: "",
-        formLevel: "Form 4",
-        description: "",
-      });
-    } catch (err: any) {
-      console.error("Failed to create class:", err);
-      setError(err.message || "Failed to create class");
-      setNotification({
-        message: err.message || "Failed to create class",
+        message: error.message || "Failed to create class",
         type: "error",
       });
     } finally {
@@ -371,6 +343,7 @@ export default function ClassesPage() {
                   value={newClass.name}
                   onChange={handleInputChange}
                   maxLength={50}
+                  required
                   placeholder="Enter class name"
                   style={{
                     width: "100%",
@@ -394,6 +367,7 @@ export default function ClassesPage() {
                   value={newClass.code}
                   onChange={handleInputChange}
                   maxLength={20}
+                  required
                   placeholder="Enter class code (e.g., CS101-2024)"
                   style={{
                     width: "100%",
@@ -412,6 +386,7 @@ export default function ClassesPage() {
                   name="formLevel"
                   value={newClass.formLevel}
                   onChange={handleInputChange}
+                  required
                   style={{
                     width: "100%",
                     padding: "8px",
@@ -419,6 +394,7 @@ export default function ClassesPage() {
                     border: "1px solid #ddd",
                   }}
                 >
+                  <option value="">Select Form Level</option>
                   <option value="Form 4">Form 4</option>
                   <option value="Form 5">Form 5</option>
                   <option value="Form 6">Form 6</option>
@@ -429,13 +405,24 @@ export default function ClassesPage() {
 
               <Box mb={3}>
                 <Text fontWeight="bold" mb={2}>
-                  Academic Year *
+                  Academic Year *{" "}
+                  <Text as="span" color="red" fontSize="12px">
+                    (format: YYYY-YYYY)
+                  </Text>
                 </Text>
                 <input
                   type="text"
                   name="academicYear"
                   value={newClass.academicYear}
-                  onChange={handleInputChange}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Only allow numbers and hyphen
+                    if (/^[\d-]*$/.test(value)) {
+                      handleInputChange(e);
+                    }
+                  }}
+                  required
+                  pattern="\d{4}-\d{4}"
                   placeholder="Enter academic year (e.g., 2024-2025)"
                   style={{
                     width: "100%",
@@ -487,15 +474,41 @@ export default function ClassesPage() {
           }
           confirmLabel={createLoading ? "Creating..." : "Create"}
           cancelLabel="Cancel"
-          onConfirm={handleCreateClass}
+          onConfirm={async () => {
+            // Validate form before submitting
+            if (!newClass.name.trim()) {
+              setNotification({
+                message: "Please add a class name",
+                type: "error",
+              });
+              return;
+            }
+            if (!newClass.code.trim()) {
+              setNotification({
+                message: "Please add a class code",
+                type: "error",
+              });
+              return;
+            }
+            if (!newClass.academicYear.trim()) {
+              setNotification({
+                message: "Academic year is required",
+                type: "error",
+              });
+              return;
+            }
+
+            // If validation passes, proceed with class creation
+            handleCreateClass();
+          }}
           onCancel={() => {
             setShowCreateDialog(false);
             setNewClass({
               name: "",
               code: "",
-              academicYear: new Date().getFullYear().toString(),
+              formLevel: "",
+              academicYear: "",
               department: "",
-              formLevel: "Form 4",
               description: "",
             });
           }}

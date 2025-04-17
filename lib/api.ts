@@ -1117,7 +1117,6 @@ export const getClasses = async (params?: {
   count: number;
 }> => {
   try {
-    // Build query parameters
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
@@ -1132,11 +1131,18 @@ export const getClasses = async (params?: {
         id: classData._id,
         _id: classData._id,
         name: classData.name,
-        grade: classData.grade,
+        code: classData.code,
+        formLevel: classData.formLevel,
         academicYear: classData.academicYear,
+        department: classData.department,
+        gradeLevel: classData.gradeLevel,
+        description: classData.description,
         classTeacher: classData.classTeacher,
         students: classData.students,
+        courses: classData.courses,
         isActive: classData.isActive,
+        createdAt: classData.createdAt,
+        updatedAt: classData.updatedAt,
       })),
       count: response.data.count || 0,
     };
@@ -1155,12 +1161,18 @@ export const getClass = async (classId: string): Promise<Class> => {
       id: classData._id,
       _id: classData._id,
       name: classData.name,
-      grade: classData.grade,
+      code: classData.code,
+      formLevel: classData.formLevel,
       academicYear: classData.academicYear,
+      department: classData.department,
+      gradeLevel: classData.gradeLevel,
+      description: classData.description,
       classTeacher: classData.classTeacher,
       students: classData.students,
       courses: classData.courses,
       isActive: classData.isActive,
+      createdAt: classData.createdAt,
+      updatedAt: classData.updatedAt,
     };
   } catch (error: any) {
     console.error("Error fetching class:", error);
@@ -1170,8 +1182,12 @@ export const getClass = async (classId: string): Promise<Class> => {
 
 export const createClass = async (classData: {
   name: string;
-  grade: string;
+  code: string;
+  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
   academicYear: string;
+  department?: string;
+  gradeLevel?: string;
+  description?: string;
   classTeacher: string;
   students?: string[];
 }): Promise<Class> => {
@@ -1183,11 +1199,18 @@ export const createClass = async (classData: {
       id: createdClass._id,
       _id: createdClass._id,
       name: createdClass.name,
-      grade: createdClass.grade,
+      code: createdClass.code,
+      formLevel: createdClass.formLevel,
       academicYear: createdClass.academicYear,
+      department: createdClass.department,
+      gradeLevel: createdClass.gradeLevel,
+      description: createdClass.description,
       classTeacher: createdClass.classTeacher,
       students: createdClass.students,
+      courses: createdClass.courses,
       isActive: createdClass.isActive,
+      createdAt: createdClass.createdAt,
+      updatedAt: createdClass.updatedAt,
     };
   } catch (error: any) {
     console.error("Error creating class:", error);
@@ -1199,8 +1222,12 @@ export const updateClass = async (
   classId: string,
   classData: Partial<{
     name: string;
-    grade: string;
+    code: string;
+    formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
     academicYear: string;
+    department: string;
+    gradeLevel: string;
+    description: string;
     classTeacher: string;
     isActive: boolean;
   }>
@@ -1213,11 +1240,18 @@ export const updateClass = async (
       id: updatedClass._id,
       _id: updatedClass._id,
       name: updatedClass.name,
-      grade: updatedClass.grade,
+      code: updatedClass.code,
+      formLevel: updatedClass.formLevel,
       academicYear: updatedClass.academicYear,
+      department: updatedClass.department,
+      gradeLevel: updatedClass.gradeLevel,
+      description: updatedClass.description,
       classTeacher: updatedClass.classTeacher,
       students: updatedClass.students,
+      courses: updatedClass.courses,
       isActive: updatedClass.isActive,
+      createdAt: updatedClass.createdAt,
+      updatedAt: updatedClass.updatedAt,
     };
   } catch (error: any) {
     console.error("Error updating class:", error);
@@ -1539,9 +1573,10 @@ export const getSubjects = async (params?: {
 
 export const createSubject = async (subjectData: {
   name: string;
-  code?: string;
+  code: string;
+  grade: string;
   description?: string;
-  headTeacher?: string;
+  headTeacher: string;
   iconUrl?: string;
 }): Promise<Subject> => {
   try {
@@ -1844,6 +1879,61 @@ export const updateSubjectContent = async (
 
     throw new Error(
       error.response?.data?.message || "Failed to update subject content"
+    );
+  }
+};
+
+export const assignCourseToClass = async (
+  classId: string,
+  courseId: string
+): Promise<Course> => {
+  try {
+    const response = await api.post(`/courses/${courseId}/enroll-class`, {
+      classId,
+    });
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to assign course to class"
+    );
+  }
+};
+
+export const removeCourseFromClass = async (
+  classId: string,
+  courseId: string
+): Promise<void> => {
+  try {
+    await api.delete(`/classes/${classId}/courses/${courseId}`);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to remove course from class"
+    );
+  }
+};
+
+export const removeStudentFromClass = async (
+  classId: string,
+  studentId: string
+): Promise<void> => {
+  try {
+    await api.delete(`/classes/${classId}/students/${studentId}`);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to remove student from class"
+    );
+  }
+};
+
+export const getAvailableStudents = async (
+  classId: string
+): Promise<User[]> => {
+  try {
+    const response = await api.get(`/classes/${classId}/available-students`);
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch available students"
     );
   }
 };

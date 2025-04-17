@@ -31,7 +31,7 @@ export default function CourseAssignment({
     message: string;
     type: "success" | "error";
   } | null>(null);
-  const [courses, setCourses] = useState<APICourse[]>([]);
+  const [courses, setCourses] = useState<(APICourse & { _id: string })[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [coursesError, setCoursesError] = useState<string | null>(null);
 
@@ -48,11 +48,15 @@ export default function CourseAssignment({
         setCoursesError(null);
         const response = await getCourses();
 
-        // Filter out already assigned courses
-        const availableCourses = response.data.filter(
-          (course) =>
-            !assignedCourses.some((assigned) => assigned._id === course._id)
-        );
+        // Filter out already assigned courses and courses without IDs
+        const availableCourses = response.data
+          .filter((course): course is APICourse & { _id: string } =>
+            Boolean(course._id)
+          )
+          .filter(
+            (course) =>
+              !assignedCourses.some((assigned) => assigned._id === course._id)
+          );
 
         setCourses(availableCourses);
       } catch (err: any) {
@@ -183,8 +187,7 @@ export default function CourseAssignment({
                       </Text>
                       {course.teacher && (
                         <Text fontSize={1} color="gray">
-                          Teacher: {course.teacher.firstName}{" "}
-                          {course.teacher.lastName}
+                          Teacher: {course.teacher.name}
                         </Text>
                       )}
                     </Box>

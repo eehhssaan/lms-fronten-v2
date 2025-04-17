@@ -101,6 +101,7 @@ export interface Course {
   };
   students?: string[];
   enrolledClasses?: string[];
+  isClassSpecific?: boolean;
   materials?: {
     title: string;
     description: string;
@@ -133,28 +134,20 @@ export interface Course {
 
 export interface Class {
   id: string;
-  _id?: string;
+  _id: string;
   name: string;
-  grade: string;
-  section?: string;
-  academicYear?: string;
-  classTeacher?: string;
-  teacher?: {
-    id: string;
-    name: string;
-  };
-  students?: {
-    id: string;
-    name: string;
-    email: string;
-  }[];
-  courses?: {
-    id: string;
-    title: string;
-    code: string;
-  }[];
-  studentCount?: number;
-  isActive?: boolean;
+  code: string;
+  formLevel: "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
+  academicYear: string;
+  department?: string;
+  gradeLevel?: string;
+  description?: string;
+  students?: User[];
+  courses?: Course[];
+  classTeacher: string | User;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Content types

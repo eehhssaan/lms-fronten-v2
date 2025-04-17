@@ -60,7 +60,7 @@ export default function StudentManagement({
           variant="primary"
           size="small"
         >
-          Add Students
+          Add Students1
         </Button>
       </Flex>
 
@@ -105,7 +105,7 @@ export default function StudentManagement({
       {/* Add Students Dialog */}
       <ConfirmDialog
         isOpen={showAddDialog}
-        title="Add Students"
+        title="Add Students2"
         message={
           <Box sx={{ maxHeight: "400px", overflowY: "auto" }}>
             {availableStudents.map((student) => (

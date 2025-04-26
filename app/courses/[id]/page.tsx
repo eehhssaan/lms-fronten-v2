@@ -8,7 +8,7 @@ import CourseContent from "@/components/CourseContent";
 import FileUpload from "@/components/FileUpload";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
-import { getCourse, getCourseContents } from "@/lib/api";
+import { getCourse } from "@/lib/api";
 import { Course, Content } from "@/types";
 import { use } from "react";
 import CourseContentManager from "@/components/CourseContentManager";
@@ -30,7 +30,6 @@ export default function CoursePage({
   const courseId = resolvedParams.id;
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
-  const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showContentManager, setShowContentManager] = useState(false);
@@ -49,13 +48,9 @@ export default function CoursePage({
           setLoading(true);
           setError(null);
 
-          // Fetch course details
+          // Fetch course details which now includes all materials
           const courseData = await getCourse(courseId);
           setCourse(courseData);
-
-          // Fetch course contents
-          const contentsData = await getCourseContents(courseId);
-          setContents(contentsData);
         } catch (err: any) {
           console.error("Failed to fetch course data:", err);
           setError(
@@ -81,8 +76,8 @@ export default function CoursePage({
 
   const refreshContents = async () => {
     try {
-      const contentsData = await getCourseContents(courseId);
-      setContents(contentsData);
+      const courseData = await getCourse(courseId);
+      setCourse(courseData);
     } catch (err) {
       console.error("Failed to refresh contents:", err);
     }
@@ -154,7 +149,10 @@ export default function CoursePage({
                 <Box mt={3}>
                   <CourseContentManager
                     courseId={courseId}
-                    contents={contents}
+                    contents={(course?.materials || []).map((material) => ({
+                      ...material,
+                      id: material.originalMaterialId || "",
+                    }))}
                     onContentAdded={refreshContents}
                   />
                 </Box>
@@ -167,7 +165,7 @@ export default function CoursePage({
               Course Content
             </Heading>
 
-            {contents.length > 0 ? (
+            {course.materials && course.materials.length > 0 ? (
               <Box
                 bg="white"
                 p={4}
@@ -176,7 +174,10 @@ export default function CoursePage({
                   boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                 }}
               >
-                <CourseContent contents={contents} courseId={courseId} />
+                <CourseContent
+                  materials={course.materials}
+                  courseId={courseId}
+                />
               </Box>
             ) : (
               <Box

@@ -164,6 +164,7 @@ export interface Content {
   lessonNumber?: number;
   order?: number;
   type?: "document" | "video" | "link" | "text" | "other";
+  contentType?: "lecture" | "quiz" | "assignment" | "supplementary";
   link?: string;
   textContent?: string;
   fileUrl?: string;
@@ -172,6 +173,7 @@ export interface Content {
     title: string;
     code: string;
   };
+  chapter?: string;
   createdBy?: {
     id: string;
     name: string;
@@ -280,4 +282,19 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
   data: T[];
+}
+
+export interface Chapter {
+  _id: string;
+  title: string;
+  description?: string;
+  order: number;
+  isActive: boolean;
+  subject: string;
+  createdBy: {
+    _id: string;
+    name: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }

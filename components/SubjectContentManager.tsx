@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Box, Heading, Text, Flex } from "rebass";
 import Button from "@/components/Button";
-import { Content } from "@/types";
+import { Content, Chapter } from "@/types";
 import ErrorMessage from "@/components/ErrorMessage";
 import Loading from "@/components/Loading";
 import {
@@ -14,12 +14,14 @@ interface SubjectContentManagerProps {
   subjectId: string;
   contents: Content[];
   onContentAdded: () => void;
+  chapters: Chapter[];
 }
 
 export default function SubjectContentManager({
   subjectId,
   contents,
   onContentAdded,
+  chapters,
 }: SubjectContentManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -29,20 +31,24 @@ export default function SubjectContentManager({
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [moduleNumber, setModuleNumber] = useState(1);
-  const [lessonNumber, setLessonNumber] = useState(1);
+  const [lessonNumber, setLessonNumber] = useState<number | undefined>(
+    undefined
+  );
   const [order, setOrder] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentDocument, setCurrentDocument] = useState<string | null>(null);
+  const [chapter, setChapter] = useState<string>("");
 
   const resetForm = () => {
     setTitle("");
     setDescription("");
     setFile(null);
     setModuleNumber(1);
-    setLessonNumber(1);
+    setLessonNumber(undefined);
     setOrder(1);
+    setChapter("");
     setError(null);
   };
 
@@ -60,6 +66,7 @@ export default function SubjectContentManager({
     setOrder(content.order || 1);
     setFile(null);
     setCurrentDocument(content.link || null);
+    setChapter(content.chapter || "");
     console.log("Edit mode activated for content:", content._id);
   };
 
@@ -73,14 +80,11 @@ export default function SubjectContentManager({
     setIsSubmitting(true);
     setError("");
 
-    console.log("isEditing");
-
     try {
       const formData = new FormData();
       formData.append("title", title);
       if (description) formData.append("description", description);
-      if (moduleNumber)
-        formData.append("moduleNumber", moduleNumber.toString());
+      if (chapter) formData.append("chapter", chapter);
       if (lessonNumber)
         formData.append("lessonNumber", lessonNumber.toString());
       if (order) formData.append("order", order.toString());
@@ -93,10 +97,8 @@ export default function SubjectContentManager({
       let response;
       if (isEditing) {
         response = await updateSubjectContent(subjectId, isEditing, formData);
-        console.log("Subject Content updated successfully:", response);
       } else {
         response = await createSubjectContent(subjectId, formData);
-        console.log("Subject Content created successfully:", response);
       }
 
       onContentAdded();
@@ -107,7 +109,6 @@ export default function SubjectContentManager({
         setIsAdding(false);
       }
     } catch (err: any) {
-      console.error("Error saving content:", err);
       setError(err.message || "Failed to save content");
     } finally {
       setIsSubmitting(false);
@@ -152,7 +153,7 @@ export default function SubjectContentManager({
     const formData = new FormData();
     formData.append("title", title);
     if (description) formData.append("description", description);
-    if (moduleNumber) formData.append("moduleNumber", moduleNumber.toString());
+    if (chapter) formData.append("chapter", chapter);
     if (lessonNumber) formData.append("lessonNumber", lessonNumber.toString());
     if (order) formData.append("order", order.toString());
 
@@ -311,138 +312,22 @@ export default function SubjectContentManager({
             {isEditing ? "Edit Subject Material" : "Add Subject Material"}
           </Heading>
 
-          <div>
-            <Box mb={4}>
-              <Text as="label" display="block" mb={2} fontWeight="bold">
-                Title{" "}
-                <Box as="span" color="red" display="inline">
-                  *
-                </Box>
-              </Text>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                className="form-input"
-                placeholder="Enter material title"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #ddd",
-                  fontSize: "16px",
-                }}
-              />
-            </Box>
-
-            <Box mb={4}>
-              <Text as="label" display="block" mb={2} fontWeight="bold">
-                Description
-              </Text>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="form-textarea"
-                placeholder="Enter material description"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #ddd",
-                  fontSize: "16px",
-                  minHeight: "100px",
-                }}
-              />
-            </Box>
-
-            <Flex mb={4} gap={4}>
-              <Box flex={1}>
-                <Text as="label" display="block" mb={2} fontWeight="bold">
-                  Module Number{" "}
-                  <Box as="span" color="red" display="inline">
-                    *
-                  </Box>
-                </Text>
-                <input
-                  type="number"
-                  value={moduleNumber}
-                  onChange={(e) => setModuleNumber(parseInt(e.target.value))}
-                  required
-                  min={1}
-                  className="form-input"
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    border: "1px solid #ddd",
-                    fontSize: "16px",
-                  }}
-                />
-              </Box>
-
-              <Box flex={1}>
-                <Text as="label" display="block" mb={2} fontWeight="bold">
-                  Lesson Number{" "}
-                  <Box as="span" color="red" display="inline">
-                    *
-                  </Box>
-                </Text>
-                <input
-                  type="number"
-                  value={lessonNumber}
-                  onChange={(e) => setLessonNumber(parseInt(e.target.value))}
-                  required
-                  min={1}
-                  className="form-input"
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    border: "1px solid #ddd",
-                    fontSize: "16px",
-                  }}
-                />
-              </Box>
-
-              <Box flex={1}>
-                <Text as="label" display="block" mb={2} fontWeight="bold">
-                  Order{" "}
-                  <Box as="span" color="red" display="inline">
-                    *
-                  </Box>
-                </Text>
-                <input
-                  type="number"
-                  value={order}
-                  onChange={(e) => setOrder(parseInt(e.target.value))}
-                  required
-                  min={1}
-                  className="form-input"
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    border: "1px solid #ddd",
-                    fontSize: "16px",
-                  }}
-                />
-              </Box>
-            </Flex>
-
-            {!isEditing && (
+          <form onSubmit={handleSubmit}>
+            <div>
               <Box mb={4}>
                 <Text as="label" display="block" mb={2} fontWeight="bold">
-                  File{" "}
+                  Title{" "}
                   <Box as="span" color="red" display="inline">
                     *
                   </Box>
                 </Text>
                 <input
-                  type="file"
-                  onChange={handleFileChange}
-                  required={!isEditing}
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
                   className="form-input"
+                  placeholder="Enter material title"
                   style={{
                     width: "100%",
                     padding: "10px",
@@ -452,49 +337,64 @@ export default function SubjectContentManager({
                   }}
                 />
               </Box>
-            )}
 
-            {isEditing && (
               <Box mb={4}>
                 <Text as="label" display="block" mb={2} fontWeight="bold">
-                  Current Document
+                  Description
                 </Text>
-                {currentDocument ? (
-                  <Flex alignItems="center" gap={3}>
-                    <a
-                      href={currentDocument}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        color: "#007bff",
-                        textDecoration: "none",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                      >
-                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z" />
-                      </svg>
-                      View Current Document
-                    </a>
-                  </Flex>
-                ) : (
-                  <Text color="gray.500">No document currently attached</Text>
-                )}
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="form-textarea"
+                  placeholder="Enter material description"
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: "6px",
+                    border: "1px solid #ddd",
+                    fontSize: "16px",
+                    minHeight: "100px",
+                  }}
+                />
+              </Box>
 
-                <Box mt={3}>
+              <Box mb={4}>
+                <Text as="label" display="block" mb={2} fontWeight="bold">
+                  Chapter
+                </Text>
+                <select
+                  value={chapter}
+                  onChange={(e) => setChapter(e.target.value)}
+                  className="form-select"
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: "6px",
+                    border: "1px solid #ddd",
+                    fontSize: "16px",
+                  }}
+                >
+                  <option value="">Select a chapter</option>
+                  {chapters.map((chapter) => (
+                    <option key={chapter._id} value={chapter._id}>
+                      {chapter.title}
+                    </option>
+                  ))}
+                </select>
+              </Box>
+
+              {chapter && (
+                <Box mb={4}>
                   <Text as="label" display="block" mb={2} fontWeight="bold">
-                    Upload New Document (Optional)
+                    Lesson Number
                   </Text>
                   <input
-                    type="file"
-                    onChange={handleFileChange}
+                    type="number"
+                    value={lessonNumber || ""}
+                    onChange={(e) =>
+                      setLessonNumber(parseInt(e.target.value) || undefined)
+                    }
+                    min={1}
                     className="form-input"
                     style={{
                       width: "100%",
@@ -504,63 +404,191 @@ export default function SubjectContentManager({
                       fontSize: "16px",
                     }}
                   />
-                  {file && (
-                    <Text fontSize="sm" color="gray.600" mt={2}>
-                      New file selected: {file.name}
-                    </Text>
-                  )}
                 </Box>
-              </Box>
-            )}
+              )}
 
-            {error && (
-              <Box mb={4} p={3} bg="red.50" color="red.600" borderRadius="md">
-                {error}
-              </Box>
-            )}
+              <Flex mb={4} gap={4}>
+                <Box flex={1}>
+                  <Text as="label" display="block" mb={2} fontWeight="bold">
+                    Module Number{" "}
+                    <Box as="span" color="red" display="inline">
+                      *
+                    </Box>
+                  </Text>
+                  <input
+                    type="number"
+                    value={moduleNumber}
+                    onChange={(e) => setModuleNumber(parseInt(e.target.value))}
+                    required
+                    min={1}
+                    className="form-input"
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      border: "1px solid #ddd",
+                      fontSize: "16px",
+                    }}
+                  />
+                </Box>
 
-            <Flex gap={2} justifyContent="flex-end">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={isEditing ? handleCancelEdit : handleCancel}
-                disabled={isSubmitting}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                  background: "#f8f9fa",
-                  cursor: isSubmitting ? "not-allowed" : "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={isSubmitting}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "4px",
-                  border: "none",
-                  background: "#007bff",
-                  color: "white",
-                  cursor: isSubmitting ? "not-allowed" : "pointer",
-                }}
-                onClick={() => {
-                  console.log("Manual submit button clicked");
-                  setIsSubmitting(true);
-                  manualSubmit();
-                }}
-              >
-                {isSubmitting
-                  ? "Saving..."
-                  : isEditing
-                  ? "Save Changes"
-                  : "Add Material"}
-              </button>
-            </Flex>
-          </div>
+                <Box flex={1}>
+                  <Text as="label" display="block" mb={2} fontWeight="bold">
+                    Order{" "}
+                    <Box as="span" color="red" display="inline">
+                      *
+                    </Box>
+                  </Text>
+                  <input
+                    type="number"
+                    value={order}
+                    onChange={(e) => setOrder(parseInt(e.target.value))}
+                    required
+                    min={1}
+                    className="form-input"
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      border: "1px solid #ddd",
+                      fontSize: "16px",
+                    }}
+                  />
+                </Box>
+              </Flex>
+
+              {!isEditing && (
+                <Box mb={4}>
+                  <Text as="label" display="block" mb={2} fontWeight="bold">
+                    File{" "}
+                    <Box as="span" color="red" display="inline">
+                      *
+                    </Box>
+                  </Text>
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    required={!isEditing}
+                    className="form-input"
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      border: "1px solid #ddd",
+                      fontSize: "16px",
+                    }}
+                  />
+                </Box>
+              )}
+
+              {isEditing && (
+                <Box mb={4}>
+                  <Text as="label" display="block" mb={2} fontWeight="bold">
+                    Current Document
+                  </Text>
+                  {currentDocument ? (
+                    <Flex alignItems="center" gap={3}>
+                      <a
+                        href={currentDocument}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: "#007bff",
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                        >
+                          <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z" />
+                        </svg>
+                        View Current Document
+                      </a>
+                    </Flex>
+                  ) : (
+                    <Text color="gray.500">No document currently attached</Text>
+                  )}
+
+                  <Box mt={3}>
+                    <Text as="label" display="block" mb={2} fontWeight="bold">
+                      Upload New Document (Optional)
+                    </Text>
+                    <input
+                      type="file"
+                      onChange={handleFileChange}
+                      className="form-input"
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: "6px",
+                        border: "1px solid #ddd",
+                        fontSize: "16px",
+                      }}
+                    />
+                    {file && (
+                      <Text fontSize="sm" color="gray.600" mt={2}>
+                        New file selected: {file.name}
+                      </Text>
+                    )}
+                  </Box>
+                </Box>
+              )}
+
+              {error && (
+                <Box mb={4} p={3} bg="red.50" color="red.600" borderRadius="md">
+                  {error}
+                </Box>
+              )}
+
+              <Flex gap={2} justifyContent="flex-end">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={isEditing ? handleCancelEdit : handleCancel}
+                  disabled={isSubmitting}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "4px",
+                    border: "1px solid #ddd",
+                    background: "#f8f9fa",
+                    cursor: isSubmitting ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={isSubmitting}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "4px",
+                    border: "none",
+                    background: "#007bff",
+                    color: "white",
+                    cursor: isSubmitting ? "not-allowed" : "pointer",
+                  }}
+                  onClick={() => {
+                    console.log("Manual submit button clicked");
+                    setIsSubmitting(true);
+                    manualSubmit();
+                  }}
+                >
+                  {isSubmitting
+                    ? "Saving..."
+                    : isEditing
+                    ? "Save Changes"
+                    : "Add Material"}
+                </button>
+              </Flex>
+            </div>
+          </form>
         </Box>
       )}
     </Box>

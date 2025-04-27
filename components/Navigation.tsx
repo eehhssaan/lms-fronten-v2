@@ -26,7 +26,11 @@ export default function Navigation({
   const navItems = isAuthenticated
     ? [
         { path: "/", label: "Home" },
-        { path: "/subjects", label: "Subjects" },
+        // Only add Subjects to navItems if user is teacher or admin
+        ...(user?.role &&
+        ["teacher", "head_teacher", "admin"].includes(user.role)
+          ? [{ path: "/subjects", label: "Subjects" }]
+          : []),
         { path: "/courses", label: "Courses" },
         // Only add Classes to navItems if user is teacher or admin
         ...(user?.role &&

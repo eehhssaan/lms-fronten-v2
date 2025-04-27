@@ -5,7 +5,7 @@ import Link from "next/link";
 
 interface SubjectCardProps {
   subject: {
-    id: string;
+    _id: string;
     name: string;
     code?: string;
     description?: string;
@@ -21,11 +21,11 @@ interface SubjectCardProps {
 }
 
 const SubjectCard: React.FC<SubjectCardProps> = ({ subject, onClick }) => {
-  const { id, name, code, description, courseCount, iconUrl, headTeacher } =
+  const { _id, name, code, description, courseCount, iconUrl, headTeacher } =
     subject;
 
   return (
-    <Link href={`/subjects/${encodeURIComponent(id)}`} passHref>
+    <Link href={`/subjects/${encodeURIComponent(_id)}`} passHref>
       <Box
         as="div"
         onClick={onClick}

@@ -11,6 +11,7 @@ import { createClass, getClasses } from "@/lib/api";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Notification from "@/components/Notification";
 import ClassList from "@/components/ClassList";
+import CreateClassForm from "@/components/CreateClassForm";
 
 type FormLevel = "Form 4" | "Form 5" | "Form 6" | "AS" | "A2";
 
@@ -286,196 +287,97 @@ export default function ClassesPage() {
         </Box>
       )}
 
-      {/* Create Class Dialog */}
-      <ConfirmDialog
-        isOpen={showCreateDialog}
-        title="Create New Class"
-        message={
-          <Box>
-            <Box mb={3}>
-              <Text fontWeight="bold" mb={2}>
-                Class Name *{" "}
-                <Text as="span" color="red" fontSize="12px">
-                  (max 50 characters)
-                </Text>
-              </Text>
-              <input
-                type="text"
-                name="name"
-                value={newClass.name}
-                onChange={handleInputChange}
-                maxLength={50}
-                required
-                placeholder="Enter class name"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                }}
-              />
-            </Box>
+      {/* Create Class Form */}
+      {showCreateDialog && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <CreateClassForm
+            onClose={() => {
+              setShowCreateDialog(false);
+              setNewClass({
+                name: "",
+                code: "",
+                formLevel: "",
+                academicYear: "",
+                department: "",
+                description: "",
+              });
+            }}
+            onSubmit={async (data) => {
+              if (!data.name.trim()) {
+                setNotification({
+                  message: "Please add a class name",
+                  type: "error",
+                });
+                return;
+              }
+              if (!data.code.trim()) {
+                setNotification({
+                  message: "Please add a class code",
+                  type: "error",
+                });
+                return;
+              }
+              if (!data.academicYear.trim()) {
+                setNotification({
+                  message: "Academic year is required",
+                  type: "error",
+                });
+                return;
+              }
 
-            <Box mb={3}>
-              <Text fontWeight="bold" mb={2}>
-                Class Code *{" "}
-                <Text as="span" color="red" fontSize="12px">
-                  (max 20 characters)
-                </Text>
-              </Text>
-              <input
-                type="text"
-                name="code"
-                value={newClass.code}
-                onChange={handleInputChange}
-                maxLength={20}
-                required
-                placeholder="Enter class code (e.g., CS101-2024)"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                }}
-              />
-            </Box>
+              try {
+                setCreateLoading(true);
+                if (!user) {
+                  setNotification({
+                    message: "User not found",
+                    type: "error",
+                  });
+                  return;
+                }
 
-            <Box mb={3}>
-              <Text fontWeight="bold" mb={2}>
-                Form Level *
-              </Text>
-              <select
-                name="formLevel"
-                value={newClass.formLevel}
-                onChange={handleInputChange}
-                required
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                }}
-              >
-                <option value="">Select Form Level</option>
-                <option value="Form 4">Form 4</option>
-                <option value="Form 5">Form 5</option>
-                <option value="Form 6">Form 6</option>
-                <option value="AS">AS</option>
-                <option value="A2">A2</option>
-              </select>
-            </Box>
+                const classData = {
+                  name: data.name.trim(),
+                  code: data.code.trim(),
+                  formLevel: data.formLevel as FormLevel,
+                  academicYear: data.academicYear.trim(),
+                  department: data.department || undefined,
+                  description: data.description || undefined,
+                  classTeacher: user._id || "",
+                };
 
-            <Box mb={3}>
-              <Text fontWeight="bold" mb={2}>
-                Academic Year *{" "}
-                <Text as="span" color="red" fontSize="12px">
-                  (format: YYYY-YYYY)
-                </Text>
-              </Text>
-              <input
-                type="text"
-                name="academicYear"
-                value={newClass.academicYear}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Only allow numbers and hyphen
-                  if (/^[\d-]*$/.test(value)) {
-                    handleInputChange(e);
-                  }
-                }}
-                required
-                pattern="\d{4}-\d{4}"
-                placeholder="Enter academic year (e.g., 2024-2025)"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                }}
-              />
-            </Box>
-
-            <Box mb={3}>
-              <Text fontWeight="bold" mb={2}>
-                Department (Optional)
-              </Text>
-              <input
-                type="text"
-                name="department"
-                value={newClass.department}
-                onChange={handleInputChange}
-                placeholder="Enter department name"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                }}
-              />
-            </Box>
-
-            <Box>
-              <Text fontWeight="bold" mb={2}>
-                Description (Optional)
-              </Text>
-              <textarea
-                name="description"
-                value={newClass.description}
-                onChange={handleInputChange}
-                placeholder="Enter class description"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                  minHeight: "100px",
-                }}
-              />
-            </Box>
-          </Box>
-        }
-        confirmLabel={createLoading ? "Creating..." : "Create"}
-        cancelLabel="Cancel"
-        onConfirm={async () => {
-          // Validate form before submitting
-          if (!newClass.name.trim()) {
-            setNotification({
-              message: "Please add a class name",
-              type: "error",
-            });
-            return;
-          }
-          if (!newClass.code.trim()) {
-            setNotification({
-              message: "Please add a class code",
-              type: "error",
-            });
-            return;
-          }
-          if (!newClass.academicYear.trim()) {
-            setNotification({
-              message: "Academic year is required",
-              type: "error",
-            });
-            return;
-          }
-
-          // If validation passes, proceed with class creation
-          handleCreateClass();
-        }}
-        onCancel={() => {
-          setShowCreateDialog(false);
-          setNewClass({
-            name: "",
-            code: "",
-            formLevel: "",
-            academicYear: "",
-            department: "",
-            description: "",
-          });
-        }}
-        isLoading={createLoading}
-      />
+                await createClass(classData);
+                setNotification({
+                  message: "Class created successfully",
+                  type: "success",
+                });
+                setShowCreateDialog(false);
+                fetchClasses();
+              } catch (error: any) {
+                setNotification({
+                  message: error.message || "Failed to create class",
+                  type: "error",
+                });
+              } finally {
+                setCreateLoading(false);
+              }
+            }}
+            isLoading={createLoading}
+          />
+        </Box>
+      )}
 
       {/* Notification */}
       {notification && (

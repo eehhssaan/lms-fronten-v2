@@ -568,11 +568,12 @@ export default function ClassDetails() {
                   border: "1px solid #ddd",
                 }}
               >
+                <option value="Form 6">Form 1</option>
+                <option value="Form 6">Form 2</option>
+                <option value="Form 6">Form 3</option>
                 <option value="Form 4">Form 4</option>
                 <option value="Form 5">Form 5</option>
                 <option value="Form 6">Form 6</option>
-                <option value="AS">AS</option>
-                <option value="A2">A2</option>
               </select>
             </Box>
 

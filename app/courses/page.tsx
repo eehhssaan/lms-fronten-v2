@@ -163,7 +163,7 @@ export default function CoursesPage() {
             onClick={() => router.push("/courses/create")}
             variant="primary"
           >
-            Create Course1
+            Create Course
           </Button>
         )}
       </Flex>

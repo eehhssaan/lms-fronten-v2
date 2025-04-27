@@ -14,11 +14,13 @@ import {
   getSubjectById,
   getCoursesBySubject,
   getSubjectContents,
+  getSubjectChapters,
 } from "@/lib/api";
-import { Course, Content } from "@/types";
+import { Course, Content, Chapter } from "@/types";
 import Button from "@/components/Button";
 import SubjectContentManager from "@/components/SubjectContentManager";
 import SubjectContent from "@/components/SubjectContent";
+import ChapterManager from "@/components/ChapterManager";
 
 export default function SubjectDetailPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -29,12 +31,14 @@ export default function SubjectDetailPage() {
   }>();
   const [courses, setCourses] = useState<Course[]>([]);
   const [contents, setContents] = useState<Content[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [limit] = useState(6); // Show 6 courses per page
   const [showContentManager, setShowContentManager] = useState(false);
+  const [showChapterManager, setShowChapterManager] = useState(false);
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.subjectId as string;
@@ -70,6 +74,10 @@ export default function SubjectDetailPage() {
           // Fetch subject contents
           const contentsData = await getSubjectContents(subjectId);
           setContents(contentsData);
+
+          // Fetch subject chapters
+          const chaptersResponse = await getSubjectChapters(subjectId);
+          setChapters(chaptersResponse.data);
         } catch (err: any) {
           console.error("Failed to fetch subject details or courses:", err);
           setError(
@@ -98,6 +106,15 @@ export default function SubjectDetailPage() {
       setContents(contentsData);
     } catch (err) {
       console.error("Failed to refresh contents:", err);
+    }
+  };
+
+  const refreshChapters = async () => {
+    try {
+      const chaptersResponse = await getSubjectChapters(subjectId);
+      setChapters(chaptersResponse.data);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch chapters");
     }
   };
 
@@ -158,45 +175,62 @@ export default function SubjectDetailPage() {
       ) : (
         <>
           {canManageSubject && (
-            <Box
-              mt={4}
-              mb={4}
-              p={3}
-              bg="white"
-              sx={{
-                borderRadius: "8px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              }}
-            >
-              <Flex justifyContent="space-between" alignItems="center">
-                <Heading as="h3" fontSize={3}>
+            <Box mb={4}>
+              <Flex justifyContent="space-between" alignItems="center" mb={3}>
+                <Heading as="h2" fontSize={3}>
                   Subject Management
                 </Heading>
-                <Flex>
-                  {!showContentManager ? (
-                    <Button
-                      onClick={() => setShowContentManager(true)}
-                      variant="primary"
-                    >
-                      Manage Content
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => setShowContentManager(false)}
-                      variant="secondary"
-                    >
-                      Hide Content Manager
-                    </Button>
-                  )}
+                <Flex gap={2}>
+                  <Button
+                    onClick={() => setShowChapterManager(!showChapterManager)}
+                    variant="secondary"
+                    size="small"
+                  >
+                    {showChapterManager ? "Hide Chapters" : "Manage Chapters"}
+                  </Button>
+                  <Button
+                    onClick={() => setShowContentManager(!showContentManager)}
+                    variant="secondary"
+                    size="small"
+                  >
+                    {showContentManager ? "Hide Content" : "Manage Content"}
+                  </Button>
                 </Flex>
               </Flex>
 
+              {showChapterManager && (
+                <Box
+                  bg="white"
+                  p={4}
+                  mb={4}
+                  sx={{
+                    borderRadius: "8px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <ChapterManager
+                    subjectId={subjectId}
+                    chapters={chapters}
+                    onChaptersUpdated={refreshChapters}
+                  />
+                </Box>
+              )}
+
               {showContentManager && (
-                <Box mt={3}>
+                <Box
+                  bg="white"
+                  p={4}
+                  mb={4}
+                  sx={{
+                    borderRadius: "8px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                  }}
+                >
                   <SubjectContentManager
                     subjectId={subjectId}
                     contents={contents}
                     onContentAdded={refreshContents}
+                    chapters={chapters}
                   />
                 </Box>
               )}

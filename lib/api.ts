@@ -1,5 +1,13 @@
 import axios from "axios";
-import { Course, User, Content, Class, Subject } from "@/types";
+import {
+  Course,
+  User,
+  Content,
+  Class,
+  Subject,
+  Assignment,
+  Chapter,
+} from "@/types";
 
 // Determine the base URL for API requests
 const getBaseUrl = () => {
@@ -32,13 +40,13 @@ api.interceptors.request.use(
       method: config.method,
       withCredentials: config.withCredentials,
       headers: config.headers,
+      data: config.data,
     });
 
     // Try to get token from local storage (as a backup)
     const token = getStoredToken();
 
     // If we have a token in localStorage, add it to the Authorization header
-    // This is a backup mechanism in case cookies aren't working properly
     if (token) {
       console.log("Adding Authorization header with token from local storage");
       config.headers = config.headers || {};
@@ -48,12 +56,16 @@ api.interceptors.request.use(
       }
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      console.log("No token found in local storage for request");
+      console.error("No token found in local storage for request");
+      // You might want to redirect to login here if no token is found
     }
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error("Request interceptor error:", error);
+    return Promise.reject(error);
+  }
 );
 
 // Add response interceptor for debugging
@@ -1890,5 +1902,137 @@ export const deleteCourseMaterial = async (
     throw new Error(
       error.response?.data?.message || "Failed to delete course material"
     );
+  }
+};
+
+export const getAssignments = async (
+  courseId: string
+): Promise<{
+  data: Assignment[];
+  count: number;
+}> => {
+  try {
+    const response = await api.get(`/assignments?courseId=${courseId}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch assignments"
+    );
+  }
+};
+
+// Chapter Management
+export const getSubjectChapters = async (
+  subjectId: string
+): Promise<{
+  data: Chapter[];
+  count: number;
+}> => {
+  try {
+    const response = await api.get(`/subjects/${subjectId}/chapters`);
+    return {
+      data: response.data.data,
+      count: response.data.count,
+    };
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch chapters"
+    );
+  }
+};
+
+export const createChapter = async (
+  subjectId: string,
+  data: {
+    title: string;
+    description?: string;
+    order: number;
+    isActive?: boolean;
+  }
+): Promise<Chapter> => {
+  try {
+    const response = await api.post(`/subjects/${subjectId}/chapters`, data);
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to create chapter"
+    );
+  }
+};
+
+export const updateChapter = async (
+  subjectId: string,
+  chapterId: string,
+  data: {
+    title?: string;
+    description?: string;
+    order?: number;
+    isActive?: boolean;
+  }
+): Promise<Chapter> => {
+  try {
+    const response = await api.put(
+      `/subjects/${subjectId}/chapters/${chapterId}`,
+      data
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to update chapter"
+    );
+  }
+};
+
+export const deleteChapter = async (
+  subjectId: string,
+  chapterId: string
+): Promise<void> => {
+  try {
+    await api.delete(`/subjects/${subjectId}/chapters/${chapterId}`);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to delete chapter"
+    );
+  }
+};
+
+export const bulkUploadChapters = async (
+  subjectId: string,
+  file: File
+): Promise<{
+  data: Chapter[];
+  count: number;
+}> => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post(
+      `/subjects/${subjectId}/chapters/upload`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return {
+      data: response.data.data,
+      count: response.data.count,
+    };
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to upload chapters"
+    );
+  }
+};
+
+export const getChapterTemplate = async (subjectId: string): Promise<Blob> => {
+  try {
+    const response = await api.get(`/subjects/${subjectId}/chapters/template`, {
+      responseType: "blob",
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to get template");
   }
 };

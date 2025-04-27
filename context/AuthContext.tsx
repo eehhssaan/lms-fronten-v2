@@ -79,7 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Invalid login response format");
       }
 
-      console.log("AuthContext: Setting user data:", response.data);
       setUser(response.data);
       setIsAuthenticated(true);
 

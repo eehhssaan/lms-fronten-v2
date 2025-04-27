@@ -11,7 +11,8 @@ import SubjectBreadcrumb, {
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
 import Button from "@/components/Button";
-import { createSubject } from "@/lib/api";
+import { createSubject, getTeachers } from "@/lib/api";
+import { User } from "@/types";
 
 export default function CreateSubjectPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -23,6 +24,7 @@ export default function CreateSubjectPage() {
     headTeacher: "",
     iconUrl: "",
   });
+  const [teachers, setTeachers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -32,7 +34,7 @@ export default function CreateSubjectPage() {
   const baseBreadcrumbItems = useSubjectBreadcrumb();
   const breadcrumbItems = [
     ...baseBreadcrumbItems,
-    { label: "Create Subject2", href: "/subjects/create" },
+    { label: "Create Subject", href: "/subjects/create" },
   ];
 
   useEffect(() => {
@@ -41,12 +43,37 @@ export default function CreateSubjectPage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  // Only admin users can access this page
+  // Only admin and head_teacher users can access this page
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user?.role !== "admin") {
+    if (
+      !authLoading &&
+      isAuthenticated &&
+      !["admin", "head_teacher"].includes(user?.role || "")
+    ) {
       router.push("/subjects");
     }
   }, [authLoading, isAuthenticated, user, router]);
+
+  // Fetch teachers when component mounts
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      try {
+        const teachersList = await getTeachers();
+        // Filter to only show head teachers
+        const headTeachers = teachersList.filter(
+          (teacher) => teacher.role === "head_teacher"
+        );
+        setTeachers(headTeachers);
+      } catch (err) {
+        console.error("Failed to fetch teachers:", err);
+        setError("Failed to load teachers list");
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchTeachers();
+    }
+  }, [isAuthenticated]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -116,7 +143,10 @@ export default function CreateSubjectPage() {
     return <Loading />;
   }
 
-  if (!isAuthenticated || (user && user.role !== "admin")) {
+  if (
+    !isAuthenticated ||
+    (user && !["admin", "head_teacher"].includes(user.role))
+  ) {
     return null; // Will redirect
   }
 
@@ -209,20 +239,22 @@ export default function CreateSubjectPage() {
 
         <Box mb={3}>
           <Label htmlFor="headTeacher" mb={2}>
-            Head Teacher ID* (Required)
+            Head Teacher* (Required)
           </Label>
-          <Input
+          <Select
             id="headTeacher"
             name="headTeacher"
             value={formData.headTeacher}
             onChange={handleInputChange}
             required
-            placeholder="Enter teacher ID to assign as head teacher"
-          />
-          <Text fontSize={1} color="gray.600" mt={1}>
-            Enter the ID of an existing teacher to assign them as the head
-            teacher
-          </Text>
+          >
+            <option value="">Select Head Teacher</option>
+            {teachers.map((teacher) => (
+              <option key={teacher._id} value={teacher._id}>
+                {teacher.name} ({teacher.email})
+              </option>
+            ))}
+          </Select>
         </Box>
 
         <Box mb={4}>

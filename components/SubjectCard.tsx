@@ -9,7 +9,7 @@ interface SubjectCardProps {
     name: string;
     code?: string;
     description?: string;
-    courseCount: number;
+    courseCount?: number;
     iconUrl?: string;
     headTeacher?: {
       _id: string;
@@ -100,7 +100,9 @@ const SubjectCard: React.FC<SubjectCardProps> = ({ subject, onClick }) => {
 
         <Box mt="auto">
           <Text as="p" fontSize={1} color="primary" fontWeight="bold">
-            {courseCount} Course{courseCount !== 1 ? "s" : ""}
+            {courseCount !== undefined
+              ? `${courseCount} Course${courseCount !== 1 ? "s" : ""}`
+              : "No courses"}
           </Text>
         </Box>
       </Box>

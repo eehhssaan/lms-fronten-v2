@@ -72,23 +72,24 @@ export default function Navbar() {
                 </Text>
               </Link>
 
-              {/* Classes link - only for teachers and admins */}
-              {user?.role && ["teacher", "admin"].includes(user.role) && (
-                <Link href="/classes" passHref>
-                  <Text
-                    as="a"
-                    sx={{
-                      color: "white",
-                      textDecoration: "none",
-                      "&:hover": {
-                        textDecoration: "underline",
-                      },
-                    }}
-                  >
-                    Classes
-                  </Text>
-                </Link>
-              )}
+              {/* Classes link - only for teachers, head_teachers and admins */}
+              {user?.role &&
+                ["teacher", "head_teacher", "admin"].includes(user.role) && (
+                  <Link href="/classes" passHref>
+                    <Text
+                      as="a"
+                      sx={{
+                        color: "white",
+                        textDecoration: "none",
+                        "&:hover": {
+                          textDecoration: "underline",
+                        },
+                      }}
+                    >
+                      Classes
+                    </Text>
+                  </Link>
+                )}
             </>
           )}
         </Flex>

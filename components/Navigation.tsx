@@ -29,7 +29,8 @@ export default function Navigation({
         { path: "/subjects", label: "Subjects" },
         { path: "/courses", label: "Courses" },
         // Only add Classes to navItems if user is teacher or admin
-        ...(user?.role && ["teacher", "admin"].includes(user.role)
+        ...(user?.role &&
+        ["teacher", "head_teacher", "admin"].includes(user.role)
           ? [{ path: "/classes", label: "Classes" }]
           : []),
       ]

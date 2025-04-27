@@ -36,19 +36,12 @@ export const getStoredToken = () => {
 api.interceptors.request.use(
   (config) => {
     // Log request details for debugging
-    console.log(`API Request to: ${config.baseURL}${config.url}`, {
-      method: config.method,
-      withCredentials: config.withCredentials,
-      headers: config.headers,
-      data: config.data,
-    });
 
     // Try to get token from local storage (as a backup)
     const token = getStoredToken();
 
     // If we have a token in localStorage, add it to the Authorization header
     if (token) {
-      console.log("Adding Authorization header with token from local storage");
       config.headers = config.headers || {};
       // Don't override Content-Type if it's multipart/form-data
       if (config.headers["Content-Type"] !== "multipart/form-data") {
@@ -71,11 +64,6 @@ api.interceptors.request.use(
 // Add response interceptor for debugging
 api.interceptors.response.use(
   (response) => {
-    console.log(`API Response from: ${response.config.url}`, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-    });
     return response;
   },
   (error) => {
@@ -346,7 +334,6 @@ export const logoutUser = async (): Promise<void> => {
 export const getCurrentUser = async (): Promise<User> => {
   try {
     const response = await api.get("/users/me");
-    console.log("getCurrentUser response:", response.data);
 
     // Handle different response formats
     let userData: User;
@@ -2034,5 +2021,39 @@ export const getChapterTemplate = async (subjectId: string): Promise<Blob> => {
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to get template");
+  }
+};
+
+export const updateSubject = async (
+  subjectId: string,
+  subjectData: {
+    name: string;
+    code: string;
+    grade: string;
+    description?: string;
+    headTeacher: string;
+    iconUrl?: string;
+  }
+): Promise<Subject> => {
+  try {
+    const response = await api.put(`/subjects/${subjectId}`, subjectData);
+    const updatedSubject = response.data.data;
+
+    return {
+      id: updatedSubject._id,
+      _id: updatedSubject._id,
+      name: updatedSubject.name,
+      code: updatedSubject.code,
+      description: updatedSubject.description,
+      headTeacher: updatedSubject.headTeacher,
+      grade: updatedSubject.grade,
+      courseCount: updatedSubject.courseCount || 0,
+      iconUrl: updatedSubject.iconUrl,
+    };
+  } catch (error: any) {
+    console.error("Error updating subject:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to update subject"
+    );
   }
 };

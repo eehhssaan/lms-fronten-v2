@@ -17,12 +17,14 @@ interface ChapterManagerProps {
   subjectId: string;
   chapters: Chapter[];
   onChaptersUpdated: () => void;
+  canManage?: boolean;
 }
 
 export default function ChapterManager({
   subjectId,
   chapters,
   onChaptersUpdated,
+  canManage = false,
 }: ChapterManagerProps) {
   const { user } = useAuth();
   const [isAdding, setIsAdding] = useState(false);
@@ -190,49 +192,48 @@ export default function ChapterManager({
   return (
     <Box>
       <Flex justifyContent="space-between" alignItems="center" mb={3}>
-        <Heading as="h3" fontSize={2}>
-          Chapters
-        </Heading>
-        <Flex gap={2}>
-          <Button
-            onClick={handleDownloadTemplate}
-            variant="secondary"
-            size="small"
-          >
-            Download Template
-          </Button>
-          <label>
+        {canManage && (
+          <Flex gap={2}>
             <Button
-              as="span"
+              onClick={handleDownloadTemplate}
               variant="secondary"
               size="small"
-              disabled={uploading}
             >
-              {uploading ? "Uploading..." : "Bulk Upload"}
+              Download Template
             </Button>
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleBulkUpload}
-              style={{ display: "none" }}
-            />
-          </label>
-          {!isAdding && !isEditing && (
-            <Button
-              onClick={() => setIsAdding(true)}
-              variant="primary"
-              size="small"
-            >
-              Add Chapter
-            </Button>
-          )}
-        </Flex>
+            <label>
+              <Button
+                as="span"
+                variant="secondary"
+                size="small"
+                disabled={uploading}
+              >
+                {uploading ? "Uploading..." : "Bulk Upload"}
+              </Button>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleBulkUpload}
+                style={{ display: "none" }}
+              />
+            </label>
+            {!isAdding && !isEditing && (
+              <Button
+                onClick={() => setIsAdding(true)}
+                variant="primary"
+                size="small"
+              >
+                Add Chapter
+              </Button>
+            )}
+          </Flex>
+        )}
       </Flex>
 
       {error && <ErrorMessage message={error} />}
       {deleteError && <ErrorMessage message={deleteError} />}
 
-      {(isAdding || isEditing) && (
+      {canManage && (isAdding || isEditing) && (
         <Box
           className="card"
           mb={4}
@@ -248,24 +249,16 @@ export default function ChapterManager({
             <Box mb={4}>
               <Text as="label" display="block" mb={2} fontWeight="bold">
                 Title{" "}
-                <Box as="span" color="red" display="inline">
+                <Text as="span" color="red">
                   *
-                </Box>
+                </Text>
               </Text>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
-                className="form-input"
-                placeholder="Enter chapter title"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #ddd",
-                  fontSize: "16px",
-                }}
+                className="form-control"
               />
             </Box>
 
@@ -276,25 +269,17 @@ export default function ChapterManager({
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="form-textarea"
-                placeholder="Enter chapter description"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #ddd",
-                  fontSize: "16px",
-                  minHeight: "100px",
-                }}
+                className="form-control"
+                rows={3}
               />
             </Box>
 
             <Box mb={4}>
               <Text as="label" display="block" mb={2} fontWeight="bold">
                 Order{" "}
-                <Box as="span" color="red" display="inline">
+                <Text as="span" color="red">
                   *
-                </Box>
+                </Text>
               </Text>
               <input
                 type="number"
@@ -302,144 +287,134 @@ export default function ChapterManager({
                 onChange={(e) => setOrder(parseInt(e.target.value))}
                 required
                 min={1}
-                className="form-input"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #ddd",
-                  fontSize: "16px",
-                }}
+                className="form-control"
               />
             </Box>
 
             <Box mb={4}>
-              <Text as="label" display="block" mb={2} fontWeight="bold">
-                Active Status
-              </Text>
-              <label
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
+              <label className="form-check">
                 <input
                   type="checkbox"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
+                  className="form-check-input"
                 />
-                <Text>Active</Text>
+                <Text as="span" ml={2}>
+                  Active
+                </Text>
               </label>
             </Box>
 
-            <Flex gap={2}>
+            <Flex justifyContent="flex-end" gap={2}>
               <Button
                 type="button"
-                variant="primary"
-                disabled={isSubmitting}
-                onClick={manualSubmit}
-              >
-                {isSubmitting ? "Saving..." : "Save"}
-              </Button>
-              <Button
-                type="button"
+                onClick={
+                  isEditing ? handleCancelEdit : () => setIsAdding(false)
+                }
                 variant="secondary"
-                onClick={handleCancelEdit}
+                size="small"
               >
                 Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="small"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : isEditing ? "Save" : "Add"}
               </Button>
             </Flex>
           </form>
         </Box>
       )}
 
-      {console.log(chapters)}
-
-      {chapters.length > 0 && (
-        <Box>
-          {chapters
-            .sort((a, b) => a.order - b.order)
-            .map((chapter) => (
-              <Box
-                key={chapter._id}
-                p={4}
-                mb={3}
-                sx={{
-                  border: "1px solid",
-                  borderColor: "gray.200",
-                  borderRadius: "8px",
-                  bg: "white",
-                  opacity: deletingChapterIds.includes(chapter._id) ? 0.7 : 1,
-                  transition: "opacity 0.2s ease-in-out",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                }}
-              >
-                <Flex justifyContent="space-between" alignItems="flex-start">
-                  <Box flex="1">
-                    <Flex alignItems="center" mb={2}>
-                      <Text fontWeight="bold" fontSize={3} mr={2}>
-                        {chapter.title}
-                      </Text>
-                      <Box
-                        sx={{
-                          display: "inline-block",
-                          px: 2,
-                          py: 1,
-                          borderRadius: "4px",
-                          bg: chapter.isActive ? "green.100" : "red.100",
-                          color: chapter.isActive ? "green.800" : "red.800",
-                          fontSize: "12px",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {chapter.isActive ? "Active" : "Inactive"}
-                      </Box>
-                    </Flex>
-
-                    {chapter.description && (
-                      <Text fontSize={2} color="gray.600" mb={2}>
-                        {chapter.description}
-                      </Text>
-                    )}
-
-                    <Flex gap={3} fontSize={1} color="gray.600">
-                      <Text>
-                        <strong>Order:</strong> {chapter.order}
-                      </Text>
-                      <Text>
-                        <strong>Created By:</strong>{" "}
-                        {chapter.createdBy?.name || "Unknown"}
-                      </Text>
-                      <Text>
-                        <strong>Created:</strong>{" "}
-                        {new Date(chapter.createdAt).toLocaleDateString()}
-                      </Text>
-                      <Text>
-                        <strong>Last Updated:</strong>{" "}
-                        {new Date(chapter.updatedAt).toLocaleDateString()}
-                      </Text>
-                    </Flex>
+      {chapters.length > 0 ? (
+        <Box
+          className="table-responsive"
+          sx={{
+            border: "1px solid",
+            borderColor: "gray.200",
+            borderRadius: "md",
+          }}
+        >
+          <Box as="table" width="100%">
+            <Box as="thead">
+              <Box as="tr" bg="gray.100">
+                <Box as="th" p={3} textAlign="left">
+                  Title
+                </Box>
+                <Box as="th" p={3} textAlign="left">
+                  Description
+                </Box>
+                <Box as="th" p={3} textAlign="center">
+                  Order
+                </Box>
+                <Box as="th" p={3} textAlign="center">
+                  Status
+                </Box>
+                {canManage && (
+                  <Box as="th" p={3} textAlign="right">
+                    Actions
                   </Box>
-
-                  <Flex gap={2}>
-                    <Button
-                      onClick={() => handleStartEdit(chapter)}
-                      variant="secondary"
-                      size="small"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={() => handleDelete(chapter._id)}
-                      variant="danger"
-                      size="small"
-                      disabled={deletingChapterIds.includes(chapter._id)}
-                    >
-                      {deletingChapterIds.includes(chapter._id)
-                        ? "Deleting..."
-                        : "Delete"}
-                    </Button>
-                  </Flex>
-                </Flex>
+                )}
               </Box>
-            ))}
+            </Box>
+            <Box as="tbody">
+              {chapters.map((chapter) => (
+                <Box
+                  as="tr"
+                  key={chapter._id}
+                  borderTop="1px solid"
+                  borderColor="gray.200"
+                >
+                  <Box as="td" p={3}>
+                    {chapter.title}
+                  </Box>
+                  <Box as="td" p={3}>
+                    {chapter.description}
+                  </Box>
+                  <Box as="td" p={3} textAlign="center">
+                    {chapter.order}
+                  </Box>
+                  <Box as="td" p={3} textAlign="center">
+                    {chapter.isActive ? (
+                      <Text color="green">Active</Text>
+                    ) : (
+                      <Text color="red">Inactive</Text>
+                    )}
+                  </Box>
+                  {canManage && (
+                    <Box as="td" p={3} textAlign="right">
+                      <Flex justifyContent="flex-end" gap={2}>
+                        <Button
+                          onClick={() => handleStartEdit(chapter)}
+                          variant="secondary"
+                          size="small"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          onClick={() => handleDelete(chapter._id)}
+                          variant="danger"
+                          size="small"
+                          disabled={deletingChapterIds.includes(chapter._id)}
+                        >
+                          {deletingChapterIds.includes(chapter._id)
+                            ? "Deleting..."
+                            : "Delete"}
+                        </Button>
+                      </Flex>
+                    </Box>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      ) : (
+        <Box p={4} bg="gray.100" borderRadius="md" textAlign="center">
+          <Text color="gray.600">No chapters available yet.</Text>
         </Box>
       )}
     </Box>

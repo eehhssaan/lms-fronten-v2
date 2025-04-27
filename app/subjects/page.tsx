@@ -5,9 +5,6 @@ import { Box, Heading, Flex, Text } from "rebass";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import SubjectCard from "@/components/SubjectCard";
-import SubjectBreadcrumb, {
-  useSubjectBreadcrumb,
-} from "@/components/SubjectBreadcrumb";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
 import { getSubjects } from "@/lib/api";
@@ -28,7 +25,6 @@ export default function SubjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const breadcrumbItems = useSubjectBreadcrumb();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -68,8 +64,6 @@ export default function SubjectsPage() {
 
   return (
     <Box as="div" className="container" py={4} px={[3, 4]}>
-      <SubjectBreadcrumb items={breadcrumbItems} />
-
       <Flex alignItems="center" mb={4} flexWrap="wrap">
         <Box flex="1">
           <Heading as="h1" fontSize={[4, 5]}>
@@ -86,7 +80,7 @@ export default function SubjectsPage() {
             onClick={() => router.push("/subjects/create")}
             variant="primary"
           >
-            Create Subject1
+            Create Subject
           </Button>
         )}
       </Flex>

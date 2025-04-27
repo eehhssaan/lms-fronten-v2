@@ -14,14 +14,14 @@ interface SubjectContentManagerProps {
   subjectId: string;
   contents: Content[];
   onContentAdded: () => void;
-  chapters: Chapter[];
+  chapters?: Chapter[];
 }
 
 export default function SubjectContentManager({
   subjectId,
   contents,
   onContentAdded,
-  chapters,
+  chapters = [],
 }: SubjectContentManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);

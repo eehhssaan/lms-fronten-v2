@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Heading, Flex, Text } from "rebass";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
@@ -9,18 +9,12 @@ import SubjectBreadcrumb, {
 } from "@/components/SubjectBreadcrumb";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
-import CourseList from "@/components/CourseList";
-import {
-  getSubjectById,
-  getCoursesBySubject,
-  getSubjectContents,
-  getSubjectChapters,
-} from "@/lib/api";
-import { Course, Content, Chapter } from "@/types";
+import { getSubjectById, getSubjectContents } from "@/lib/api";
+import { Content } from "@/types";
 import Button from "@/components/Button";
 import SubjectContentManager from "@/components/SubjectContentManager";
 import SubjectContent from "@/components/SubjectContent";
-import ChapterManager from "@/components/ChapterManager";
+import SubjectNavigation from "@/components/SubjectNavigation";
 
 export default function SubjectDetailPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -29,21 +23,14 @@ export default function SubjectDetailPage() {
     description?: string;
     headTeacher?: any;
   }>();
-  const [courses, setCourses] = useState<Course[]>([]);
   const [contents, setContents] = useState<Content[]>([]);
-  const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [limit] = useState(6); // Show 6 courses per page
   const [showContentManager, setShowContentManager] = useState(false);
-  const [showChapterManager, setShowChapterManager] = useState(false);
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.subjectId as string;
 
-  // Move the hook outside of useMemo
   const breadcrumbItems = useSubjectBreadcrumb(subject?.name);
 
   useEffect(() => {
@@ -54,7 +41,7 @@ export default function SubjectDetailPage() {
 
   useEffect(() => {
     if (isAuthenticated && subjectId) {
-      const fetchSubjectAndCourses = async () => {
+      const fetchSubjectAndContents = async () => {
         try {
           setLoading(true);
           setError(null);
@@ -63,23 +50,11 @@ export default function SubjectDetailPage() {
           const subjectData = await getSubjectById(subjectId);
           setSubject(subjectData);
 
-          // Fetch courses for this subject
-          const coursesResponse = await getCoursesBySubject(subjectId, {
-            page,
-            limit,
-          });
-          setCourses(coursesResponse.data);
-          setTotalPages(coursesResponse.pagination.totalPages);
-
           // Fetch subject contents
           const contentsData = await getSubjectContents(subjectId);
           setContents(contentsData);
-
-          // Fetch subject chapters
-          const chaptersResponse = await getSubjectChapters(subjectId);
-          setChapters(chaptersResponse.data);
         } catch (err: any) {
-          console.error("Failed to fetch subject details or courses:", err);
+          console.error("Failed to fetch subject details or contents:", err);
           setError(
             err.message ||
               "Failed to load subject data. Please try again later."
@@ -89,16 +64,9 @@ export default function SubjectDetailPage() {
         }
       };
 
-      fetchSubjectAndCourses();
+      fetchSubjectAndContents();
     }
-  }, [isAuthenticated, subjectId, page, limit]);
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage > 0 && newPage <= totalPages) {
-      setPage(newPage);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+  }, [isAuthenticated, subjectId]);
 
   const refreshContents = async () => {
     try {
@@ -106,15 +74,6 @@ export default function SubjectDetailPage() {
       setContents(contentsData);
     } catch (err) {
       console.error("Failed to refresh contents:", err);
-    }
-  };
-
-  const refreshChapters = async () => {
-    try {
-      const chaptersResponse = await getSubjectChapters(subjectId);
-      setChapters(chaptersResponse.data);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch chapters");
     }
   };
 
@@ -157,15 +116,6 @@ export default function SubjectDetailPage() {
             </Text>
           )}
         </Box>
-
-        {canManageSubject && (
-          <Button
-            onClick={() => router.push(`/courses/create?subject=${subjectId}`)}
-            variant="primary"
-          >
-            Create Course
-          </Button>
-        )}
       </Flex>
 
       {error && <ErrorMessage message={error} />}
@@ -174,47 +124,21 @@ export default function SubjectDetailPage() {
         <Loading />
       ) : (
         <>
+          <SubjectNavigation subjectId={subjectId} activeTab="content" />
+
           {canManageSubject && (
             <Box mb={4}>
               <Flex justifyContent="space-between" alignItems="center" mb={3}>
-                <Heading as="h2" fontSize={3}>
-                  Subject Management
-                </Heading>
-                <Flex gap={2}>
-                  <Button
-                    onClick={() => setShowChapterManager(!showChapterManager)}
-                    variant="secondary"
-                    size="small"
-                  >
-                    {showChapterManager ? "Hide Chapters" : "Manage Chapters"}
-                  </Button>
-                  <Button
-                    onClick={() => setShowContentManager(!showContentManager)}
-                    variant="secondary"
-                    size="small"
-                  >
-                    {showContentManager ? "Hide Content" : "Manage Content"}
-                  </Button>
-                </Flex>
-              </Flex>
-
-              {showChapterManager && (
-                <Box
-                  bg="white"
-                  p={4}
-                  mb={4}
-                  sx={{
-                    borderRadius: "8px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  }}
+                <Button
+                  onClick={() => setShowContentManager(!showContentManager)}
+                  variant="secondary"
+                  size="small"
                 >
-                  <ChapterManager
-                    subjectId={subjectId}
-                    chapters={chapters}
-                    onChaptersUpdated={refreshChapters}
-                  />
-                </Box>
-              )}
+                  {showContentManager
+                    ? "Hide Content Manager"
+                    : "Manage Content"}
+                </Button>
+              </Flex>
 
               {showContentManager && (
                 <Box
@@ -230,7 +154,6 @@ export default function SubjectDetailPage() {
                     subjectId={subjectId}
                     contents={contents}
                     onContentAdded={refreshContents}
-                    chapters={chapters}
                   />
                 </Box>
               )}
@@ -238,10 +161,6 @@ export default function SubjectDetailPage() {
           )}
 
           <Box>
-            <Heading as="h2" fontSize={3} mb={3}>
-              Subject Content
-            </Heading>
-
             {contents.length > 0 ? (
               <Box
                 bg="white"
@@ -255,6 +174,7 @@ export default function SubjectDetailPage() {
                   contents={contents}
                   subjectId={subjectId}
                   onContentDeleted={refreshContents}
+                  canManageSubject={canManageSubject}
                 />
               </Box>
             ) : (
@@ -283,64 +203,6 @@ export default function SubjectDetailPage() {
                     Add Subject Content
                   </Button>
                 )}
-              </Box>
-            )}
-          </Box>
-
-          <Box mt={4}>
-            <Heading as="h2" fontSize={3} mb={3}>
-              Courses
-            </Heading>
-
-            {courses.length > 0 ? (
-              <>
-                <CourseList
-                  courses={courses}
-                  showEnrollmentStatus={user?.role === "student"}
-                />
-
-                {/* Pagination controls */}
-                {totalPages > 1 && (
-                  <Flex justifyContent="center" mt={4}>
-                    <Button
-                      onClick={() => handlePageChange(page - 1)}
-                      disabled={page === 1}
-                      variant="secondary"
-                      size="small"
-                      sx={{ marginRight: "0.5rem" }}
-                    >
-                      Previous
-                    </Button>
-                    <Text alignSelf="center" mx={2}>
-                      Page {page} of {totalPages}
-                    </Text>
-                    <Button
-                      onClick={() => handlePageChange(page + 1)}
-                      disabled={page === totalPages}
-                      variant="secondary"
-                      size="small"
-                      sx={{ marginLeft: "0.5rem" }}
-                    >
-                      Next
-                    </Button>
-                  </Flex>
-                )}
-              </>
-            ) : (
-              <Box
-                p={4}
-                bg="gray.100"
-                borderRadius="default"
-                textAlign="center"
-              >
-                <Heading as="h3" fontSize={3} mb={3}>
-                  No courses available
-                </Heading>
-                <Text color="gray.600">
-                  This subject doesn't have any courses yet.
-                  {canManageSubject &&
-                    " Click the 'Create Course' button to add a course."}
-                </Text>
               </Box>
             )}
           </Box>

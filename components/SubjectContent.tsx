@@ -10,6 +10,7 @@ interface SubjectContentProps {
   contents: Content[];
   subjectId: string;
   onContentDeleted?: () => void;
+  canManageSubject?: boolean;
 }
 
 interface ModuleContent {
@@ -24,6 +25,7 @@ export default function SubjectContent({
   contents,
   subjectId,
   onContentDeleted,
+  canManageSubject = false,
 }: SubjectContentProps) {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
@@ -266,37 +268,40 @@ export default function SubjectContent({
                           </Box>
                         )}
                       </Box>
-                      <Box>
-                        {deleting === content._id ? (
-                          <Box
-                            as="button"
-                            className="btn btn-danger"
-                            sx={{
-                              py: 1,
-                              px: 2,
-                              fontSize: 1,
-                              opacity: 0.7,
-                              cursor: "not-allowed",
-                            }}
-                            disabled
-                          >
-                            Deleting...
-                          </Box>
-                        ) : (
-                          <Box
-                            as="button"
-                            onClick={() => handleDelete(content._id!)}
-                            className="btn btn-danger"
-                            sx={{
-                              py: 1,
-                              px: 2,
-                              fontSize: 1,
-                            }}
-                          >
-                            Delete
-                          </Box>
-                        )}
-                      </Box>
+
+                      {canManageSubject && (
+                        <Box>
+                          {deleting === content._id ? (
+                            <Box
+                              as="button"
+                              className="btn btn-danger"
+                              sx={{
+                                py: 1,
+                                px: 2,
+                                fontSize: 1,
+                                opacity: 0.7,
+                                cursor: "not-allowed",
+                              }}
+                              disabled
+                            >
+                              Deleting...
+                            </Box>
+                          ) : (
+                            <Box
+                              as="button"
+                              onClick={() => handleDelete(content._id!)}
+                              className="btn btn-danger"
+                              sx={{
+                                py: 1,
+                                px: 2,
+                                fontSize: 1,
+                              }}
+                            >
+                              Delete
+                            </Box>
+                          )}
+                        </Box>
+                      )}
                     </Flex>
                   </Flex>
 

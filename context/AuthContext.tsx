@@ -37,17 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUser = async () => {
     try {
-      console.log("AuthContext: Attempting to fetch current user data");
       const userData = await getCurrentUser();
-      console.log("AuthContext: User data retrieved successfully:", userData);
 
       if (userData) {
         setUser(userData);
         setIsAuthenticated(true);
-        console.log("AuthContext: User state updated:", {
-          userData,
-          isAuthenticated: true,
-        });
       } else {
         console.log("AuthContext: No user data received");
         setUser(null);
@@ -58,7 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
     }
-    console.log("AuthContext: Setting loading to false");
     setLoading(false);
   };
 

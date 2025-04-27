@@ -11,7 +11,15 @@ import SubjectBreadcrumb, {
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
 import { getClass } from "@/lib/api";
-import { Class } from "@/types";
+import { Class as BaseClass } from "@/types";
+
+interface Class extends BaseClass {
+  teacher?: {
+    name: string;
+    _id: string;
+  };
+  section?: string;
+}
 
 export default function ClassDetailPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();

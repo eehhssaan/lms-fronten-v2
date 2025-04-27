@@ -505,7 +505,6 @@ export const getCourses = async (params?: {
   page?: number;
   limit?: number;
   subject?: string;
-  teacher?: string;
   grade?: string;
   isActive?: boolean;
   search?: string;
@@ -520,7 +519,6 @@ export const getCourses = async (params?: {
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.subject) queryParams.append("subject", params.subject);
-    if (params?.teacher) queryParams.append("teacher", params.teacher);
     if (params?.grade) queryParams.append("grade", params.grade);
     if (params?.isActive !== undefined)
       queryParams.append("isActive", params.isActive.toString());
@@ -1392,42 +1390,16 @@ export const markNotificationAsRead = async (
 export const getSubjects = async (params?: {
   page?: number;
   limit?: number;
-  teacherId?: string;
 }): Promise<{
   data: Subject[];
   count: number;
 }> => {
   try {
-    // Build query parameters
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append("page", params.page.toString());
-    if (params?.limit) queryParams.append("limit", params.limit.toString());
-    if (params?.teacherId) queryParams.append("teacherId", params.teacherId);
-
-    const queryString = queryParams.toString()
-      ? `?${queryParams.toString()}`
-      : "";
-
-    const response = await api.get(`/subjects${queryString}`);
-    return {
-      data: response.data.data.map((subject: any) => ({
-        id: subject._id,
-        _id: subject._id,
-        name: subject.name,
-        code: subject.code,
-        description: subject.description,
-        headTeacher: subject.headTeacher,
-        grade: subject.grade,
-        courseCount: subject.courseCount || 0,
-        iconUrl: subject.iconUrl,
-      })),
-      count: response.data.count || 0,
-    };
-  } catch (error: any) {
+    const response = await api.get("/subjects", { params });
+    return response.data;
+  } catch (error) {
     console.error("Error fetching subjects:", error);
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch subjects"
-    );
+    throw error;
   }
 };
 
@@ -2054,6 +2026,35 @@ export const updateSubject = async (
     console.error("Error updating subject:", error);
     throw new Error(
       error.response?.data?.message || "Failed to update subject"
+    );
+  }
+};
+
+// User API functions
+export const getTeachers = async (): Promise<User[]> => {
+  try {
+    const response = await api.get("/users/teachers");
+    return response.data.data.map((teacher: any) => ({
+      id: teacher._id,
+      _id: teacher._id,
+      name: teacher.name,
+      email: teacher.email,
+      role: teacher.role,
+      profilePicture: teacher.profilePicture,
+      isActive: teacher.active,
+      school: teacher.school,
+      grade: teacher.grade,
+      gender: teacher.gender,
+      bio: teacher.bio,
+      contactNumber: teacher.contactNumber,
+      preferredLanguage: teacher.preferredLanguage,
+      dateOfBirth: teacher.dateOfBirth,
+      createdAt: teacher.createdAt,
+    }));
+  } catch (error: any) {
+    console.error("Error fetching teachers:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch teachers"
     );
   }
 };

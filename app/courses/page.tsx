@@ -22,36 +22,37 @@ export default function CoursesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const router = useRouter();
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push("/auth");
-    }
-  }, [authLoading, isAuthenticated, router]);
+  if (authLoading) {
+    return <Loading />;
+  }
+
+  if (!isAuthenticated) {
+    router.replace("/auth");
+    return null;
+  }
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const fetchCourses = async () => {
-        try {
-          setLoading(true);
-          setError(null);
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-          const response =
-            user?.role === "student"
-              ? await getEnrolledCourses({ page, limit })
-              : await getCourses({ page, limit });
+        const response =
+          user?.role === "student"
+            ? await getEnrolledCourses({ page, limit })
+            : await getCourses({ page, limit });
 
-          setCourses(response.data);
-          setTotalPages(response.pagination.totalPages || 1);
-        } catch (err) {
-          console.error("Failed to fetch courses:", err);
-          setError("Failed to load courses. Please try again later.");
-        } finally {
-          setLoading(false);
-        }
-      };
+        setCourses(response.data);
+        setTotalPages(response.pagination.totalPages || 1);
+      } catch (err) {
+        console.error("Failed to fetch courses:", err);
+        setError("Failed to load courses. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      fetchCourses();
-    }
+    fetchCourses();
   }, [isAuthenticated, page, limit, user?.role]);
 
   const handlePageChange = (newPage: number) => {
@@ -64,14 +65,6 @@ export default function CoursesPage() {
     setActiveTab(tab);
     setError(null);
   };
-
-  if (authLoading) {
-    return <Loading />;
-  }
-
-  if (!isAuthenticated) {
-    return null; // Will redirect to auth page
-  }
 
   return (
     <Box
@@ -95,28 +88,6 @@ export default function CoursesPage() {
           </Button>
         )}
       </Flex>
-
-      {/* Tabs - only show the Enrolled tab for students */}
-      {user?.role === "student" && (
-        <Flex mb={4} className="tabs">
-          <Box
-            as="button"
-            onClick={() => handleTabChange("enrolled")}
-            className={`tab ${activeTab === "enrolled" ? "active" : ""}`}
-            py={2}
-            px={3}
-            sx={{
-              borderBottom: activeTab === "enrolled" ? "2px solid" : "none",
-              borderColor: "primary",
-              backgroundColor: "transparent",
-              cursor: "pointer",
-              fontWeight: activeTab === "enrolled" ? "bold" : "normal",
-            }}
-          >
-            My Courses
-          </Box>
-        </Flex>
-      )}
 
       {error && <ErrorMessage message={error} />}
 

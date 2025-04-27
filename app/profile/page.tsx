@@ -5,10 +5,10 @@ import { Box, Flex, Heading, Text } from "rebass";
 import { Label, Input, Textarea } from "@rebass/forms";
 import { useAuth } from "@/context/AuthContext";
 import {
-  getUserProfile,
+  getCurrentUser,
   updateUserProfile,
-  getStudentCourses,
-  getTeachingCourses,
+  getEnrolledCourses,
+  getCourses,
   updateUserPassword,
 } from "@/lib/api";
 import ErrorMessage from "@/components/ErrorMessage";
@@ -53,7 +53,7 @@ export default function ProfilePage() {
 
   const loadUserData = async () => {
     try {
-      const userData = await getUserProfile();
+      const userData = await getCurrentUser();
       setUser(userData);
       setFormData({
         name: userData.name || "",

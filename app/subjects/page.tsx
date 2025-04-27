@@ -15,7 +15,7 @@ interface SubjectData {
   name: string;
   code?: string;
   description?: string;
-  courseCount: number;
+  courseCount?: number;
   iconUrl?: string;
 }
 
@@ -37,10 +37,8 @@ export default function SubjectsPage() {
       const fetchSubjects = async () => {
         try {
           setLoading(true);
-          // For teachers, fetch subjects they teach; for admins, fetch all subjects
-          const params =
-            user?.role === "teacher" ? { teacherId: user.id } : undefined;
-          const response = await getSubjects(params);
+          // Backend will handle filtering based on user role and ID from JWT token
+          const response = await getSubjects();
           setSubjects(response.data);
         } catch (err) {
           console.error("Failed to fetch subjects:", err);
@@ -52,7 +50,7 @@ export default function SubjectsPage() {
 
       fetchSubjects();
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated]);
 
   if (authLoading) {
     return <Loading />;
@@ -74,8 +72,8 @@ export default function SubjectsPage() {
           </Text>
         </Box>
 
-        {/* Only show Create Subject button for admin users */}
-        {user && user.role === "admin" && (
+        {/* Only show Create Subject button for admin and head_teacher users */}
+        {user && (user.role === "admin" || user.role === "head_teacher") && (
           <Button
             onClick={() => router.push("/subjects/create")}
             variant="primary"

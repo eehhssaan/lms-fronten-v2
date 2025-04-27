@@ -79,45 +79,56 @@ export default function ClassesPage() {
   } | null>(null);
   const router = useRouter();
 
+  const fetchClasses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getClasses();
+      // Transform the data to match our interface
+      const transformedClasses = response.data.map((cls: any) => ({
+        ...cls,
+        classTeacher: {
+          name: cls.classTeacher.name || cls.classTeacher,
+          _id: cls.classTeacher._id || "",
+        },
+      }));
+      setClasses(transformedClasses);
+    } catch (err: any) {
+      console.error("Failed to fetch classes:", err);
+      setError(err.message || "Failed to load classes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/auth");
     }
   }, [authLoading, isAuthenticated, router]);
 
-  // Only teachers and admins can access this page
-  if (user && user.role !== "teacher" && user.role !== "admin") {
-    router.push("/courses");
-    return null;
-  }
+  useEffect(() => {
+    if (
+      user &&
+      user.role !== "teacher" &&
+      user.role !== "admin" &&
+      user.role !== "head_teacher"
+    ) {
+      router.push("/courses");
+    }
+  }, [user, router]);
 
   useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await getClasses();
-        // Transform the data to match our interface
-        const transformedClasses = response.data.map((cls: any) => ({
-          ...cls,
-          classTeacher: {
-            name: cls.classTeacher.name || cls.classTeacher,
-            _id: cls.classTeacher._id || "",
-          },
-        }));
-        setClasses(transformedClasses);
-      } catch (err: any) {
-        console.error("Failed to fetch classes:", err);
-        setError(err.message || "Failed to load classes");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (isAuthenticated) {
+    if (
+      isAuthenticated &&
+      user &&
+      (user.role === "teacher" ||
+        user.role === "admin" ||
+        user.role === "head_teacher")
+    ) {
       fetchClasses();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -144,25 +155,32 @@ export default function ClassesPage() {
         return;
       }
 
+      if (!user) {
+        setNotification({
+          message: "User not found",
+          type: "error",
+        });
+        setCreateLoading(false);
+        return;
+      }
+
       const classData: CreateClassData = {
         name: newClass.name.trim(),
         code: newClass.code.trim(),
-        formLevel: newClass.formLevel,
+        formLevel: newClass.formLevel as FormLevel,
         academicYear: newClass.academicYear.trim(),
         department: newClass.department || undefined,
         description: newClass.description || undefined,
-        classTeacher: user._id,
+        classTeacher: user._id || "",
       };
 
-      const response = await createClass(classData);
-      if (response.success) {
-        setNotification({
-          message: "Class created successfully",
-          type: "success",
-        });
-        setShowCreateDialog(false);
-        fetchClasses();
-      }
+      await createClass(classData);
+      setNotification({
+        message: "Class created successfully",
+        type: "success",
+      });
+      setShowCreateDialog(false);
+      fetchClasses();
     } catch (error: any) {
       setNotification({
         message: error.message || "Failed to create class",
@@ -193,8 +211,14 @@ export default function ClassesPage() {
     return <Loading />;
   }
 
-  if (!isAuthenticated) {
-    return null; // Will redirect to auth page
+  if (
+    !isAuthenticated ||
+    !user ||
+    (user.role !== "teacher" &&
+      user.role !== "admin" &&
+      user.role !== "head_teacher")
+  ) {
+    return null; // Will redirect to auth or courses page
   }
 
   return (

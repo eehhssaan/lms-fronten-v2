@@ -9,12 +9,17 @@ import SubjectBreadcrumb, {
 } from "@/components/SubjectBreadcrumb";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
-import { getSubjectById, getSubjectContents } from "@/lib/api";
-import { Content } from "@/types";
+import {
+  getSubjectById,
+  getSubjectContents,
+  getSubjectChapters,
+} from "@/lib/api";
+import { Content, Chapter } from "@/types";
 import Button from "@/components/Button";
 import SubjectContentManager from "@/components/SubjectContentManager";
 import SubjectContent from "@/components/SubjectContent";
 import SubjectNavigation from "@/components/SubjectNavigation";
+import LLMContentModal from "@/components/LLMContentModal";
 
 export default function SubjectDetailPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -27,6 +32,8 @@ export default function SubjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showContentManager, setShowContentManager] = useState(false);
+  const [showLLMDialog, setShowLLMDialog] = useState(false);
+  const [chapters, setChapters] = useState<string[]>([]);
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.subjectId as string;
@@ -53,6 +60,12 @@ export default function SubjectDetailPage() {
           // Fetch subject contents
           const contentsData = await getSubjectContents(subjectId);
           setContents(contentsData);
+
+          // Fetch chapters
+          const chaptersData = await getSubjectChapters(subjectId);
+          setChapters(
+            chaptersData.data.map((chapter: Chapter) => chapter.title)
+          );
         } catch (err: any) {
           console.error("Failed to fetch subject details or contents:", err);
           setError(
@@ -138,6 +151,13 @@ export default function SubjectDetailPage() {
                     ? "Hide Content Manager"
                     : "Manage Content"}
                 </Button>
+                <Button
+                  onClick={() => setShowLLMDialog(true)}
+                  variant="secondary"
+                  size="small"
+                >
+                  Create Subject Content
+                </Button>
               </Flex>
 
               {showContentManager && (
@@ -206,6 +226,14 @@ export default function SubjectDetailPage() {
               </Box>
             )}
           </Box>
+
+          <LLMContentModal
+            isOpen={showLLMDialog}
+            onClose={() => setShowLLMDialog(false)}
+            subjectId={subjectId}
+            chapters={chapters}
+            onSuccess={refreshContents}
+          />
         </>
       )}
     </Box>

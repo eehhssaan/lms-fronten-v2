@@ -2058,3 +2058,42 @@ export const getTeachers = async (): Promise<User[]> => {
     );
   }
 };
+
+export const generateLLMContent = async (params: {
+  prompts: Record<string, string>;
+  context: Record<string, string>;
+}) => {
+  try {
+    const response = await api.post(
+      "/llm/generate",
+      {
+        prompts: params.prompts,
+        context: params.context,
+      },
+      {
+        responseType: "blob", // Important: Expect binary data
+      }
+    );
+
+    // Get filename from Content-Disposition header
+    const contentDisposition = response.headers["content-disposition"];
+    const filename = contentDisposition
+      ? contentDisposition.split("filename=")[1]
+      : `presentation-${Date.now()}.pptx`;
+
+    return {
+      data: response.data,
+      filename,
+    };
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      throw new Error(error.response.data.error || "Invalid request");
+    }
+    if (error.response?.status === 500) {
+      throw new Error(
+        error.response.data.error || "Failed to generate presentation"
+      );
+    }
+    throw new Error("Failed to generate content");
+  }
+};

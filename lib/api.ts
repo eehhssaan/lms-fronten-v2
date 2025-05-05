@@ -16,7 +16,7 @@ const getBaseUrl = () => {
 };
 
 // Create axios instance with default config
-const api = axios.create({
+export const api = axios.create({
   baseURL: getBaseUrl(),
   headers: {
     "Content-Type": "application/json",
@@ -2064,36 +2064,53 @@ export const generateLLMContent = async (params: {
   context: Record<string, string>;
 }) => {
   try {
-    const response = await api.post(
-      "/llm/generate",
-      {
-        prompts: params.prompts,
-        context: params.context,
-      },
-      {
-        responseType: "blob", // Important: Expect binary data
-      }
-    );
+    const isDownload = params.context.download === "true";
 
-    // Get filename from Content-Disposition header
-    const contentDisposition = response.headers["content-disposition"];
-    const filename = contentDisposition
-      ? contentDisposition.split("filename=")[1]
-      : `presentation-${Date.now()}.pptx`;
+    // First generate and save the presentation
+    const response = await api.post("/llm/generate", {
+      prompts: params.prompts,
+      context: params.context,
+    });
 
-    return {
-      data: response.data,
-      filename,
-    };
-  } catch (error: any) {
-    if (error.response?.status === 400) {
-      throw new Error(error.response.data.error || "Invalid request");
+    if (!response.data.success) {
+      throw new Error(response.data.error || "Failed to generate content");
     }
-    if (error.response?.status === 500) {
-      throw new Error(
-        error.response.data.error || "Failed to generate presentation"
+
+    // If download is requested, fetch the saved presentation
+    if (isDownload && response.data.data?.presentationId) {
+      const downloadResponse = await api.get(
+        `/presentations/${response.data.data.presentationId}/download`,
+        {
+          responseType: "blob",
+          headers: {
+            Accept:
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          },
+        }
       );
+
+      // Get filename from Content-Disposition header
+      const contentDisposition =
+        downloadResponse.headers["content-disposition"];
+      const filename = contentDisposition
+        ? contentDisposition.split("filename=")[1].replace(/['"]/g, "")
+        : `presentation-${Date.now()}.pptx`;
+
+      // Create blob and return
+      const blob = new Blob([downloadResponse.data], {
+        type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      });
+
+      return {
+        data: blob,
+        filename,
+      };
     }
-    throw new Error("Failed to generate content");
+
+    // Return the generated content response
+    return response.data;
+  } catch (error) {
+    console.error("Error in generateLLMContent:", error);
+    throw error;
   }
 };

@@ -33,7 +33,7 @@ export default function SubjectDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showContentManager, setShowContentManager] = useState(false);
   const [showLLMDialog, setShowLLMDialog] = useState(false);
-  const [chapters, setChapters] = useState<string[]>([]);
+  const [chapters, setChapters] = useState<{ id: string; title: string }[]>([]);
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.subjectId as string;
@@ -64,7 +64,10 @@ export default function SubjectDetailPage() {
           // Fetch chapters
           const chaptersData = await getSubjectChapters(subjectId);
           setChapters(
-            chaptersData.data.map((chapter: Chapter) => chapter.title)
+            chaptersData.data.map((chapter: Chapter) => ({
+              id: chapter._id,
+              title: chapter.title,
+            }))
           );
         } catch (err: any) {
           console.error("Failed to fetch subject details or contents:", err);

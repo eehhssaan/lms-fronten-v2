@@ -3,7 +3,6 @@ import { Box, Text, Flex } from "rebass";
 import { useAuth } from "@/context/AuthContext";
 import { generateLLMContent } from "@/lib/api";
 import { toast } from "react-hot-toast";
-import TextFormatToolbar from "./TextFormatToolbar";
 import { TextFormat } from "@/types/presentation";
 import ThemeSelector from "./ThemeSelector";
 import { Theme } from "@/types/presentation";
@@ -95,19 +94,29 @@ export default function LLMContentModal({
       return {
         fontFamily: theme.fonts.heading,
         fontSize: theme.titleFormat.fontSize,
-        color: theme.colors.text,
+        color: theme.titleFormat.color || theme.colors.text,
         backgroundColor: theme.colors.background,
         bold: theme.titleFormat.fontWeight === "bold",
+        italic: false,
+        underline: false,
         textAlign: theme.titleFormat.alignment,
+        lineHeight: "1.5",
+        letterSpacing: "normal",
+        textTransform: "none",
       };
     }
     return {
       fontFamily: theme.fonts.body,
       fontSize: theme.contentFormat.fontSize,
-      color: theme.colors.text,
+      color: theme.contentFormat.color || theme.colors.text,
       backgroundColor: theme.colors.background,
       bold: theme.contentFormat.fontWeight === "bold",
+      italic: false,
+      underline: false,
       textAlign: theme.contentFormat.alignment,
+      lineHeight: "1.5",
+      letterSpacing: "normal",
+      textTransform: "none",
     };
   };
 
@@ -262,6 +271,8 @@ export default function LLMContentModal({
 
   const handleSlideChange = (updatedSlide: Partial<GeneratedSlide>) => {
     if (!generatedSlides) return;
+
+    console.log("handleSlideChange", updatedSlide.title);
 
     const updatedSlides = [...generatedSlides];
     updatedSlides[currentSlideIndex] = {
@@ -425,8 +436,8 @@ export default function LLMContentModal({
           {/* Left side - Thumbnails */}
           <Box
             sx={{
-              width: "30%",
-              height: "100%",
+              width: "20%",
+              // height: "100%",
               backgroundColor: "white",
               borderRight: "1px solid #e2e8f0",
               overflowY: "auto",
@@ -537,7 +548,7 @@ export default function LLMContentModal({
           {/* Right side - Current Slide Preview */}
           <Box
             sx={{
-              width: "65%",
+              width: "70%",
               height: "100%",
               backgroundColor: "white",
               p: "1.5rem",

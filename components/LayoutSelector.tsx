@@ -12,6 +12,11 @@ const LayoutSelector: React.FC<LayoutSelectorProps> = ({
   currentLayout,
 }) => {
   const renderLayoutPreview = (layout: Layout) => {
+    const getPositionValue = (value: string | number): string => {
+      if (typeof value === "string") return value;
+      return `${value}%`;
+    };
+
     return (
       <Box
         sx={{
@@ -49,10 +54,10 @@ const LayoutSelector: React.FC<LayoutSelectorProps> = ({
               key={index}
               sx={{
                 position: "absolute",
-                left: element.x,
-                top: element.y,
-                width: element.width,
-                height: element.height,
+                left: getPositionValue(element.x),
+                top: getPositionValue(element.y),
+                width: getPositionValue(element.width),
+                height: getPositionValue(element.height),
                 backgroundColor: "#f0f0f0",
                 border: "1px dashed #666",
                 borderRadius: "2px",

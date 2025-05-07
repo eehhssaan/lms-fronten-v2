@@ -29,17 +29,23 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
   ];
 
   const fontSizes = [
-    "12",
-    "14",
-    "16",
-    "18",
-    "20",
-    "24",
-    "28",
-    "32",
-    "36",
-    "40",
-    "48",
+    "8pt",
+    "10pt",
+    "12pt",
+    "14pt",
+    "16pt",
+    "18pt",
+    "20pt",
+    "24pt",
+    "28pt",
+    "32pt",
+    "36pt",
+    "40pt",
+    "44pt",
+    "48pt",
+    "54pt",
+    "60pt",
+    "72pt",
   ];
 
   const colors = [
@@ -61,6 +67,13 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
     "center",
     "right",
   ];
+
+  // Function to get font size value for the select
+  const getFontSizeValue = (fontSize: string | undefined): string => {
+    if (!fontSize) return "12pt";
+    if (fontSize.endsWith("pt")) return fontSize;
+    return `${fontSize}pt`;
+  };
 
   return (
     <Box
@@ -152,7 +165,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Text sx={{ fontSize: 1, color: "gray.600" }}>Size:</Text>
           <select
-            value={format.fontSize || "16"}
+            value={getFontSizeValue(format.fontSize)}
             onChange={(e) =>
               onFormatChange({ ...format, fontSize: e.target.value })
             }

@@ -1,9 +1,9 @@
 export interface SlideElement {
   type: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x: string | number;
+  y: string | number;
+  width: string | number;
+  height: string | number;
   fontSize?: number;
   textAlign?: "left" | "center" | "right";
   placeholder?: string;
@@ -21,15 +21,15 @@ export const layouts: Record<string, Layout> = {
   titleOnly: {
     id: "titleOnly",
     name: "Title Only",
-    description: "A simple slide with just a title",
+    description: "A slide with only a title",
     elements: [
       {
         type: "title",
-        x: 40,
-        y: 200,
-        width: 880,
-        height: 120,
-        fontSize: 60,
+        x: "10%",
+        y: "40%",
+        width: "80%",
+        height: "20%",
+        fontSize: 48,
         textAlign: "center",
         placeholder: "Click to add title",
       },
@@ -38,25 +38,25 @@ export const layouts: Record<string, Layout> = {
   titleAndContent: {
     id: "titleAndContent",
     name: "Title and Content",
-    description: "Classic layout with a title and content area",
+    description: "A slide with a title and content",
     elements: [
       {
         type: "title",
-        x: 40,
-        y: 40,
-        width: 880,
-        height: 80,
-        fontSize: 44,
-        textAlign: "left",
+        x: "10%",
+        y: "5%",
+        width: "80%",
+        height: "15%",
+        fontSize: 40,
+        textAlign: "center",
         placeholder: "Click to add title",
       },
       {
         type: "content",
-        x: 40,
-        y: 160,
-        width: 880,
-        height: 400,
-        fontSize: 32,
+        x: "10%",
+        y: "25%",
+        width: "80%",
+        height: "70%",
+        fontSize: 24,
         textAlign: "left",
         placeholder: "Click to add content",
       },
@@ -64,36 +64,36 @@ export const layouts: Record<string, Layout> = {
   },
   twoColumn: {
     id: "twoColumn",
-    name: "Two Columns",
-    description: "Split content into two columns",
+    name: "Two Column",
+    description: "A slide with two columns of content",
     elements: [
       {
         type: "title",
-        x: 40,
-        y: 40,
-        width: 880,
-        height: 80,
-        fontSize: 44,
+        x: "10%",
+        y: "5%",
+        width: "80%",
+        height: "15%",
+        fontSize: 40,
         textAlign: "center",
         placeholder: "Click to add title",
       },
       {
         type: "leftContent",
-        x: 40,
-        y: 160,
-        width: 420,
-        height: 400,
-        fontSize: 28,
+        x: "10%",
+        y: "25%",
+        width: "38%",
+        height: "70%",
+        fontSize: 24,
         textAlign: "left",
         placeholder: "Left column content",
       },
       {
         type: "rightContent",
-        x: 500,
-        y: 160,
-        width: 420,
-        height: 400,
-        fontSize: 28,
+        x: "52%",
+        y: "25%",
+        width: "38%",
+        height: "70%",
+        fontSize: 24,
         textAlign: "left",
         placeholder: "Right column content",
       },
@@ -147,7 +147,7 @@ export const layouts: Record<string, Layout> = {
         y: "5%",
         width: "80%",
         height: "15%",
-        fontSize: "40",
+        fontSize: 40,
         textAlign: "center",
         placeholder: "Comparison Title",
       },
@@ -157,7 +157,7 @@ export const layouts: Record<string, Layout> = {
         y: "25%",
         width: "38%",
         height: "10%",
-        fontSize: "32",
+        fontSize: 32,
         textAlign: "center",
         placeholder: "Left Title",
       },
@@ -167,7 +167,7 @@ export const layouts: Record<string, Layout> = {
         y: "25%",
         width: "38%",
         height: "10%",
-        fontSize: "32",
+        fontSize: 32,
         textAlign: "center",
         placeholder: "Right Title",
       },
@@ -177,7 +177,7 @@ export const layouts: Record<string, Layout> = {
         y: "40%",
         width: "38%",
         height: "50%",
-        fontSize: "24",
+        fontSize: 24,
         textAlign: "left",
         placeholder: "Left content",
       },
@@ -187,7 +187,7 @@ export const layouts: Record<string, Layout> = {
         y: "40%",
         width: "38%",
         height: "50%",
-        fontSize: "24",
+        fontSize: 24,
         textAlign: "left",
         placeholder: "Right content",
       },
@@ -200,10 +200,10 @@ export const layouts: Record<string, Layout> = {
     elements: [
       {
         type: "content",
-        x: 40,
-        y: 40,
-        width: 880,
-        height: 520,
+        x: "10%",
+        y: "10%",
+        width: "80%",
+        height: "80%",
         fontSize: 32,
         textAlign: "left",
         placeholder: "Click to add content",

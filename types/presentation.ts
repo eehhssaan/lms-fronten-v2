@@ -1,13 +1,13 @@
 export interface Theme {
   _id: string;
   name: string;
-  description?: string;
+  description: string;
   colors: {
     background: string;
     text: string;
-    accent1?: string;
-    accent2?: string;
-    accent3?: string;
+    accent1: string;
+    accent2: string;
+    accent3: string;
   };
   fonts: {
     heading: string;
@@ -15,14 +15,14 @@ export interface Theme {
   };
   titleFormat: {
     fontSize: string;
-    fontWeight: string;
-    color?: string;
+    fontWeight: "normal" | "bold";
+    color: string;
     alignment: "left" | "center" | "right";
   };
   contentFormat: {
     fontSize: string;
-    fontWeight: string;
-    color?: string;
+    fontWeight: "normal" | "bold";
+    color: string;
     alignment: "left" | "center" | "right";
   };
   isDefault?: boolean;
@@ -43,7 +43,7 @@ export interface TextFormat {
   textAlign?: "left" | "center" | "right";
   lineHeight?: string;
   letterSpacing?: string;
-  textTransform?: string;
+  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
 }
 
 export interface Slide {

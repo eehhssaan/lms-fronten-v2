@@ -1,128 +1,130 @@
-import React from "react";
+import { useState, useEffect } from "react";
 import { Box, Text, Flex } from "rebass";
-import { layouts, Layout } from "@/data/layouts";
+import { getLayouts } from "@/lib/api/presentations";
+import { toast } from "react-hot-toast";
+
+interface Layout {
+  _id: string;
+  name: string;
+  description: string;
+  elements: Array<{
+    type: string;
+    x: string | number;
+    y: string | number;
+    width: string | number;
+    height: string | number;
+    fontSize?: number;
+    textAlign?: "left" | "center" | "right";
+    placeholder?: string;
+  }>;
+  thumbnail?: string;
+}
 
 interface LayoutSelectorProps {
   onLayoutSelect: (layoutId: string) => void;
-  currentLayout?: string;
+  currentLayout: string;
 }
 
-const LayoutSelector: React.FC<LayoutSelectorProps> = ({
+export default function LayoutSelector({
   onLayoutSelect,
   currentLayout,
-}) => {
-  const renderLayoutPreview = (layout: Layout) => {
-    const getPositionValue = (value: string | number): string => {
-      if (typeof value === "string") return value;
-      return `${value}%`;
+}: LayoutSelectorProps) {
+  const [layouts, setLayouts] = useState<Layout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLayouts = async () => {
+      try {
+        const response = await getLayouts();
+        if (response.success) {
+          setLayouts(response.data);
+        } else {
+          throw new Error(response.error || "Failed to fetch layouts");
+        }
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : "Failed to fetch layouts"
+        );
+        toast.error("Failed to fetch layouts");
+      } finally {
+        setLoading(false);
+      }
     };
 
+    fetchLayouts();
+  }, []);
+
+  if (loading) {
     return (
-      <Box
-        sx={{
-          position: "relative",
-          width: "100%",
-          paddingTop: "56.25%", // 16:9 aspect ratio
-          backgroundColor: "white",
-          border:
-            currentLayout === layout.id
-              ? "2px solid #3182ce"
-              : "1px solid #e2e8f0",
-          borderRadius: "4px",
-          overflow: "hidden",
-          cursor: "pointer",
-          transition: "all 0.2s ease-in-out",
-          "&:hover": {
-            transform: "translateY(-2px)",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-          },
-        }}
-        onClick={() => onLayoutSelect(layout.id)}
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: "8px",
-          }}
-        >
-          {layout.elements.map((element, index) => (
-            <Box
-              key={index}
-              sx={{
-                position: "absolute",
-                left: getPositionValue(element.x),
-                top: getPositionValue(element.y),
-                width: getPositionValue(element.width),
-                height: getPositionValue(element.height),
-                backgroundColor: "#f0f0f0",
-                border: "1px dashed #666",
-                borderRadius: "2px",
-                fontSize: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#666",
-                overflow: "hidden",
-              }}
-            >
-              {element.type}
-            </Box>
-          ))}
-        </Box>
+      <Box p={4} bg="white" borderRadius={8}>
+        <Text>Loading layouts...</Text>
       </Box>
     );
-  };
+  }
+
+  if (error) {
+    return (
+      <Box p={4} bg="white" borderRadius={8}>
+        <Text color="error">{error}</Text>
+      </Box>
+    );
+  }
 
   return (
     <Box
       sx={{
-        bg: "white",
-        p: 3,
+        backgroundColor: "white",
         borderRadius: "8px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+        padding: "24px",
+        maxWidth: "800px",
+        margin: "0 auto",
       }}
     >
-      <Text
+      <Text as="h2" fontSize={3} fontWeight="bold" mb={3}>
+        Select a Layout
+      </Text>
+      <Flex
         sx={{
-          fontSize: 2,
-          fontWeight: "bold",
-          mb: 3,
-          color: "#2d3748",
+          flexWrap: "wrap",
+          gap: "16px",
+          justifyContent: "center",
         }}
       >
-        Select Layout
-      </Text>
-      <Flex sx={{ flexWrap: "wrap", gap: 3 }}>
-        {Object.values(layouts).map((layout) => (
+        {layouts.map((layout) => (
           <Box
-            key={layout.id}
+            key={layout._id}
+            onClick={() => onLayoutSelect(layout._id)}
             sx={{
-              width: ["100%", "calc(50% - 12px)", "calc(33.33% - 16px)"],
+              width: "200px",
+              padding: "16px",
+              border: "1px solid",
+              borderColor:
+                currentLayout === layout._id ? "primary" : "gray.300",
+              borderRadius: "8px",
+              cursor: "pointer",
+              "&:hover": {
+                borderColor: "primary",
+              },
             }}
           >
-            {renderLayoutPreview(layout)}
-            <Text
-              sx={{
-                fontSize: 1,
-                fontWeight: "bold",
-                mt: 2,
-                mb: 1,
-                color: "#2d3748",
-              }}
-            >
+            {layout.thumbnail && (
+              <Box
+                sx={{
+                  width: "100%",
+                  height: "120px",
+                  backgroundImage: `url(${layout.thumbnail})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  marginBottom: "8px",
+                  borderRadius: "4px",
+                }}
+              />
+            )}
+            <Text fontWeight="bold" mb={1}>
               {layout.name}
             </Text>
-            <Text
-              sx={{
-                fontSize: 0,
-                color: "#718096",
-                lineHeight: "1.4",
-              }}
-            >
+            <Text fontSize={1} color="gray.600">
               {layout.description}
             </Text>
           </Box>
@@ -130,6 +132,4 @@ const LayoutSelector: React.FC<LayoutSelectorProps> = ({
       </Flex>
     </Box>
   );
-};
-
-export default LayoutSelector;
+}

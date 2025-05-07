@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, Text, Flex } from "rebass";
 import { useAuth } from "@/context/AuthContext";
 import { generateLLMContent } from "@/lib/api";
@@ -7,7 +7,7 @@ import { TextFormat } from "@/types/presentation";
 import ThemeSelector from "./ThemeSelector";
 import { Theme } from "@/types/presentation";
 import { default as SlidePreview, MiniSlidePreview } from "./SlidePreview";
-import { layouts, Layout } from "@/data/layouts";
+import { getLayouts } from "@/lib/api/presentations";
 import LayoutSelector from "./LayoutSelector";
 import { api } from "@/lib/api";
 
@@ -36,7 +36,19 @@ interface GeneratedSlide {
   elements?: Array<{
     type: string;
     value: string;
-    format?: TextFormat;
+    format?: {
+      fontFamily: string;
+      fontSize: string;
+      color: string;
+      backgroundColor: string;
+      bold: boolean;
+      italic: boolean;
+      underline: boolean;
+      textAlign: "left" | "center" | "right";
+      lineHeight: string;
+      letterSpacing: string;
+      textTransform: "none" | "uppercase" | "lowercase" | "capitalize";
+    };
   }>;
   customStyles?: {
     backgroundColor?: string;
@@ -63,6 +75,26 @@ interface LLMDownloadResponse extends Blob {
   filename?: string;
 }
 
+interface Layout {
+  _id: string;
+  name: string;
+  description: string;
+  elements: Array<{
+    type: string;
+    x: string | number;
+    y: string | number;
+    width: string | number;
+    height: string | number;
+    fontSize?: number;
+    textAlign?: "left" | "center" | "right";
+    placeholder?: string;
+  }>;
+  isDefault?: boolean;
+  isPublic?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Add breakpoint constants
 const BREAKPOINTS = {
   sm: "@media screen and (max-width: 640px)",
@@ -85,9 +117,41 @@ export default function LLMContentModal({
   >(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showLayoutSelector, setShowLayoutSelector] = useState(false);
-  const [currentLayout, setCurrentLayout] = useState<string>("titleAndContent");
+  const [currentLayout, setCurrentLayout] = useState<string>("");
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
   const [selectedChapter, setSelectedChapter] = useState("");
+  const [layouts, setLayouts] = useState<Record<string, Layout>>({});
+  const [defaultLayoutId, setDefaultLayoutId] = useState<string>("");
+
+  useEffect(() => {
+    const fetchLayouts = async () => {
+      try {
+        const response = await getLayouts();
+        if (response.success) {
+          const layoutsMap = response.data.reduce(
+            (acc: Record<string, Layout>, layout: Layout) => {
+              acc[layout._id] = layout;
+              return acc;
+            },
+            {}
+          );
+          setLayouts(layoutsMap);
+
+          // Find and set the default layout
+          const defaultLayout = response.data.find(
+            (layout: Layout) => layout.isDefault
+          );
+          if (defaultLayout) {
+            setCurrentLayout(defaultLayout._id);
+            setDefaultLayoutId(defaultLayout._id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch layouts:", error);
+      }
+    };
+    fetchLayouts();
+  }, []);
 
   const getThemeFormat = (theme: Theme, isTitle: boolean) => {
     if (isTitle) {
@@ -156,8 +220,7 @@ export default function LLMContentModal({
         id: slide._id,
         presentationId: presentationId,
         // Convert 'title-content' to 'titleAndContent'
-        layout:
-          slide.layout === "title-content" ? "titleAndContent" : slide.layout,
+        layout: slide.layout,
         // Apply theme styles to elements and set background in customStyles
         customStyles: {
           backgroundColor: selectedTheme.colors.background,
@@ -166,12 +229,18 @@ export default function LLMContentModal({
           {
             type: "title",
             value: slide.title || "",
-            format: getThemeFormat(selectedTheme, true),
+            format: {
+              ...getThemeFormat(selectedTheme, true),
+              textTransform: "none" as const,
+            },
           },
           {
             type: "content",
             value: slide.content || "",
-            format: getThemeFormat(selectedTheme, false),
+            format: {
+              ...getThemeFormat(selectedTheme, false),
+              textTransform: "none" as const,
+            },
           },
         ],
       }));
@@ -253,7 +322,19 @@ export default function LLMContentModal({
         return {
           type: layoutElement.type,
           value: existingElement?.value || "",
-          format: existingElement?.format || {},
+          format: existingElement?.format || {
+            fontFamily: "Arial",
+            fontSize: "24pt",
+            color: "#000000",
+            backgroundColor: "transparent",
+            bold: false,
+            italic: false,
+            underline: false,
+            textAlign: "left",
+            lineHeight: "1.5",
+            letterSpacing: "normal",
+            textTransform: "none" as const,
+          },
         };
       });
 
@@ -433,6 +514,28 @@ export default function LLMContentModal({
             },
           }}
         >
+          {showLayoutSelector && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "80%",
+                maxHeight: "80vh",
+                overflowY: "auto",
+                zIndex: 1000,
+                [BREAKPOINTS.md]: {
+                  width: "90%",
+                },
+              }}
+            >
+              <LayoutSelector
+                onLayoutSelect={handleLayoutSelect}
+                currentLayout={currentLayout}
+              />
+            </Box>
+          )}
           {/* Left side - Thumbnails */}
           <Box
             sx={{
@@ -539,6 +642,8 @@ export default function LLMContentModal({
                   <MiniSlidePreview
                     slide={slide}
                     isSelected={currentSlideIndex === index}
+                    layouts={layouts}
+                    defaultLayoutId={defaultLayoutId}
                   />
                 </Box>
               ))}
@@ -563,29 +668,6 @@ export default function LLMContentModal({
               },
             }}
           >
-            {showLayoutSelector && (
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  width: "80%",
-                  maxHeight: "80vh",
-                  overflowY: "auto",
-                  zIndex: 1000,
-                  [BREAKPOINTS.md]: {
-                    width: "90%",
-                  },
-                }}
-              >
-                <LayoutSelector
-                  onLayoutSelect={handleLayoutSelect}
-                  currentLayout={currentLayout}
-                />
-              </Box>
-            )}
-
             <Flex
               sx={{
                 justifyContent: "space-between",

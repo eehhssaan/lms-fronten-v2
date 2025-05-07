@@ -155,3 +155,21 @@ export const generatePowerPoint = async (
   });
   return response.data;
 };
+
+export const getLayouts = async () => {
+  try {
+    const response = await api.get("/layouts");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getLayout = async (id: string) => {
+  try {
+    const response = await api.get(`/layouts/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

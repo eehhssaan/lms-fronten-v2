@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Flex, Text } from "rebass";
 import TextFormatToolbar from "./TextFormatToolbar";
-import { Layout, SlideElement, layouts } from "@/data/layouts";
+import { getLayouts } from "@/lib/api/presentations";
 import { updateSlide } from "../lib/api/presentations";
 import { TextFormat } from "../types/presentation";
 import toast from "react-hot-toast";
@@ -22,6 +22,26 @@ interface SlideElementProps {
   format: TextFormat;
   isSelected: boolean;
   onSelect: () => void;
+}
+
+interface SlideElement {
+  type: string;
+  x: string | number;
+  y: string | number;
+  width: string | number;
+  height: string | number;
+  fontSize?: number;
+  textAlign?: "left" | "center" | "right";
+  placeholder?: string;
+}
+
+interface Layout {
+  _id: string;
+  name: string;
+  description: string;
+  elements: SlideElement[];
+  thumbnail?: string;
+  isDefault?: boolean;
 }
 
 const parseFontSize = (fontSize: string | number | undefined): string => {
@@ -50,10 +70,6 @@ const getFontSizeInPx = (fontSize: string): string => {
   return `${parseInt(fontSize)}px`;
 };
 
-const getFontSizeValue = (fontSize: string): number => {
-  return parseInt(fontSize.replace(/[^0-9]/g, ""));
-};
-
 const getResponsiveFontSize = (fontSize: string, scale: number): string => {
   const pt = parseInt(fontSize.replace("pt", ""));
   return getFontSizeInPx(`${Math.round(pt * scale)}pt`);
@@ -74,10 +90,15 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
   // Base container style
   const containerStyle = {
     position: "absolute" as const,
-    left: element.x,
-    top: element.y,
-    width: element.width,
-    height: element.height,
+    left: typeof element.x === "string" ? element.x : `${element.x}%`,
+    top: typeof element.y === "string" ? element.y : `${element.y}%`,
+    width:
+      typeof element.width === "string" ? element.width : `${element.width}%`,
+    height:
+      typeof element.height === "string"
+        ? element.height
+        : `${element.height}%`,
+    transform: "translate(-50%, -50%)", // Center the element at its x,y coordinate
     display: "flex",
     alignItems: "center",
     justifyContent: format.textAlign === "center" ? "center" : "flex-start",
@@ -181,10 +202,61 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
   currentLayout,
 }) => {
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
+  const [layouts, setLayouts] = useState<Record<string, Layout>>({});
+  const [loading, setLoading] = useState(true);
+  const [defaultLayoutId, setDefaultLayoutId] = useState<string>("");
 
-  // Get layout based on slide's layout type or default to titleAndContent
-  const defaultLayout = layouts[slide.layout || "titleAndContent"];
-  const layoutToUse = currentLayout || defaultLayout;
+  useEffect(() => {
+    const fetchLayouts = async () => {
+      try {
+        setLoading(true);
+        const response = await getLayouts();
+        if (response.success) {
+          const layoutsMap = response.data.reduce(
+            (acc: Record<string, Layout>, layout: Layout) => {
+              acc[layout._id] = layout;
+              return acc;
+            },
+            {}
+          );
+          setLayouts(layoutsMap);
+
+          // Find and set the default layout ID
+          const defaultLayout = response.data.find(
+            (layout: Layout) => layout.isDefault
+          );
+          if (defaultLayout) {
+            setDefaultLayoutId(defaultLayout._id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch layouts:", error);
+        toast.error("Failed to load layouts");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLayouts();
+  }, []);
+
+  if (loading) {
+    return (
+      <Box p={4} bg="white" borderRadius={8}>
+        <Text>Loading layouts...</Text>
+      </Box>
+    );
+  }
+
+  // Get layout based on slide's layout type or default layout
+  const layoutToUse = currentLayout || layouts[defaultLayoutId];
+
+  if (!layoutToUse) {
+    return (
+      <Box p={4} bg="white" borderRadius={8}>
+        <Text color="error">Layout not found</Text>
+      </Box>
+    );
+  }
 
   // Calculate aspect ratio and dimensions
   const aspectRatio = slide.aspectRatio || "16:9";
@@ -194,7 +266,7 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
   // Transform slide data into elements format based on the layout
   const slideElements =
     slide.elements ||
-    layoutToUse.elements.map((layoutElement) => {
+    layoutToUse.elements.map((layoutElement: SlideElement) => {
       if (layoutElement.type === "title") {
         return {
           type: "title",
@@ -416,14 +488,46 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
 export const MiniSlidePreview: React.FC<{
   slide: any;
   isSelected?: boolean;
-}> = ({ slide, isSelected = false }) => {
-  const defaultLayout = layouts[slide.layout || "titleAndContent"];
-  const layoutElements = defaultLayout.elements;
+  layouts?: Record<string, Layout>;
+  defaultLayoutId?: string;
+}> = ({ slide, isSelected = false, layouts = {}, defaultLayoutId = "" }) => {
+  // Use slide's layout ID if it exists, otherwise use default layout
+  const layoutId = slide.layout || defaultLayoutId;
+  const layout = layouts[layoutId];
 
-  // Ensure we're using the slide's elements with their formats
+  if (!layout && Object.keys(layouts).length === 0) {
+    // If layouts haven't been loaded yet, show loading state
+    return (
+      <Box p={2} bg="white" borderRadius={4}>
+        <Text fontSize={1}>Loading...</Text>
+      </Box>
+    );
+  }
+
+  if (!layout) {
+    // If layouts are loaded but we can't find the layout, use the first available layout
+    const firstLayout = Object.values(layouts)[0];
+    if (firstLayout) {
+      return renderMiniSlide(slide, firstLayout, isSelected);
+    }
+    return (
+      <Box p={2} bg="white" borderRadius={4}>
+        <Text fontSize={1} color="error">
+          Layout not found
+        </Text>
+      </Box>
+    );
+  }
+
+  return renderMiniSlide(slide, layout, isSelected);
+};
+
+// Helper function to render the mini slide
+const renderMiniSlide = (slide: any, layout: Layout, isSelected: boolean) => {
+  const layoutElements = layout.elements;
   const slideElements =
     slide.elements ||
-    layoutElements.map((layoutElement) => {
+    layoutElements.map((layoutElement: SlideElement) => {
       if (layoutElement.type === "title") {
         return {
           type: "title",
@@ -488,7 +592,7 @@ export const MiniSlidePreview: React.FC<{
           padding: "2%",
         }}
       >
-        {layoutElements.map((layoutElement) => {
+        {layoutElements.map((layoutElement: SlideElement) => {
           const slideElement = slideElements.find(
             (el: { type: string; value: string; format?: TextFormat }) =>
               el.type === layoutElement.type
@@ -497,7 +601,6 @@ export const MiniSlidePreview: React.FC<{
           const isTitle = layoutElement.type === "title";
           const elementFormat = slideElement.format || {};
 
-          // Calculate dimensions based on layout element's specifications
           const elementStyle = {
             position: "absolute" as const,
             left:
@@ -516,6 +619,7 @@ export const MiniSlidePreview: React.FC<{
               typeof layoutElement.height === "string"
                 ? layoutElement.height
                 : `${layoutElement.height}%`,
+            transform: "translate(-50%, -50%)", // Center the element
             fontSize: getFontSizeInPx(
               parseFontSize(
                 elementFormat.fontSize || (isTitle ? "36pt" : "24pt")

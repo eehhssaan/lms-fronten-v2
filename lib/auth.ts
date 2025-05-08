@@ -80,7 +80,7 @@ export const isTeacher = (): boolean => {
   return hasRole("teacher");
 };
 
-export const isHeadTeacher = (): boolean => {
+export const isHeadTeacherisHeadTeacher = (): boolean => {
   return hasRole("head_teacher");
 };
 

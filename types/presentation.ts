@@ -178,3 +178,26 @@ export interface UpdateThemeDto {
   isDefault?: boolean;
   isPublic?: boolean;
 }
+
+export interface Layout {
+  _id: string;
+  name: string;
+  description: string;
+  type: SlideLayout;
+  elements: Array<{
+    type: string;
+    x: string | number;
+    y: string | number;
+    width: string | number;
+    height: string | number;
+    fontSize?: number;
+    textAlign?: "left" | "center" | "right";
+    placeholder?: string;
+  }>;
+  thumbnail?: string;
+  isDefault?: boolean;
+  isPublic?: boolean;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}

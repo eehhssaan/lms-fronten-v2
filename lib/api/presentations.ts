@@ -5,7 +5,14 @@ import {
   Slide,
   CreateThemeDto,
   UpdateThemeDto,
+  Layout,
 } from "../../types/presentation";
+
+interface LayoutResponse {
+  success: boolean;
+  error?: string;
+  data: Layout[];
+}
 
 // Theme APIs
 export const getThemes = async (): Promise<Theme[]> => {
@@ -156,11 +163,28 @@ export const generatePowerPoint = async (
   return response.data;
 };
 
-export const getLayouts = async () => {
+export const getLayouts = async (): Promise<LayoutResponse> => {
   try {
     const response = await api.get("/layouts");
+
+    // Ensure we have the correct response structure
+    if (!response.data || !response.data.success) {
+      console.error("Invalid response structure:", response.data);
+      throw new Error("Invalid response from layouts API");
+    }
+
+    // Validate layout types
+    if (Array.isArray(response.data.data)) {
+      response.data.data.forEach((layout: Layout, index: number) => {
+        if (!layout.type) {
+          console.warn(`Layout at index ${index} missing type:`, layout);
+        }
+      });
+    }
+
     return response.data;
   } catch (error) {
+    console.error("Error fetching layouts:", error);
     throw error;
   }
 };

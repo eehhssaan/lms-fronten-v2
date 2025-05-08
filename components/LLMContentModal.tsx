@@ -3,11 +3,11 @@ import { Box, Text, Flex } from "rebass";
 import { useAuth } from "@/context/AuthContext";
 import { generateLLMContent } from "@/lib/api";
 import { toast } from "react-hot-toast";
-import { TextFormat } from "@/types/presentation";
+import { TextFormat, SlideLayout } from "@/types/presentation";
 import ThemeSelector from "./ThemeSelector";
 import { Theme } from "@/types/presentation";
 import { default as SlidePreview, MiniSlidePreview } from "./SlidePreview";
-import { getLayouts } from "@/lib/api/presentations";
+import { getLayouts, updateSlide } from "@/lib/api/presentations";
 import LayoutSelector from "./LayoutSelector";
 import { api } from "@/lib/api";
 
@@ -79,6 +79,7 @@ interface Layout {
   _id: string;
   name: string;
   description: string;
+  type: string;
   elements: Array<{
     type: string;
     x: string | number;
@@ -303,7 +304,10 @@ export default function LLMContentModal({
     }
   };
 
-  const handleLayoutSelect = (layoutId: string) => {
+  const handleLayoutSelect = async (
+    layoutId: string,
+    layoutType: SlideLayout
+  ) => {
     setCurrentLayout(layoutId);
     setShowLayoutSelector(false);
 
@@ -338,22 +342,52 @@ export default function LLMContentModal({
         };
       });
 
-      const updatedSlide = {
-        ...currentSlide,
-        layout: layoutId,
-        elements: newElements,
-      };
+      try {
+        // Update the slide in the backend if we have the necessary IDs
+        if (currentSlide._id && currentSlide.presentationId) {
+          // Ensure layoutType is a valid SlideLayout value
+          if (!Object.values(SlideLayout).includes(layoutType)) {
+            throw new Error(`Invalid layout type: ${layoutType}`);
+          }
 
-      const updatedSlides = [...generatedSlides];
-      updatedSlides[currentSlideIndex] = updatedSlide;
-      setGeneratedSlides(updatedSlides);
+          const updateData = {
+            layout: layoutType,
+            elements: newElements,
+          };
+
+          const updatedSlideResponse = await updateSlide(
+            currentSlide.presentationId,
+            currentSlide._id,
+            updateData
+          );
+
+          // Update the local state with the new layout
+          const updatedSlide = {
+            ...currentSlide,
+            layout: layoutId,
+            elements: newElements,
+          };
+
+          const updatedSlides = [...generatedSlides];
+          updatedSlides[currentSlideIndex] = updatedSlide;
+          setGeneratedSlides(updatedSlides);
+
+          toast.success("Layout updated successfully");
+        } else {
+          console.error("Missing slide ID or presentation ID:", {
+            slideId: currentSlide._id,
+            presentationId: currentSlide.presentationId,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to update layout:", error);
+        toast.error("Failed to update layout");
+      }
     }
   };
 
   const handleSlideChange = (updatedSlide: Partial<GeneratedSlide>) => {
     if (!generatedSlides) return;
-
-    console.log("handleSlideChange", updatedSlide.title);
 
     const updatedSlides = [...generatedSlides];
     updatedSlides[currentSlideIndex] = {

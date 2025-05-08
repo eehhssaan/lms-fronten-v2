@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { Box, Text, Flex } from "rebass";
 import { getLayouts } from "@/lib/api/presentations";
 import { toast } from "react-hot-toast";
+import { SlideLayout } from "@/types/presentation";
 
-interface Layout {
+// API response type
+interface APILayout {
   _id: string;
   name: string;
+  type: string;
   description: string;
   elements: Array<{
     type: string;
@@ -18,10 +21,33 @@ interface Layout {
     placeholder?: string;
   }>;
   thumbnail?: string;
+  isDefault?: boolean;
+  isPublic?: boolean;
+}
+
+// Component's internal layout type
+interface Layout {
+  _id: string;
+  name: string;
+  type: SlideLayout;
+  description: string;
+  elements: Array<{
+    type: string;
+    x: string | number;
+    y: string | number;
+    width: string | number;
+    height: string | number;
+    fontSize?: number;
+    textAlign?: "left" | "center" | "right";
+    placeholder?: string;
+  }>;
+  thumbnail?: string;
+  isDefault?: boolean;
+  isPublic?: boolean;
 }
 
 interface LayoutSelectorProps {
-  onLayoutSelect: (layoutId: string) => void;
+  onLayoutSelect: (layoutId: string, layoutType: SlideLayout) => void;
   currentLayout: string;
 }
 
@@ -37,12 +63,35 @@ export default function LayoutSelector({
     const fetchLayouts = async () => {
       try {
         const response = await getLayouts();
-        if (response.success) {
-          setLayouts(response.data);
+
+        if (response.success && Array.isArray(response.data)) {
+          // Transform API layouts to internal layout type
+          const validLayouts = response.data
+            .map((apiLayout: APILayout) => {
+              // Use the type field directly instead of name
+              const layoutType = apiLayout.type as SlideLayout;
+
+              // Validate layout type
+              if (!Object.values(SlideLayout).includes(layoutType)) {
+                console.warn("Invalid layout type:", layoutType);
+                console.log("Valid types are:", Object.values(SlideLayout));
+                return null;
+              }
+
+              // Transform to internal layout type
+              return {
+                ...apiLayout,
+                type: layoutType,
+              };
+            })
+            .filter((layout): layout is Layout => layout !== null);
+
+          setLayouts(validLayouts);
         } else {
           throw new Error(response.error || "Failed to fetch layouts");
         }
       } catch (error) {
+        console.error("Error in fetchLayouts:", error);
         setError(
           error instanceof Error ? error.message : "Failed to fetch layouts"
         );
@@ -54,6 +103,17 @@ export default function LayoutSelector({
 
     fetchLayouts();
   }, []);
+
+  const handleLayoutClick = (layout: Layout) => {
+    if (!Object.values(SlideLayout).includes(layout.type)) {
+      console.error("Invalid layout type:", layout.type);
+      console.log("Valid types are:", Object.values(SlideLayout));
+      toast.error("Invalid layout configuration");
+      return;
+    }
+
+    onLayoutSelect(layout._id, layout.type);
+  };
 
   if (loading) {
     return (
@@ -94,7 +154,7 @@ export default function LayoutSelector({
         {layouts.map((layout) => (
           <Box
             key={layout._id}
-            onClick={() => onLayoutSelect(layout._id)}
+            onClick={() => handleLayoutClick(layout)}
             sx={{
               width: "200px",
               padding: "16px",

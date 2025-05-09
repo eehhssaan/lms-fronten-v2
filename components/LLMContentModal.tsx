@@ -3,7 +3,7 @@ import { Box, Text, Flex } from "rebass";
 import { useAuth } from "@/context/AuthContext";
 import { generateLLMContent } from "@/lib/api";
 import { toast } from "react-hot-toast";
-import { TextFormat, SlideLayout } from "@/types/presentation";
+import { TextFormat, SlideLayout, Layout } from "@/types/presentation";
 import ThemeSelector from "./ThemeSelector";
 import { Theme } from "@/types/presentation";
 import { default as SlidePreview, MiniSlidePreview } from "./SlidePreview";
@@ -73,27 +73,6 @@ interface LLMResponse {
 
 interface LLMDownloadResponse extends Blob {
   filename?: string;
-}
-
-interface Layout {
-  _id: string;
-  name: string;
-  description: string;
-  type: string;
-  elements: Array<{
-    type: string;
-    x: string | number;
-    y: string | number;
-    width: string | number;
-    height: string | number;
-    fontSize?: number;
-    textAlign?: "left" | "center" | "right";
-    placeholder?: string;
-  }>;
-  isDefault?: boolean;
-  isPublic?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 // Add breakpoint constants
@@ -323,21 +302,64 @@ export default function LLMContentModal({
           (el) => el.type === layoutElement.type
         );
 
+        // Convert fontSize to string if it's a number
+        const fontSize =
+          typeof layoutElement.fontSize === "number"
+            ? `${layoutElement.fontSize}pt`
+            : layoutElement.fontSize ||
+              existingElement?.format?.fontSize ||
+              "24pt";
+
+        // Convert lineHeight to string if it's a number
+        const lineHeight =
+          typeof layoutElement.lineHeight === "number"
+            ? `${layoutElement.lineHeight}`
+            : layoutElement.lineHeight ||
+              existingElement?.format?.lineHeight ||
+              "1.5";
+
+        // Convert letterSpacing to string if it's a number
+        const letterSpacing =
+          typeof layoutElement.letterSpacing === "number"
+            ? `${layoutElement.letterSpacing}px`
+            : layoutElement.letterSpacing ||
+              existingElement?.format?.letterSpacing ||
+              "normal";
+
         return {
           type: layoutElement.type,
           value: existingElement?.value || "",
-          format: existingElement?.format || {
-            fontFamily: "Arial",
-            fontSize: "24pt",
-            color: "#000000",
-            backgroundColor: "transparent",
-            bold: false,
-            italic: false,
-            underline: false,
-            textAlign: "left",
-            lineHeight: "1.5",
-            letterSpacing: "normal",
-            textTransform: "none" as const,
+          format: {
+            fontFamily:
+              layoutElement.fontFamily ||
+              existingElement?.format?.fontFamily ||
+              "Arial",
+            fontSize,
+            color:
+              layoutElement.color ||
+              existingElement?.format?.color ||
+              "#000000",
+            backgroundColor:
+              layoutElement.backgroundColor ||
+              existingElement?.format?.backgroundColor ||
+              "transparent",
+            bold: layoutElement.bold ?? existingElement?.format?.bold ?? false,
+            italic:
+              layoutElement.italic ?? existingElement?.format?.italic ?? false,
+            underline:
+              layoutElement.underline ??
+              existingElement?.format?.underline ??
+              false,
+            textAlign:
+              layoutElement.textAlign ||
+              existingElement?.format?.textAlign ||
+              "left",
+            lineHeight,
+            letterSpacing,
+            textTransform:
+              layoutElement.textTransform ||
+              existingElement?.format?.textTransform ||
+              "none",
           },
         };
       });
@@ -354,6 +376,8 @@ export default function LLMContentModal({
             layout: layoutType,
             elements: newElements,
           };
+
+          console.log("updateData", updateData);
 
           const updatedSlideResponse = await updateSlide(
             currentSlide.presentationId,
@@ -783,6 +807,8 @@ export default function LLMContentModal({
                 Close
               </button>
             </Flex>
+
+            {console.log("generatedSlides", generatedSlides[currentSlideIndex])}
 
             <Box sx={{ flex: 1 }}>
               {generatedSlides[currentSlideIndex] && (

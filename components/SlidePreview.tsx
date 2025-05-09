@@ -30,8 +30,17 @@ interface SlideElement {
   y: string | number;
   width: string | number;
   height: string | number;
-  fontSize?: number;
+  fontSize?: string | number;
   textAlign?: "left" | "center" | "right";
+  fontFamily?: string;
+  color?: string;
+  backgroundColor?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  lineHeight?: string | number;
+  letterSpacing?: string | number;
+  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
   placeholder?: string;
 }
 
@@ -113,19 +122,28 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
     width: "100%",
     height: "100%",
     fontSize: getFontSizeInPx(baseSize),
-    fontFamily: format.fontFamily || "'Helvetica Neue', Arial, sans-serif",
-    color: format.color || "#000000",
-    backgroundColor: "transparent",
-    fontWeight: format.bold ? "bold" : "normal",
-    fontStyle: format.italic ? "italic" : "normal",
-    textDecoration: format.underline ? "underline" : "none",
+    fontFamily:
+      format.fontFamily ||
+      element.fontFamily ||
+      "'Helvetica Neue', Arial, sans-serif",
+    color: format.color || element.color || "#000000",
+    backgroundColor:
+      format.backgroundColor || element.backgroundColor || "transparent",
+    fontWeight: format.bold || element.bold ? "bold" : "normal",
+    fontStyle: format.italic || element.italic ? "italic" : "normal",
+    textDecoration:
+      format.underline || element.underline ? "underline" : "none",
     textAlign: (format.textAlign || element.textAlign || "left") as
       | "left"
       | "center"
       | "right",
-    lineHeight: format.lineHeight || "1.5",
-    letterSpacing: format.letterSpacing || "normal",
-    textTransform: format.textTransform || "none",
+    lineHeight: format.lineHeight || element.lineHeight || "1.5",
+    letterSpacing: format.letterSpacing || element.letterSpacing || "normal",
+    textTransform: (format.textTransform || element.textTransform || "none") as
+      | "none"
+      | "uppercase"
+      | "lowercase"
+      | "capitalize",
     padding: "16px",
     margin: 0,
     outline: "none",
@@ -267,26 +285,52 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
   const slideElements =
     slide.elements ||
     layoutToUse.elements.map((layoutElement: SlideElement) => {
+      // Extract formatting properties from the layout element and ensure correct types
+      const layoutFormat: TextFormat = {
+        fontSize:
+          typeof layoutElement.fontSize === "number"
+            ? `${layoutElement.fontSize}pt`
+            : layoutElement.fontSize,
+        fontFamily: layoutElement.fontFamily,
+        color: layoutElement.color,
+        backgroundColor: layoutElement.backgroundColor,
+        bold: layoutElement.bold,
+        italic: layoutElement.italic,
+        underline: layoutElement.underline,
+        textAlign: layoutElement.textAlign,
+        lineHeight:
+          typeof layoutElement.lineHeight === "number"
+            ? `${layoutElement.lineHeight}`
+            : layoutElement.lineHeight,
+        letterSpacing:
+          typeof layoutElement.letterSpacing === "number"
+            ? `${layoutElement.letterSpacing}px`
+            : layoutElement.letterSpacing,
+        textTransform: layoutElement.textTransform,
+      };
+
       if (layoutElement.type === "title") {
         return {
           type: "title",
           value: slide.title || "",
-          format: {},
+          format: layoutFormat,
         };
       } else if (layoutElement.type === "content") {
         return {
           type: "content",
           value: slide.content || "",
-          format: {},
+          format: layoutFormat,
         };
       } else {
         return {
           type: layoutElement.type,
           value: "",
-          format: {},
+          format: layoutFormat,
         };
       }
     });
+
+  console.log("slideElements", slideElements);
 
   const handleElementChange = async (type: string, value: string) => {
     try {

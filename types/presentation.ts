@@ -190,8 +190,17 @@ export interface Layout {
     y: string | number;
     width: string | number;
     height: string | number;
-    fontSize?: number;
+    fontSize?: string | number;
     textAlign?: "left" | "center" | "right";
+    fontFamily?: string;
+    color?: string;
+    backgroundColor?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    lineHeight?: string | number;
+    letterSpacing?: string | number;
+    textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
     placeholder?: string;
   }>;
   thumbnail?: string;

@@ -208,23 +208,32 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Text sx={{ fontSize: 1, color: "gray.600" }}>Align:</Text>
           <Flex sx={{ gap: 1 }}>
-            {alignments.map((align) => (
+            {(alignments as Array<"left" | "center" | "right">).map((align) => (
               <Button
                 key={align}
                 onClick={() => onFormatChange({ ...format, textAlign: align })}
                 sx={{
-                  bg: format.textAlign === align ? "primary" : "transparent",
-                  color: format.textAlign === align ? "white" : "text",
+                  bg:
+                    (format.textAlign || "left") === align
+                      ? "primary"
+                      : "transparent",
+                  color:
+                    (format.textAlign || "left") === align ? "white" : "text",
                   px: 2,
                   py: 1,
                   fontSize: 1,
                   border: "1px solid",
                   borderColor:
-                    format.textAlign === align ? "primary" : "gray.200",
+                    (format.textAlign || "left") === align
+                      ? "primary"
+                      : "gray.200",
                   borderRadius: 2,
                   cursor: "pointer",
                   "&:hover": {
-                    bg: format.textAlign === align ? "primary" : "gray.50",
+                    bg:
+                      (format.textAlign || "left") === align
+                        ? "primary"
+                        : "gray.50",
                   },
                 }}
               >
@@ -237,7 +246,9 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
         {/* Text Style Toggles */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Button
-            onClick={() => onFormatChange({ ...format, bold: !format.bold })}
+            onClick={() =>
+              onFormatChange({ ...format, bold: !(format.bold || false) })
+            }
             sx={{
               bg: format.bold ? "primary" : "transparent",
               color: format.bold ? "white" : "text",
@@ -258,7 +269,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
           </Button>
           <Button
             onClick={() =>
-              onFormatChange({ ...format, italic: !format.italic })
+              onFormatChange({ ...format, italic: !(format.italic || false) })
             }
             sx={{
               bg: format.italic ? "primary" : "transparent",
@@ -280,7 +291,10 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
           </Button>
           <Button
             onClick={() =>
-              onFormatChange({ ...format, underline: !format.underline })
+              onFormatChange({
+                ...format,
+                underline: !(format.underline || false),
+              })
             }
             sx={{
               bg: format.underline ? "primary" : "transparent",

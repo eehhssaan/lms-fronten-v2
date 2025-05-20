@@ -1880,6 +1880,51 @@ export const getAssignments = async (
   }
 };
 
+export const createAssignment = async (
+  formData: FormData
+): Promise<Assignment> => {
+  try {
+    const response = await api.post("/assignments", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to create assignment"
+    );
+  }
+};
+
+export const updateAssignment = async (
+  assignmentId: string,
+  formData: FormData
+): Promise<Assignment> => {
+  try {
+    const response = await api.put(`/assignments/${assignmentId}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to update assignment"
+    );
+  }
+};
+
+export const deleteAssignment = async (assignmentId: string): Promise<void> => {
+  try {
+    await api.delete(`/assignments/${assignmentId}`);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to delete assignment"
+    );
+  }
+};
+
 // Chapter Management
 export const getSubjectChapters = async (
   subjectId: string

@@ -67,7 +67,10 @@ export default function AssignmentForm({
   ) => {
     const { name, value, type } = e.target;
     setFormData((prev) => {
-      const newFormData = new FormData(prev);
+      const newFormData = new FormData();
+      Array.from(prev.entries()).forEach(([key, val]) => {
+        newFormData.append(key, val);
+      });
       if (type === "checkbox") {
         newFormData.append(
           name,
@@ -141,7 +144,7 @@ export default function AssignmentForm({
         formData.append("attachments", file);
       });
 
-      if (assignment) {
+      if (assignment && assignment._id) {
         await updateAssignment(assignment._id, formData);
       } else {
         await createAssignment(formData);

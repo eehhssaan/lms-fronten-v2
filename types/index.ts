@@ -183,21 +183,31 @@ export interface Content {
 // Assignment types
 export interface Assignment {
   id: string;
+  _id?: string;
   title: string;
   description: string;
   dueDate: string;
   totalPoints: number;
-  instructions?: string;
-  attachments?: string[];
-  allowLateSubmission?: boolean;
-  courseId?: {
-    id: string;
-    title: string;
-  };
-  createdBy?: {
-    id: string;
+  instructions: string;
+  attachments?: {
     name: string;
-  };
+    file: string;
+    mimeType: string;
+    uploadedAt: string;
+  }[];
+  allowLateSubmissions: boolean;
+  latePenalty: number;
+  rubric: {
+    criterion: string;
+    points: number;
+    description: string;
+  }[];
+  isPublished: boolean;
+  moduleNumber: number;
+  courseId: string;
+  createdBy: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AssignmentSubmission {

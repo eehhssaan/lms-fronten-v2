@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Box, Flex, Text } from "rebass";
 import TextFormatToolbar from "./TextFormatToolbar";
 import { getLayouts } from "@/lib/api/presentations";
@@ -93,7 +93,8 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
   isSelected,
   onSelect,
 }) => {
-  const baseSize = parseFontSize(format.fontSize || element.fontSize);
+  // Use backend font size directly (no conversion)
+  const baseSize = format.fontSize || element.fontSize;
   const isTitle = element.type.toLowerCase().includes("title");
 
   // Base container style
@@ -107,11 +108,11 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
       typeof element.height === "string"
         ? element.height
         : `${element.height}%`,
-    transform: "translate(-50%, -50%)", // Center the element at its x,y coordinate
+    transform: "translate(-50%, -50%)",
     display: "flex",
     alignItems: "center",
     justifyContent: format.textAlign === "center" ? "center" : "flex-start",
-    padding: 0,
+    padding: 0, // Remove extra padding
     margin: 0,
     backgroundColor: "transparent",
     border: isSelected ? "2px solid #3182ce" : "none",
@@ -121,7 +122,7 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
   const elementStyle = {
     width: "100%",
     height: "100%",
-    fontSize: getFontSizeInPx(baseSize),
+    fontSize: baseSize, // Use backend value directly
     fontFamily:
       format.fontFamily ||
       element.fontFamily ||
@@ -138,13 +139,9 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
       | "center"
       | "right",
     lineHeight: format.lineHeight || element.lineHeight || "1.5",
-    letterSpacing: format.letterSpacing || element.letterSpacing || "normal",
-    textTransform: (format.textTransform || element.textTransform || "none") as
-      | "none"
-      | "uppercase"
-      | "lowercase"
-      | "capitalize",
-    padding: "16px",
+    letterSpacing: undefined, // Remove letterSpacing
+    textTransform: undefined, // Remove textTransform
+    padding: 0, // Remove extra padding
     margin: 0,
     outline: "none",
     border: "none",
@@ -153,14 +150,6 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
     whiteSpace: isTitle ? "nowrap" : "pre-wrap",
     textOverflow: isTitle ? "ellipsis" : "unset",
     resize: "none" as const,
-    [BREAKPOINTS.md]: {
-      fontSize: getResponsiveFontSize(baseSize, 0.8),
-      padding: "12px",
-    },
-    [BREAKPOINTS.sm]: {
-      fontSize: getResponsiveFontSize(baseSize, 0.7),
-      padding: "8px",
-    },
   };
 
   const handleChange = (
@@ -193,7 +182,6 @@ interface SlidePreviewProps {
   slide: {
     _id?: string;
     title?: string;
-    content?: string;
     type?: string;
     layout?: string;
     presentationId?: string;
@@ -203,7 +191,7 @@ interface SlidePreviewProps {
       fontFamily?: string;
       fontSize?: string;
     };
-    elements?: Array<{
+    elements: Array<{
       type: string;
       value: string;
       format?: TextFormat;
@@ -214,6 +202,9 @@ interface SlidePreviewProps {
   currentLayout?: Layout;
 }
 
+const DESIGN_WIDTH = 1280;
+const DESIGN_HEIGHT = 720;
+
 const SlidePreview: React.FC<SlidePreviewProps> = ({
   slide,
   onSlideChange,
@@ -223,6 +214,22 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
   const [layouts, setLayouts] = useState<Record<string, Layout>>({});
   const [loading, setLoading] = useState(true);
   const [defaultLayoutId, setDefaultLayoutId] = useState<string>("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const container = containerRef.current;
+      if (!container) return;
+      const { width, height } = container.getBoundingClientRect();
+      const scaleX = width / DESIGN_WIDTH;
+      const scaleY = height / DESIGN_HEIGHT;
+      setScale(Math.min(scaleX, scaleY));
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchLayouts = async () => {
@@ -316,9 +323,13 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
           format: layoutFormat,
         };
       } else if (layoutElement.type === "content") {
+        // Find content element from slide.elements or use empty string
+        const contentElement = slide.elements?.find(
+          (el) => el.type === "content"
+        );
         return {
           type: "content",
-          value: slide.content || "",
+          value: contentElement?.value || "",
           format: layoutFormat,
         };
       } else {
@@ -329,8 +340,6 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
         };
       }
     });
-
-  console.log("slideElements", slideElements);
 
   const handleElementChange = async (type: string, value: string) => {
     try {
@@ -373,13 +382,6 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
       const updatedSlide = {
         ...slide,
         elements: updatedElements,
-        customStyles: {
-          ...(slide.customStyles || {}),
-          // Map relevant format properties to customStyles
-          textColor: newFormat.color,
-          fontFamily: newFormat.fontFamily,
-          fontSize: newFormat.fontSize,
-        },
       };
 
       // First update local state
@@ -389,7 +391,6 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
       if (slide._id && slide.presentationId) {
         await updateSlide(slide.presentationId, slide._id, {
           elements: updatedElements,
-          customStyles: updatedSlide.customStyles,
         });
         toast.success("Style updated");
       }
@@ -448,84 +449,103 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
   };
 
   return (
-    <Box>
-      {selectedElement && selectedElementData && (
-        <Box
-          sx={{
-            [BREAKPOINTS.md]: {
-              position: "sticky",
+    <div
+      ref={containerRef}
+      style={{ width: "100%", height: "100%", position: "relative" }}
+    >
+      <div
+        style={{
+          width: DESIGN_WIDTH,
+          height: DESIGN_HEIGHT,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          background: slide.customStyles?.backgroundColor || "#fff",
+          borderRadius: 12,
+          overflow: "hidden",
+        }}
+      >
+        {selectedElement && selectedElementData && (
+          <Box
+            sx={{
+              [BREAKPOINTS.md]: {
+                position: "sticky",
+                top: 0,
+                zIndex: 10,
+                backgroundColor: "white",
+                borderBottom: "1px solid #e2e8f0",
+                marginBottom: "8px",
+              },
+            }}
+          >
+            <TextFormatToolbar
+              format={selectedElementData.format || {}}
+              onFormatChange={(newFormat) =>
+                handleFormatChange(selectedElement, newFormat)
+              }
+              onSlideBackgroundChange={handleSlideBackgroundChange}
+              currentSlideBackground={slide.customStyles?.backgroundColor}
+            />
+          </Box>
+        )}
+        <Box sx={containerStyle}>
+          <Box
+            sx={{
+              position: "absolute",
               top: 0,
-              zIndex: 10,
-              backgroundColor: "white",
-              borderBottom: "1px solid #e2e8f0",
-              marginBottom: "8px",
-            },
-          }}
-        >
-          <TextFormatToolbar
-            format={selectedElementData.format || {}}
-            onFormatChange={(newFormat) =>
-              handleFormatChange(selectedElement, newFormat)
-            }
-            onSlideBackgroundChange={handleSlideBackgroundChange}
-            currentSlideBackground={slide.customStyles?.backgroundColor}
-          />
-        </Box>
-      )}
-      <Box sx={containerStyle}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: "2%",
-          }}
-        >
-          {layoutToUse.elements.map((layoutElement) => {
-            const slideElement = slideElements.find(
-              (el) => el.type === layoutElement.type
-            ) || { type: layoutElement.type, value: "", format: {} };
+              left: 0,
+              right: 0,
+              bottom: 0,
+              padding: 0, // Remove all extra padding
+            }}
+          >
+            {layoutToUse.elements.map((layoutElement) => {
+              const slideElement = slideElements.find(
+                (el) => el.type === layoutElement.type
+              ) || { type: layoutElement.type, value: "", format: {} };
 
-            // Calculate element dimensions based on layout specifications
-            const elementWithDimensions = {
-              ...layoutElement,
-              x:
-                typeof layoutElement.x === "string"
-                  ? layoutElement.x
-                  : `${layoutElement.x}%`,
-              y:
-                typeof layoutElement.y === "string"
-                  ? layoutElement.y
-                  : `${layoutElement.y}%`,
-              width:
-                typeof layoutElement.width === "string"
-                  ? layoutElement.width
-                  : `${layoutElement.width}%`,
-              height:
-                typeof layoutElement.height === "string"
-                  ? layoutElement.height
-                  : `${layoutElement.height}%`,
-              fontSize: slideElement.type === "title" ? 36 : 18,
-            };
+              // Calculate element dimensions based on layout specifications
+              const elementWithDimensions = {
+                ...layoutElement,
+                x:
+                  typeof layoutElement.x === "string"
+                    ? layoutElement.x
+                    : `${layoutElement.x}%`,
+                y:
+                  typeof layoutElement.y === "string"
+                    ? layoutElement.y
+                    : `${layoutElement.y}%`,
+                width:
+                  typeof layoutElement.width === "string"
+                    ? layoutElement.width
+                    : `${layoutElement.width}%`,
+                height:
+                  typeof layoutElement.height === "string"
+                    ? layoutElement.height
+                    : `${layoutElement.height}%`,
+                fontSize:
+                  slideElement.format?.fontSize || layoutElement.fontSize,
+              };
 
-            return (
-              <SlideElementComponent
-                key={layoutElement.type}
-                element={elementWithDimensions}
-                value={slideElement.value}
-                onChange={handleElementChange}
-                onFormatChange={handleFormatChange}
-                format={slideElement.format || {}}
-                isSelected={selectedElement === layoutElement.type}
-                onSelect={() => setSelectedElement(layoutElement.type)}
-              />
-            );
-          })}
+              return (
+                <SlideElementComponent
+                  key={layoutElement.type}
+                  element={elementWithDimensions}
+                  value={slideElement.value}
+                  onChange={handleElementChange}
+                  onFormatChange={handleFormatChange}
+                  format={slideElement.format || {}}
+                  isSelected={selectedElement === layoutElement.type}
+                  onSelect={() => setSelectedElement(layoutElement.type)}
+                />
+              );
+            })}
+          </Box>
         </Box>
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 

@@ -62,6 +62,7 @@ export default function ChapterManager({
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    console.log("handleSubmit");
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
@@ -321,6 +322,10 @@ export default function ChapterManager({
                 variant="primary"
                 size="small"
                 disabled={isSubmitting}
+                onClick={(e) => {
+                  e.preventDefault();
+                  manualSubmit();
+                }}
               >
                 {isSubmitting ? "Saving..." : isEditing ? "Save" : "Add"}
               </Button>

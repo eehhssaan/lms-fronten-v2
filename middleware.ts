@@ -5,9 +5,6 @@ export function middleware(request: NextRequest) {
   // Get the pathname of the request
   const path = request.nextUrl.pathname;
 
-  // Output the current path for debugging
-  console.log("Middleware processing path:", path);
-
   // Check if this is an API request
   const isApiRequest = path.startsWith("/api");
 
@@ -31,14 +28,6 @@ export function middleware(request: NextRequest) {
   let token = request.cookies.get("token")?.value;
 
   // Log cookie information for debugging
-  console.log(
-    "Middleware: All cookies:",
-    request.cookies.getAll().map((c) => c.name)
-  );
-  console.log(
-    "Middleware: Token from cookie:",
-    token ? "Present" : "Not present"
-  );
 
   // If no token in cookies, check Authorization header for Bearer token
   if (!token) {
@@ -49,7 +38,6 @@ export function middleware(request: NextRequest) {
   }
 
   const isAuthenticated = !!token;
-  console.log("Middleware: Authentication status:", isAuthenticated);
 
   // Handle API requests
   if (isApiRequest) {
@@ -90,9 +78,6 @@ export function middleware(request: NextRequest) {
 
   // If the path is the auth page and the user is authenticated, redirect to home page
   if (path.includes("/auth") && isAuthenticated) {
-    console.log(
-      "Middleware: Redirecting authenticated user to home from auth page"
-    );
     const url = new URL("/", request.url);
     return NextResponse.redirect(url);
   }

@@ -26,14 +26,13 @@ interface GeneratedSlide {
   _id?: string;
   id?: string;
   title?: string;
-  content?: string;
   type?: string;
   layout?: string;
   backgroundColor?: string;
   order?: number;
   presentationId?: string;
   themeId?: string;
-  elements?: Array<{
+  elements: Array<{
     type: string;
     value: string;
     format?: {
@@ -63,9 +62,25 @@ interface LLMResponse {
     slides: Array<{
       _id: string;
       title: string;
-      content: string;
       layout?: string;
       type: string;
+      elements: Array<{
+        type: string;
+        value: string;
+        format?: {
+          fontSize?: string;
+          fontFamily?: string;
+          color?: string;
+          backgroundColor?: string;
+          bold?: boolean;
+          italic?: boolean;
+          underline?: boolean;
+          textAlign?: "left" | "center" | "right";
+          lineHeight?: string;
+          letterSpacing?: string;
+          textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+        };
+      }>;
     }>;
     message?: string;
   };
@@ -73,6 +88,32 @@ interface LLMResponse {
 
 interface LLMDownloadResponse extends Blob {
   filename?: string;
+}
+
+interface SlideElement {
+  type: string;
+  value: string;
+  format?: {
+    fontSize?: string;
+    fontFamily?: string;
+    color?: string;
+    backgroundColor?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    textAlign?: "left" | "center" | "right";
+    lineHeight?: string;
+    letterSpacing?: string;
+    textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+  };
+}
+
+interface BackendSlide {
+  _id: string;
+  title: string;
+  layout?: string;
+  type: string;
+  elements: SlideElement[];
 }
 
 // Add breakpoint constants
@@ -100,6 +141,8 @@ export default function LLMContentModal({
   const [currentLayout, setCurrentLayout] = useState<string>("");
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
   const [selectedChapter, setSelectedChapter] = useState("");
+  const [numberOfSlides, setNumberOfSlides] = useState(5);
+  const [userPrompt, setUserPrompt] = useState("");
   const [layouts, setLayouts] = useState<Record<string, Layout>>({});
   const [defaultLayoutId, setDefaultLayoutId] = useState<string>("");
 
@@ -176,7 +219,9 @@ export default function LLMContentModal({
     try {
       const response = (await generateLLMContent({
         prompts: {
-          // Your prompt parameters here
+          chapter: chapters.find((c) => c.id === selectedChapter)?.title || "",
+          numberOfSlides: numberOfSlides.toString(),
+          userPrompt: userPrompt.trim(),
         },
         context: {
           themeId: selectedTheme._id,
@@ -195,34 +240,24 @@ export default function LLMContentModal({
       }
 
       // Transform backend slides to match frontend format
-      const transformedSlides = slides.map((slide) => ({
+      const transformedSlides = slides.map((slide: BackendSlide) => ({
         ...slide,
         id: slide._id,
         presentationId: presentationId,
-        // Convert 'title-content' to 'titleAndContent'
         layout: slide.layout,
-        // Apply theme styles to elements and set background in customStyles
         customStyles: {
           backgroundColor: selectedTheme.colors.background,
         },
-        elements: [
-          {
-            type: "title",
-            value: slide.title || "",
+        // Only apply theme formatting to existing elements
+        elements:
+          slide.elements?.map((element: SlideElement) => ({
+            ...element,
             format: {
-              ...getThemeFormat(selectedTheme, true),
+              ...element.format,
+              ...getThemeFormat(selectedTheme, element.type === "title"),
               textTransform: "none" as const,
             },
-          },
-          {
-            type: "content",
-            value: slide.content || "",
-            format: {
-              ...getThemeFormat(selectedTheme, false),
-              textTransform: "none" as const,
-            },
-          },
-        ],
+          })) || [],
       }));
 
       setGeneratedSlides(transformedSlides);
@@ -510,6 +545,51 @@ export default function LLMContentModal({
                 </option>
               ))}
             </select>
+          </Box>
+
+          <Box mb={3}>
+            <Text mb={1} fontWeight="bold" color="text">
+              Number of Slides:
+            </Text>
+            <select
+              value={numberOfSlides.toString()}
+              onChange={(e) => setNumberOfSlides(Number(e.target.value))}
+              style={{
+                width: "100%",
+                padding: "8px",
+                borderRadius: "4px",
+                border: "1px solid #ddd",
+                marginBottom: "12px",
+                backgroundColor: "white",
+              }}
+            >
+              {[5, 7, 10, 15].map((num) => (
+                <option key={num} value={num.toString()}>
+                  {num}
+                </option>
+              ))}
+            </select>
+          </Box>
+
+          <Box mb={3}>
+            <Text mb={1} fontWeight="bold" color="text">
+              Additional Instructions (Optional):
+            </Text>
+            <textarea
+              value={userPrompt}
+              onChange={(e) => setUserPrompt(e.target.value)}
+              placeholder="Enter any specific instructions or context for the AI..."
+              style={{
+                width: "100%",
+                padding: "8px",
+                borderRadius: "4px",
+                border: "1px solid #ddd",
+                marginBottom: "12px",
+                backgroundColor: "white",
+                minHeight: "100px",
+                resize: "vertical",
+              }}
+            />
           </Box>
 
           {error && (
@@ -807,8 +887,6 @@ export default function LLMContentModal({
                 Close
               </button>
             </Flex>
-
-            {console.log("generatedSlides", generatedSlides[currentSlideIndex])}
 
             <Box sx={{ flex: 1 }}>
               {generatedSlides[currentSlideIndex] && (

@@ -49,11 +49,10 @@ export interface TextFormat {
 export interface Slide {
   _id?: string;
   title?: string;
-  content?: string;
   type?: string;
   layout?: string;
   backgroundColor?: string;
-  elements?: Array<{
+  elements: Array<{
     type: string;
     value: string;
     format?: TextFormat;

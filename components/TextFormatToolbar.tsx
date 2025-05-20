@@ -26,6 +26,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
     "Verdana",
     "Roboto",
     "Open Sans",
+    "Trebuchet MS",
   ];
 
   const fontSizes = [
@@ -79,15 +80,22 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
     <Box
       className={className}
       sx={{
-        bg: "white",
-        p: 2,
+        bg: "#f5f5f5",
+        p: 3,
         borderRadius: "4px",
         boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
         mb: 3,
+        border: "1px solid #e2e8f0",
       }}
     >
-      <Flex sx={{ gap: 2, flexWrap: "wrap" }}>
-        {/* Slide Background Color if onSlideBackgroundChange is provided */}
+      <Flex
+        sx={{
+          gap: 3,
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         {onSlideBackgroundChange && (
           <Box
             sx={{
@@ -96,6 +104,8 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
               gap: 2,
               borderRight: "1px solid #e2e8f0",
               pr: 2,
+              mr: 3,
+              mb: 2,
             }}
           >
             <Text sx={{ fontSize: 1, color: "gray.600" }}>Slide BG:</Text>
@@ -139,7 +149,9 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
         )}
 
         {/* Font Family */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 2, mr: 3, mb: 2 }}
+        >
           <Text sx={{ fontSize: 1, color: "gray.600" }}>Font:</Text>
           <select
             value={format.fontFamily || "Arial"}
@@ -151,10 +163,11 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
               border: "1px solid #e2e8f0",
               borderRadius: "4px",
               fontSize: "14px",
+              fontFamily: format.fontFamily || "Arial",
             }}
           >
             {fonts.map((font) => (
-              <option key={font} value={font}>
+              <option key={font} value={font} style={{ fontFamily: font }}>
                 {font}
               </option>
             ))}
@@ -162,7 +175,9 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
         </Box>
 
         {/* Font Size */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 2, mr: 3, mb: 2 }}
+        >
           <Text sx={{ fontSize: 1, color: "gray.600" }}>Size:</Text>
           <select
             value={getFontSizeValue(format.fontSize)}
@@ -185,7 +200,9 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
         </Box>
 
         {/* Text Color */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 2, mr: 3, mb: 2 }}
+        >
           <Text sx={{ fontSize: 1, color: "gray.600" }}>Color:</Text>
           <input
             type="color"
@@ -205,7 +222,9 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
         </Box>
 
         {/* Text Alignment */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 2, mr: 3, mb: 2 }}
+        >
           <Text sx={{ fontSize: 1, color: "gray.600" }}>Align:</Text>
           <Flex sx={{ gap: 1 }}>
             {(alignments as Array<"left" | "center" | "right">).map((align) => (
@@ -217,8 +236,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
                     (format.textAlign || "left") === align
                       ? "primary"
                       : "transparent",
-                  color:
-                    (format.textAlign || "left") === align ? "white" : "text",
+                  color: "black",
                   px: 2,
                   py: 1,
                   fontSize: 1,
@@ -244,14 +262,16 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
         </Box>
 
         {/* Text Style Toggles */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 1, mr: 3, mb: 2 }}
+        >
           <Button
             onClick={() =>
               onFormatChange({ ...format, bold: !(format.bold || false) })
             }
             sx={{
               bg: format.bold ? "primary" : "transparent",
-              color: format.bold ? "white" : "text",
+              color: "black",
               px: 2,
               py: 1,
               fontSize: 1,
@@ -261,7 +281,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
               borderRadius: 2,
               cursor: "pointer",
               "&:hover": {
-                bg: format.bold ? "primary" : "gray.50",
+                bg: format.bold ? "primary" : "#e0e0e0",
               },
             }}
           >
@@ -273,7 +293,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
             }
             sx={{
               bg: format.italic ? "primary" : "transparent",
-              color: format.italic ? "white" : "text",
+              color: "black",
               px: 2,
               py: 1,
               fontSize: 1,
@@ -283,7 +303,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
               borderRadius: 2,
               cursor: "pointer",
               "&:hover": {
-                bg: format.italic ? "primary" : "gray.50",
+                bg: format.italic ? "primary" : "#e0e0e0",
               },
             }}
           >
@@ -298,7 +318,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
             }
             sx={{
               bg: format.underline ? "primary" : "transparent",
-              color: format.underline ? "white" : "text",
+              color: "black",
               px: 2,
               py: 1,
               fontSize: 1,
@@ -308,7 +328,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
               borderRadius: 2,
               cursor: "pointer",
               "&:hover": {
-                bg: format.underline ? "primary" : "gray.50",
+                bg: format.underline ? "primary" : "#e0e0e0",
               },
             }}
           >

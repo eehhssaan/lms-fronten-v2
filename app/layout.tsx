@@ -1,4 +1,4 @@
-import { Inter } from "next/font/google";
+import { Montserrat, Open_Sans } from "next/font/google";
 import "./globals.css";
 
 // Define metadata for the page
@@ -7,7 +7,15 @@ export const metadata = {
   description: "A MUJI-inspired minimalist LMS platform",
 };
 
-const inter = Inter({ subsets: ["latin"] });
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+});
+
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  variable: "--font-opensans",
+});
 
 // Import client components for the actual layout rendering
 import ClientLayout from "@/components/ClientLayout";
@@ -20,14 +28,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.className}`}
+        className={`${montserrat.variable} ${openSans.variable}`}
         style={{
           margin: 0,
           backgroundColor: "#f0f0f0",
           height: "100vh",
         }}
       >
-        <ClientLayout inter={inter}>{children}</ClientLayout>
+        <ClientLayout montserrat={montserrat} openSans={openSans}>
+          {children}
+        </ClientLayout>
       </body>
     </html>
   );

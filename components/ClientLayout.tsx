@@ -4,11 +4,12 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@emotion/react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Inter } from "next/font/google";
+import { NextFontWithVariable } from "next/dist/compiled/@next/font";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
-  inter: any; // Type for the font
+  montserrat: NextFontWithVariable;
+  openSans: NextFontWithVariable;
 }
 
 // MUJI-inspired theme with neutral colors
@@ -29,8 +30,8 @@ const theme = {
   },
   space: [0, 4, 8, 16, 32, 64, 128, 256, 512],
   fonts: {
-    body: "inherit",
-    heading: "inherit",
+    body: "var(--font-opensans)",
+    heading: "var(--font-montserrat)",
   },
   fontSizes: [12, 14, 16, 20, 24, 32, 48, 64, 72],
   fontWeights: {
@@ -53,11 +54,17 @@ const theme = {
   breakpoints: ["40em", "52em", "64em"],
 };
 
-export default function ClientLayout({ children, inter }: ClientLayoutProps) {
+export default function ClientLayout({
+  children,
+  montserrat,
+  openSans,
+}: ClientLayoutProps) {
   return (
     <AuthProvider>
       <ThemeProvider theme={theme}>
-        <div className={`min-h-screen flex flex-col ${inter.className}`}>
+        <div
+          className={`min-h-screen flex flex-col ${montserrat.variable} ${openSans.variable}`}
+        >
           <Header />
           <main className="flex-grow w-full">{children}</main>
           <Footer />

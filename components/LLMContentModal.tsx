@@ -177,33 +177,20 @@ export default function LLMContentModal({
   }, []);
 
   const getThemeFormat = (theme: Theme, isTitle: boolean) => {
-    if (isTitle) {
-      return {
-        fontFamily: theme.fonts.heading,
-        fontSize: theme.titleFormat.fontSize,
-        color: theme.titleFormat.color || theme.colors.text,
-        backgroundColor: theme.colors.background,
-        bold: theme.titleFormat.fontWeight === "bold",
-        italic: false,
-        underline: false,
-        textAlign: theme.titleFormat.alignment,
-        lineHeight: "1.5",
-        letterSpacing: "normal",
-        textTransform: "none",
-      };
-    }
+    const defaults = isTitle ? theme.defaults.title : theme.defaults.content;
+
     return {
-      fontFamily: theme.fonts.body,
-      fontSize: theme.contentFormat.fontSize,
-      color: theme.contentFormat.color || theme.colors.text,
+      fontFamily: theme.fonts[isTitle ? "heading" : "body"],
+      fontSize: defaults.fontSize,
+      color: defaults.color || theme.colors.text,
       backgroundColor: theme.colors.background,
-      bold: theme.contentFormat.fontWeight === "bold",
+      bold: defaults.fontWeight === "bold",
       italic: false,
       underline: false,
-      textAlign: theme.contentFormat.alignment,
+      textAlign: (isTitle ? "center" : "left") as "center" | "left" | "right",
       lineHeight: "1.5",
       letterSpacing: "normal",
-      textTransform: "none",
+      textTransform: "none" as const,
     };
   };
 
@@ -512,18 +499,17 @@ export default function LLMContentModal({
             Create Content with AI
           </Text>
 
+          <Text my={1} fontWeight="bold" color="text">
+            Theme:
+          </Text>
+
           <ThemeSelector
             currentThemeId={selectedTheme?._id}
             onThemeSelect={setSelectedTheme}
           />
 
-          <Text mb={3} color="gray.600">
-            Select a chapter and provide a prompt for the AI to generate
-            content:
-          </Text>
-
-          <Box mb={3}>
-            <Text mb={1} fontWeight="bold" color="text">
+          <Box my={3}>
+            <Text my={1} fontWeight="bold" color="text">
               Chapter:
             </Text>
             <select

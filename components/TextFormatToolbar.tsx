@@ -18,6 +18,8 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
   currentSlideBackground,
 }) => {
   const fonts = [
+    "Montserrat",
+    "Open Sans",
     "Arial",
     "Times New Roman",
     "Helvetica",
@@ -25,7 +27,6 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
     "Georgia",
     "Verdana",
     "Roboto",
-    "Open Sans",
     "Trebuchet MS",
   ];
 
@@ -72,8 +73,9 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
   // Function to get font size value for the select
   const getFontSizeValue = (fontSize: string | undefined): string => {
     if (!fontSize) return "12pt";
-    if (fontSize.endsWith("pt")) return fontSize;
-    return `${fontSize}pt`;
+    // Always ensure we're working with pt values
+    const numericValue = parseInt(fontSize.replace(/[^0-9]/g, ""));
+    return `${numericValue}pt`;
   };
 
   return (

@@ -13,17 +13,17 @@ export interface Theme {
     heading: string;
     body: string;
   };
-  titleFormat: {
-    fontSize: string;
-    fontWeight: "normal" | "bold";
-    color: string;
-    alignment: "left" | "center" | "right";
-  };
-  contentFormat: {
-    fontSize: string;
-    fontWeight: "normal" | "bold";
-    color: string;
-    alignment: "left" | "center" | "right";
+  defaults: {
+    title: {
+      fontSize: string;
+      fontWeight: "normal" | "bold";
+      color: string;
+    };
+    content: {
+      fontSize: string;
+      fontWeight: "normal" | "bold";
+      color: string;
+    };
   };
   isDefault?: boolean;
   isPublic?: boolean;
@@ -132,17 +132,17 @@ export interface CreateThemeDto {
     heading: string;
     body: string;
   };
-  titleFormat: {
-    fontSize: string;
-    fontWeight: string;
-    color?: string;
-    alignment: "left" | "center" | "right";
-  };
-  contentFormat: {
-    fontSize: string;
-    fontWeight: string;
-    color?: string;
-    alignment: "left" | "center" | "right";
+  defaults: {
+    title: {
+      fontSize: string;
+      fontWeight: string;
+      color?: string;
+    };
+    content: {
+      fontSize: string;
+      fontWeight: string;
+      color?: string;
+    };
   };
   isDefault?: boolean;
   isPublic?: boolean;
@@ -162,17 +162,17 @@ export interface UpdateThemeDto {
     heading?: string;
     body?: string;
   };
-  titleFormat?: {
-    fontSize?: string;
-    fontWeight?: string;
-    color?: string;
-    alignment?: "left" | "center" | "right";
-  };
-  contentFormat?: {
-    fontSize?: string;
-    fontWeight?: string;
-    color?: string;
-    alignment?: "left" | "center" | "right";
+  defaults?: {
+    title?: {
+      fontSize?: string;
+      fontWeight?: string;
+      color?: string;
+    };
+    content?: {
+      fontSize?: string;
+      fontWeight?: string;
+      color?: string;
+    };
   };
   isDefault?: boolean;
   isPublic?: boolean;

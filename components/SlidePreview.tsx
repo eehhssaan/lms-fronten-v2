@@ -56,32 +56,24 @@ interface Layout {
 const parseFontSize = (fontSize: string | number | undefined): string => {
   if (!fontSize) return "12pt";
   if (typeof fontSize === "number") return `${fontSize}pt`;
-  // Handle '48pt' format
+  // Always store font sizes in pt
   if (typeof fontSize === "string") {
-    if (fontSize.endsWith("pt")) return fontSize;
-    if (fontSize.endsWith("px")) {
-      // Convert px to pt (1pt ≈ 1.333px)
-      const px = parseInt(fontSize);
-      return `${Math.round(px / 1.333)}pt`;
-    }
-    return `${parseInt(fontSize)}pt`;
+    const numericValue = parseInt(fontSize);
+    return `${numericValue}pt`;
   }
   return "12pt";
 };
 
 const getFontSizeInPx = (fontSize: string): string => {
-  if (fontSize.endsWith("pt")) {
-    // Convert pt to px (1pt ≈ 1.333px)
-    const pt = parseInt(fontSize.replace("pt", ""));
-    return `${Math.round(pt * 1.333)}px`;
-  }
-  if (fontSize.endsWith("px")) return fontSize;
-  return `${parseInt(fontSize)}px`;
+  // Always assume the input is in pt and convert to px for display
+  const pt = parseInt(fontSize.replace("pt", ""));
+  return `${Math.round(pt * 1.333)}px`;
 };
 
 const getResponsiveFontSize = (fontSize: string, scale: number): string => {
+  // Input is in pt, convert to px with scaling
   const pt = parseInt(fontSize.replace("pt", ""));
-  return getFontSizeInPx(`${Math.round(pt * scale)}pt`);
+  return `${Math.round(pt * 1.333 * scale)}px`;
 };
 
 const SlideElementComponent: React.FC<SlideElementProps> = ({
@@ -93,12 +85,10 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
   isSelected,
   onSelect,
 }) => {
-  // Use backend font size directly (no conversion)
-  const baseSize = format.fontSize || element.fontSize;
-  const isTitle = element.type.toLowerCase().includes("title");
+  // Get default text alignment based on element type
+  const defaultTextAlign = element.type === "title" ? "center" : "left";
 
-  // Base container style
-  const containerStyle = {
+  const elementStyle = {
     position: "absolute" as const,
     left: typeof element.x === "string" ? element.x : `${element.x}%`,
     top: typeof element.y === "string" ? element.y : `${element.y}%`,
@@ -111,44 +101,44 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
     transform: "translate(-50%, -50%)",
     display: "flex",
     alignItems: "center",
-    justifyContent: format.textAlign === "center" ? "center" : "flex-start",
-    padding: 0, // Remove extra padding
-    margin: 0,
-    backgroundColor: "transparent",
+    justifyContent:
+      (format.textAlign || defaultTextAlign) === "center"
+        ? "center"
+        : (format.textAlign || defaultTextAlign) === "right"
+        ? "flex-end"
+        : "flex-start",
+    backgroundColor: format.backgroundColor || "transparent",
     border: isSelected ? "2px solid #3182ce" : "none",
+    margin: 0,
+    padding: 0,
   };
 
-  // Common input/textarea styles
-  const elementStyle = {
+  const inputStyle = {
     width: "100%",
     height: "100%",
-    fontSize: baseSize, // Use backend value directly
+    fontSize: format.fontSize || (element.type === "title" ? "44pt" : "24pt"),
     fontFamily:
       format.fontFamily ||
-      element.fontFamily ||
-      "'Helvetica Neue', Arial, sans-serif",
-    color: format.color || element.color || "#000000",
-    backgroundColor:
-      format.backgroundColor || element.backgroundColor || "transparent",
-    fontWeight: format.bold || element.bold ? "bold" : "normal",
-    fontStyle: format.italic || element.italic ? "italic" : "normal",
-    textDecoration:
-      format.underline || element.underline ? "underline" : "none",
-    textAlign: (format.textAlign || element.textAlign || "left") as
-      | "left"
-      | "center"
-      | "right",
-    lineHeight: format.lineHeight || element.lineHeight || "1.5",
-    letterSpacing: undefined, // Remove letterSpacing
-    textTransform: undefined, // Remove textTransform
-    padding: 0, // Remove extra padding
+      (element.type === "title"
+        ? "var(--font-montserrat)"
+        : "var(--font-opensans)"),
+    color: format.color || "#2D3748",
+    backgroundColor: "transparent",
+    fontWeight: format.bold ? "bold" : "normal",
+    fontStyle: format.italic ? "italic" : "normal",
+    textDecoration: format.underline ? "underline" : "none",
+    textAlign: format.textAlign || defaultTextAlign,
+    lineHeight: format.lineHeight || "1.5",
+    letterSpacing: format.letterSpacing || "normal",
+    textTransform: format.textTransform || "none",
+    padding: 0,
     margin: 0,
     outline: "none",
     border: "none",
     display: "block",
-    overflow: isTitle ? "hidden" : "auto",
-    whiteSpace: isTitle ? "nowrap" : "pre-wrap",
-    textOverflow: isTitle ? "ellipsis" : "unset",
+    overflow: element.type === "title" ? "hidden" : "auto",
+    whiteSpace: element.type === "title" ? "nowrap" : "pre-wrap",
+    textOverflow: element.type === "title" ? "ellipsis" : "unset",
     resize: "none" as const,
   };
 
@@ -164,12 +154,12 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
     onClick: onSelect,
     className:
       "bg-transparent hover:bg-gray-50/10 focus:bg-transparent focus:shadow-sm transition-all duration-200",
-    style: elementStyle,
+    style: inputStyle,
   };
 
   return (
-    <Box sx={containerStyle}>
-      {isTitle ? (
+    <Box sx={elementStyle}>
+      {element.type === "title" ? (
         <input type="text" {...commonProps} />
       ) : (
         <textarea {...commonProps} />
@@ -555,93 +545,35 @@ export const MiniSlidePreview: React.FC<{
   layouts?: Record<string, Layout>;
   defaultLayoutId?: string;
 }> = ({ slide, isSelected = false, layouts = {}, defaultLayoutId = "" }) => {
-  // Use slide's layout ID if it exists, otherwise use default layout
-  const layoutId = slide.layout || defaultLayoutId;
-  const layout = layouts[layoutId];
+  const layout = slide.layout
+    ? layouts[slide.layout]
+    : layouts[defaultLayoutId];
 
-  if (!layout && Object.keys(layouts).length === 0) {
-    // If layouts haven't been loaded yet, show loading state
-    return (
-      <Box p={2} bg="white" borderRadius={4}>
-        <Text fontSize={1}>Loading...</Text>
-      </Box>
-    );
-  }
-
-  if (!layout) {
-    // If layouts are loaded but we can't find the layout, use the first available layout
-    const firstLayout = Object.values(layouts)[0];
-    if (firstLayout) {
-      return renderMiniSlide(slide, firstLayout, isSelected);
-    }
-    return (
-      <Box p={2} bg="white" borderRadius={4}>
-        <Text fontSize={1} color="error">
-          Layout not found
-        </Text>
-      </Box>
-    );
-  }
-
-  return renderMiniSlide(slide, layout, isSelected);
-};
-
-// Helper function to render the mini slide
-const renderMiniSlide = (slide: any, layout: Layout, isSelected: boolean) => {
-  const layoutElements = layout.elements;
-  const slideElements =
-    slide.elements ||
-    layoutElements.map((layoutElement: SlideElement) => {
-      if (layoutElement.type === "title") {
-        return {
-          type: "title",
-          value: slide.title || "",
-          format: slide.customStyles || {},
-        };
-      } else if (layoutElement.type === "content") {
-        return {
-          type: "content",
-          value: slide.content || "",
-          format: slide.customStyles || {},
-        };
-      } else {
-        return {
-          type: layoutElement.type,
-          value: "",
-          format: slide.customStyles || {},
-        };
-      }
-    });
-
-  // Use the same aspect ratio as the main slide
-  const aspectRatio = slide.aspectRatio || "16:9";
-  const [width, height] = aspectRatio.split(":").map(Number);
-  const paddingTop = `${(height / width) * 100}%`;
-
-  // Calculate scale based on the container width (200px in mobile)
-  const SCALE_FACTOR = 0.3;
-  const containerStyle = {
-    position: "relative" as const,
-    width: "100%",
-    paddingTop,
-    backgroundColor: slide.customStyles?.backgroundColor || "white",
-    border: isSelected ? "2px solid #3182ce" : "1px solid #e2e8f0",
-    borderRadius: "4px",
-    overflow: "hidden",
-    cursor: "pointer",
-    transition: "all 0.2s ease-in-out",
-    "&:hover": {
-      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-      transform: "translateY(-1px)",
-    },
-    [BREAKPOINTS.md]: {
-      marginRight: "8px",
-      minWidth: "200px",
-    },
-  };
+  const getDefaultFormat = (elementType: string) => ({
+    fontSize: elementType === "title" ? "44pt" : "24pt",
+    fontFamily:
+      elementType === "title"
+        ? "var(--font-montserrat)"
+        : "var(--font-opensans)",
+    color: elementType === "title" ? "#6B46C1" : "#2D3748",
+    textAlign: elementType === "title" ? "center" : "left",
+    lineHeight: "1.5",
+    letterSpacing: "normal",
+    textTransform: "none",
+  });
 
   return (
-    <Box sx={containerStyle}>
+    <Box
+      sx={{
+        position: "relative",
+        width: "100%",
+        paddingTop: "56.25%",
+        backgroundColor: slide.customStyles?.backgroundColor || "#FFFFFF",
+        border: isSelected ? "2px solid #3182ce" : "1px solid #e2e8f0",
+        borderRadius: "4px",
+        overflow: "hidden",
+      }}
+    >
       <Box
         sx={{
           position: "absolute",
@@ -649,75 +581,49 @@ const renderMiniSlide = (slide: any, layout: Layout, isSelected: boolean) => {
           left: 0,
           right: 0,
           bottom: 0,
-          transform: `scale(${SCALE_FACTOR})`,
-          transformOrigin: "top left",
-          width: `${100 / SCALE_FACTOR}%`,
-          height: `${100 / SCALE_FACTOR}%`,
-          padding: "2%",
+          padding: "16px",
         }}
       >
-        {layoutElements.map((layoutElement: SlideElement) => {
-          const slideElement = slideElements.find(
-            (el: { type: string; value: string; format?: TextFormat }) =>
-              el.type === layoutElement.type
-          ) || { type: layoutElement.type, value: "", format: {} };
-
-          const isTitle = layoutElement.type === "title";
-          const elementFormat = slideElement.format || {};
-
-          const elementStyle = {
-            position: "absolute" as const,
-            left:
-              typeof layoutElement.x === "string"
-                ? layoutElement.x
-                : `${layoutElement.x}%`,
-            top:
-              typeof layoutElement.y === "string"
-                ? layoutElement.y
-                : `${layoutElement.y}%`,
-            width:
-              typeof layoutElement.width === "string"
-                ? layoutElement.width
-                : `${layoutElement.width}%`,
-            height:
-              typeof layoutElement.height === "string"
-                ? layoutElement.height
-                : `${layoutElement.height}%`,
-            transform: "translate(-50%, -50%)", // Center the element
-            fontSize: getFontSizeInPx(
-              parseFontSize(
-                elementFormat.fontSize || (isTitle ? "36pt" : "24pt")
-              )
-            ),
-            textAlign: (elementFormat.textAlign ||
-              layoutElement.textAlign ||
-              "left") as "left" | "center" | "right",
-            fontFamily:
-              elementFormat.fontFamily || "'Helvetica Neue', Arial, sans-serif",
-            color: elementFormat.color || "#000000",
-            backgroundColor: "transparent",
-            fontWeight: elementFormat.bold
-              ? "bold"
-              : isTitle
-              ? "bold"
-              : "normal",
-            fontStyle: elementFormat.italic ? "italic" : "normal",
-            textDecoration: elementFormat.underline ? "underline" : "none",
-            padding: isTitle ? "12px" : "8px",
-            overflow: "hidden",
-            display: "-webkit-box",
-            WebkitLineClamp: isTitle ? 1 : 3,
-            WebkitBoxOrient: "vertical" as const,
-            lineHeight: elementFormat.lineHeight || (isTitle ? "1.2" : "1.4"),
-            textOverflow: "ellipsis",
-            wordBreak: "break-word" as const,
-            margin: 0,
-            userSelect: "none" as const,
+        {layout?.elements.map((element, index) => {
+          const slideElement = slide.elements?.find(
+            (e: any) => e.type === element.type
+          );
+          const format = {
+            ...getDefaultFormat(element.type),
+            ...(slideElement?.format || {}),
           };
 
           return (
-            <Box key={layoutElement.type} sx={elementStyle}>
-              {slideElement.value || ""}
+            <Box
+              key={`${element.type}-${index}`}
+              sx={{
+                position: "absolute",
+                left:
+                  typeof element.x === "string" ? element.x : `${element.x}%`,
+                top:
+                  typeof element.y === "string" ? element.y : `${element.y}%`,
+                width:
+                  typeof element.width === "string"
+                    ? element.width
+                    : `${element.width}%`,
+                height:
+                  typeof element.height === "string"
+                    ? element.height
+                    : `${element.height}%`,
+                transform: "translate(-50%, -50%)",
+                fontSize: getResponsiveFontSize(format.fontSize || "24pt", 0.2),
+                fontFamily: format.fontFamily,
+                color: format.color,
+                textAlign: format.textAlign,
+                fontWeight: format.bold ? "bold" : "normal",
+                fontStyle: format.italic ? "italic" : "normal",
+                textDecoration: format.underline ? "underline" : "none",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: element.type === "title" ? "nowrap" : "normal",
+              }}
+            >
+              {slideElement?.value || element.placeholder || ""}
             </Box>
           );
         })}

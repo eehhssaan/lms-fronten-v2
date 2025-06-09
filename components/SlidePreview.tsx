@@ -28,8 +28,6 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
     null
   );
   const { layouts, defaultLayoutId, loading } = useLayouts();
-
-  // Get layout based on slide's layout type or default layout
   const layoutToUse = currentLayout || layouts[defaultLayoutId];
 
   if (loading) {
@@ -184,20 +182,17 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
           position: "relative",
           width: "945px",
           height: "530px",
-          backgroundColor: slide.customStyles?.backgroundColor,
+          backgroundColor: slide.customStyles?.backgroundColor || "#FFFFFF",
           border: "1px solid #e2e8f0",
           borderRadius: "4px",
           overflow: "hidden",
         }}
       >
-        {console.log("slide.customStyles", slide)}
         <Box>
           {layoutToUse.elements.map((layoutElement) => {
             const slideElement = slide.elements?.find(
               (el: SlideElement) => el.type === layoutElement.type
             );
-
-            console.log("slideElement", slideElement);
 
             // Use the layout element directly and only override necessary properties
             const elementWithDimensions = {
@@ -256,124 +251,87 @@ export const MiniSlidePreview: React.FC<{
   return (
     <Box
       sx={{
-        position: "relative",
-        paddingTop: "56.25%", // Maintain 16:9 aspect ratio
+        height: "180px",
         backgroundColor: slide.customStyles?.backgroundColor || "#FFFFFF",
         border: isSelected ? "2px solid #3182ce" : "1px solid #e2e8f0",
         borderRadius: "4px",
         overflow: "hidden",
-        transformOrigin: "top left",
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        padding: "12px",
       }}
     >
-      <Box
-        sx={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          // This inner box will maintain the same proportions as the main SlidePreview
-          "& > *": {
-            transform: "scale(0.2)", // Scale down all children
-            transformOrigin: "top left",
-          },
-        }}
-      >
-        <Box
-          sx={{
-            position: "relative",
-            width: "945px", // Same as main SlidePreview
-            height: "530px", // Same as main SlidePreview
-            backgroundColor: slide.customStyles?.backgroundColor,
-          }}
-        >
-          {layoutToUse.elements.map((layoutElement) => {
-            const slideElement = slide.elements?.find(
-              (el: SlideElement) => el.type === layoutElement.type
-            );
+      {layoutToUse.elements.map((layoutElement) => {
+        const slideElement = slide.elements?.find(
+          (el: SlideElement) => el.type === layoutElement.type
+        );
 
-            // Use the exact same element construction logic as main SlidePreview
-            const elementWithDimensions = {
-              ...layoutElement,
-              _id: slideElement?._id || `temp-${layoutElement.type}`,
-              value: slideElement?.value || "",
-              format: slideElement?.format || {},
-              x: slideElement?.x ?? layoutElement.x,
-              y: slideElement?.y ?? layoutElement.y,
-              width: slideElement?.width ?? layoutElement.width,
-              height: slideElement?.height ?? layoutElement.height,
-              position:
-                slideElement?.position || layoutElement.position || "default",
-            } as SlideElement;
-
-            if (layoutElement.type === "image" && slideElement?.value) {
-              return (
-                <Box
-                  key={layoutElement.type}
-                  sx={{
-                    position: "absolute",
-                    left: `${elementWithDimensions.x}px`,
-                    top: `${elementWithDimensions.y}px`,
-                    width: `${elementWithDimensions.width}px`,
-                    height: `${elementWithDimensions.height}px`,
-                    overflow: "hidden",
-                  }}
-                >
-                  <img
-                    src={slideElement.value}
-                    alt="Slide content"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
-                </Box>
-              );
-            }
-
-            return (
-              <Box
-                key={layoutElement.type}
-                sx={{
-                  position: "absolute",
-                  left: `${elementWithDimensions.x}px`,
-                  top: `${elementWithDimensions.y}px`,
-                  width: `${elementWithDimensions.width}px`,
-                  height: `${elementWithDimensions.height}px`,
-                  fontSize:
-                    slideElement?.format?.fontSize ||
-                    (layoutElement.type === "title" ? "44pt" : "24pt"),
-                  fontFamily:
-                    slideElement?.format?.fontFamily ||
-                    (layoutElement.type === "title"
-                      ? "var(--font-montserrat)"
-                      : "var(--font-opensans)"),
-                  color:
-                    slideElement?.format?.color ||
-                    (layoutElement.type === "title" ? "#6B46C1" : "#2D3748"),
-                  textAlign: (slideElement?.format?.textAlign ||
-                    (layoutElement.type === "title" ? "center" : "left")) as
-                    | "left"
-                    | "center"
-                    | "right",
-                  fontWeight: slideElement?.format?.bold ? "bold" : "normal",
-                  fontStyle: slideElement?.format?.italic ? "italic" : "normal",
-                  textDecoration: slideElement?.format?.underline
-                    ? "underline"
-                    : "none",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace:
-                    layoutElement.type === "title" ? "nowrap" : "normal",
+        if (layoutElement.type === "image" && slideElement?.value) {
+          return (
+            <Box
+              key={layoutElement.type}
+              sx={{
+                flex: "0 0 auto",
+                maxHeight: "40%",
+                backgroundColor: slideElement?.format?.backgroundColor,
+                padding: "4px",
+              }}
+            >
+              <img
+                src={slideElement.value}
+                alt="Slide content"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
                 }}
-              >
-                {slideElement?.value || layoutElement.placeholder || ""}
-              </Box>
-            );
-          })}
-        </Box>
-      </Box>
+              />
+            </Box>
+          );
+        }
+
+        return (
+          <Box
+            key={layoutElement.type}
+            sx={{
+              flex: layoutElement.type === "title" ? "0 0 auto" : "1 1 auto",
+              backgroundColor: slideElement?.format?.backgroundColor,
+              padding: "8px",
+              fontSize: layoutElement.type === "title" ? "16px" : "12px",
+              fontWeight: layoutElement.type === "title" ? "bold" : "normal",
+              fontFamily:
+                slideElement?.format?.fontFamily ||
+                (layoutElement.type === "title"
+                  ? "var(--font-montserrat)"
+                  : "var(--font-opensans)"),
+              color:
+                slideElement?.format?.color ||
+                (layoutElement.type === "title" ? "#6B46C1" : "#2D3748"),
+              textAlign: (slideElement?.format?.textAlign ||
+                (layoutElement.type === "title" ? "center" : "left")) as
+                | "left"
+                | "center"
+                | "right",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "-webkit-box",
+              WebkitLineClamp: layoutElement.type === "title" ? 1 : 3,
+              WebkitBoxOrient: "vertical",
+              lineHeight: layoutElement.type === "title" ? "1.2" : "1.4",
+              ...(slideElement?.format && {
+                fontWeight: slideElement.format.bold ? "bold" : "normal",
+                fontStyle: slideElement.format.italic ? "italic" : "normal",
+                textDecoration: slideElement.format.underline
+                  ? "underline"
+                  : "none",
+              }),
+            }}
+          >
+            {slideElement?.value || layoutElement.placeholder || ""}
+          </Box>
+        );
+      })}
     </Box>
   );
 };

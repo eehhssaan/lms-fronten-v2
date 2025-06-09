@@ -1,6 +1,7 @@
 import React from "react";
 import { Box } from "rebass";
 import { TextFormat, Slide, SlideElement } from "../types/presentation";
+import { background } from "@chakra-ui/react";
 
 interface SlideElementProps {
   element: SlideElement & {
@@ -25,15 +26,33 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
   onSelect,
   slide,
 }) => {
-  // Use the exact positioning from the backend
+  // Convert percentage strings to numbers for calculations
+  const getPositionValue = (value: string | number) => {
+    if (typeof value === "string" && value.endsWith("%")) {
+      // Convert percentage to decimal and multiply by container width
+      return `${(parseFloat(value) / 100) * 945}px`;
+    }
+    return typeof value === "string" ? value : `${value}px`;
+  };
+
   const elementStyle = {
-    position: "absolute" as const,
-    left: element.x,
-    top: element.y,
-    width: element.width,
-    height: element.height,
+    position: "absolute",
+    left: getPositionValue(element.x),
+    top: getPositionValue(element.y),
+    width: getPositionValue(element.width),
+    height: getPositionValue(element.height),
+    transform: "translateX(-50%)", // Center horizontally
     border: isSelected ? "2px solid #3182ce" : "none",
-    transform: "translate(-50%, -50%)",
+    // Handle position-based adjustments
+    ...(element.position &&
+      element.position !== "default" && {
+        transform:
+          element.position === "right"
+            ? "translateX(-100%)"
+            : element.position === "top"
+            ? "translateY(100%)"
+            : "translateX(-50%)", // Keep centering for default
+      }),
   };
 
   const handleChange = (
@@ -42,9 +61,52 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
     onChange(element.type, e.target.value);
   };
 
+  console.log("format", format);
+
+  const textStyle = {
+    width: "100%",
+    height: "100%",
+    padding: "8px",
+    border: "none",
+    outline: "none",
+    resize: "none" as const,
+    backgroundColor: format.backgroundColor,
+    fontSize: format.fontSize || (element.type === "title" ? "24pt" : "14pt"),
+    fontFamily:
+      format.fontFamily ||
+      (element.type === "title"
+        ? "var(--font-montserrat)"
+        : "var(--font-opensans)"),
+    color: format.color || (element.type === "title" ? "#6B46C1" : "#2D3748"),
+    textAlign: (format.textAlign ||
+      (element.type === "title" ? "center" : "left")) as
+      | "left"
+      | "center"
+      | "right",
+    fontWeight: format.bold ? "bold" : "normal",
+    fontStyle: format.italic ? "italic" : "normal",
+    textDecoration: format.underline ? "underline" : "none",
+    lineHeight: format.lineHeight || (element.type === "title" ? "1.2" : "1.4"),
+    letterSpacing: format.letterSpacing,
+    textTransform: format.textTransform,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: element.type === "title" ? "nowrap" : "normal",
+    display: element.type === "title" ? "flex" : "block",
+    alignItems: element.type === "title" ? "center" : undefined,
+    justifyContent: element.type === "title" ? "center" : undefined,
+  };
+
   if (element.type === "image") {
     return (
-      <Box sx={elementStyle} onClick={onSelect}>
+      <Box
+        sx={{
+          ...elementStyle,
+          overflow: "hidden",
+          backgroundColor: format.backgroundColor,
+        }}
+        onClick={onSelect}
+      >
         <img
           src={value || slide?.imageUrl}
           alt="Slide content"
@@ -58,18 +120,6 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
     );
   }
 
-  // Apply only the format properties that come from the backend
-  const textStyle = {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "transparent",
-    outline: "none",
-    border: "none",
-    margin: 0,
-    padding: 0,
-    ...format, // Use format properties directly from backend
-  };
-
   return (
     <Box sx={elementStyle}>
       {element.type === "title" ? (
@@ -78,6 +128,7 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
           value={value || element.placeholder || ""}
           onChange={handleChange}
           onClick={onSelect}
+          placeholder={element.placeholder}
           style={textStyle}
         />
       ) : (
@@ -85,6 +136,7 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
           value={value || element.placeholder || ""}
           onChange={handleChange}
           onClick={onSelect}
+          placeholder={element.placeholder}
           style={textStyle}
         />
       )}

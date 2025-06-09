@@ -126,13 +126,18 @@ export const createSlide = async (
 export const updateSlide = async (
   presentationId: string,
   slideId: string,
-  slideData: Partial<Slide>
-): Promise<Slide> => {
-  const response = await api.put(
-    `/presentations/${presentationId}/slides/${slideId}`,
-    slideData
-  );
-  return response.data;
+  data: any
+): Promise<any> => {
+  try {
+    const response = await api.put(
+      `/presentations/${presentationId}/slides/${slideId}`,
+      data
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating slide:", error);
+    throw new Error(error.response?.data?.message || "Failed to update slide");
+  }
 };
 
 export const deleteSlide = async (
@@ -195,5 +200,25 @@ export const getLayout = async (id: string) => {
     return response.data;
   } catch (error) {
     throw error;
+  }
+};
+
+export const updateSlideElementPosition = async (
+  presentationId: string,
+  slideId: string,
+  elementId: string,
+  position: "left" | "right" | "top" | "default"
+): Promise<any> => {
+  try {
+    const response = await api.put(
+      `/presentations/${presentationId}/slides/${slideId}/elements/${elementId}/position`,
+      { position }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating element position:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to update element position"
+    );
   }
 };

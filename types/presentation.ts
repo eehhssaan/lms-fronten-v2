@@ -52,11 +52,8 @@ export interface Slide {
   type?: string;
   layout?: string;
   backgroundColor?: string;
-  elements: Array<{
-    type: string;
-    value: string;
-    format?: TextFormat;
-  }>;
+  imageUrl?: string;
+  elements: SlideElement[];
   customStyles?: {
     backgroundColor?: string;
     textColor?: string;
@@ -68,6 +65,7 @@ export interface Slide {
 
 export enum SlideLayout {
   TITLE_CONTENT = "title-content",
+  TITLE_CONTENT_IMAGE = "title-content-image",
   CONTENT_ONLY = "content-only",
   IMAGE_LEFT = "image-left",
   IMAGE_RIGHT = "image-right",
@@ -183,29 +181,55 @@ export interface Layout {
   name: string;
   description: string;
   type: SlideLayout;
-  elements: Array<{
-    type: string;
-    x: string | number;
-    y: string | number;
-    width: string | number;
-    height: string | number;
-    fontSize?: string | number;
-    textAlign?: "left" | "center" | "right";
-    fontFamily?: string;
-    color?: string;
-    backgroundColor?: string;
-    bold?: boolean;
-    italic?: boolean;
-    underline?: boolean;
-    lineHeight?: string | number;
-    letterSpacing?: string | number;
-    textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
-    placeholder?: string;
-  }>;
+  elements: SlideElement[];
   thumbnail?: string;
   isDefault?: boolean;
   isPublic?: boolean;
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface SlideElementLayout {
+  type: string;
+  x: string | number;
+  y: string | number;
+  width: string | number;
+  height: string | number;
+  placeholder?: string;
+  fontSize?: string | number;
+  textAlign?: "left" | "center" | "right";
+  fontFamily?: string;
+  color?: string;
+  backgroundColor?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  lineHeight?: string | number;
+  letterSpacing?: string | number;
+  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+}
+
+export interface SlideElementContent {
+  _id?: string;
+  type: string;
+  value: string;
+  format?: TextFormat;
+}
+
+export interface ElementPositionMetadata {
+  originalX: number | string;
+  originalY: number | string;
+  originalWidth: number | string;
+  originalHeight: number | string;
+  lastPosition: "left" | "right" | "top" | "default";
+}
+
+export interface SlideElement extends SlideElementLayout {
+  _id?: string;
+  type: string;
+  value: string;
+  format?: TextFormat;
+  placeholder?: string;
+  position?: "left" | "right" | "top" | "default";
 }

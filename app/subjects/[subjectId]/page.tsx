@@ -19,10 +19,13 @@ import Button from "@/components/Button";
 import SubjectContentManager from "@/components/SubjectContentManager";
 import SubjectContent from "@/components/SubjectContent";
 import SubjectNavigation from "@/components/SubjectNavigation";
-import LLMContentModal from "@/components/LLMContentModal";
 
 export default function SubjectDetailPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const params = useParams();
+  const subjectId = params?.subjectId as string;
+
   const [subject, setSubject] = useState<{
     name: string;
     description?: string;
@@ -32,11 +35,7 @@ export default function SubjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showContentManager, setShowContentManager] = useState(false);
-  const [showLLMDialog, setShowLLMDialog] = useState(false);
   const [chapters, setChapters] = useState<{ id: string; title: string }[]>([]);
-  const router = useRouter();
-  const params = useParams();
-  const subjectId = params?.subjectId as string;
 
   const breadcrumbItems = useSubjectBreadcrumb(subject?.name);
 
@@ -107,6 +106,10 @@ export default function SubjectDetailPage() {
     subject?.headTeacher && user?._id === subject.headTeacher._id;
   const canManageSubject = isAdminOrHeadTeacher || isHeadTeacherOfSubject;
 
+  const handleCreateContent = () => {
+    router.push(`/subjects/${subjectId}/presentation`);
+  };
+
   return (
     <Box as="div" className="container" py={4} px={[3, 4]}>
       <SubjectBreadcrumb items={breadcrumbItems} />
@@ -155,7 +158,7 @@ export default function SubjectDetailPage() {
                     : "Manage Content"}
                 </Button>
                 <Button
-                  onClick={() => setShowLLMDialog(true)}
+                  onClick={handleCreateContent}
                   variant="secondary"
                   size="small"
                 >
@@ -229,14 +232,6 @@ export default function SubjectDetailPage() {
               </Box>
             )}
           </Box>
-
-          <LLMContentModal
-            isOpen={showLLMDialog}
-            onClose={() => setShowLLMDialog(false)}
-            subjectId={subjectId}
-            chapters={chapters}
-            onSuccess={refreshContents}
-          />
         </>
       )}
     </Box>

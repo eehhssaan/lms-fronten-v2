@@ -1,25 +1,34 @@
 import { useState, useEffect } from "react";
 import { Box, Text, Flex } from "rebass";
-import { useAuth } from "@/context/AuthContext";
 import { generateLLMContent } from "@/lib/api";
 import { toast } from "react-hot-toast";
-import { TextFormat, SlideLayout, Layout } from "@/types/presentation";
+import { SlideLayout, SlideElementContent } from "@/types/presentation";
 import ThemeSelector from "./ThemeSelector";
 import { Theme } from "@/types/presentation";
 import { default as SlidePreview, MiniSlidePreview } from "./SlidePreview";
-import { getLayouts, updateSlide } from "@/lib/api/presentations";
+import { updateSlide } from "@/lib/api/presentations";
 import LayoutSelector from "./LayoutSelector";
 import { api } from "@/lib/api";
+import { useLayouts } from "@/context/LayoutsContext";
+import { BREAKPOINTS } from "../constants/breakpoints";
 
-interface LLMContentModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface PresentationPreviewProps {
   subjectId: string;
   chapters: Array<{
     id: string;
     title: string;
   }>;
   onSuccess?: () => void;
+  initialContent?: {
+    content: Array<{
+      slideNumber: number;
+      title: string;
+      bulletPoints: string[];
+      type: string;
+    }>;
+    theme: Theme;
+    themeId: string;
+  };
 }
 
 interface GeneratedSlide {
@@ -29,26 +38,11 @@ interface GeneratedSlide {
   type?: string;
   layout?: string;
   backgroundColor?: string;
+  imageUrl?: string;
   order?: number;
   presentationId?: string;
   themeId?: string;
-  elements: Array<{
-    type: string;
-    value: string;
-    format?: {
-      fontFamily: string;
-      fontSize: string;
-      color: string;
-      backgroundColor: string;
-      bold: boolean;
-      italic: boolean;
-      underline: boolean;
-      textAlign: "left" | "center" | "right";
-      lineHeight: string;
-      letterSpacing: string;
-      textTransform: "none" | "uppercase" | "lowercase" | "capitalize";
-    };
-  }>;
+  elements: SlideElementContent[];
   customStyles?: {
     backgroundColor?: string;
   };
@@ -65,6 +59,7 @@ interface LLMResponse {
       layout?: string;
       type: string;
       elements: Array<{
+        _id?: string;
         type: string;
         value: string;
         format?: {
@@ -86,51 +81,21 @@ interface LLMResponse {
   };
 }
 
-interface LLMDownloadResponse extends Blob {
-  filename?: string;
-}
-
-interface SlideElement {
-  type: string;
-  value: string;
-  format?: {
-    fontSize?: string;
-    fontFamily?: string;
-    color?: string;
-    backgroundColor?: string;
-    bold?: boolean;
-    italic?: boolean;
-    underline?: boolean;
-    textAlign?: "left" | "center" | "right";
-    lineHeight?: string;
-    letterSpacing?: string;
-    textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
-  };
-}
-
 interface BackendSlide {
   _id: string;
   title: string;
   layout?: string;
   type: string;
-  elements: SlideElement[];
+  elements: SlideElementContent[];
+  imageUrl?: string;
 }
 
-// Add breakpoint constants
-const BREAKPOINTS = {
-  sm: "@media screen and (max-width: 640px)",
-  md: "@media screen and (max-width: 768px)",
-  lg: "@media screen and (max-width: 1024px)",
-};
-
-export default function LLMContentModal({
-  isOpen,
-  onClose,
+export default function PresentationPreview({
   subjectId,
   chapters,
   onSuccess,
-}: LLMContentModalProps) {
-  const { user } = useAuth();
+  initialContent,
+}: PresentationPreviewProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedSlides, setGeneratedSlides] = useState<
@@ -139,42 +104,56 @@ export default function LLMContentModal({
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showLayoutSelector, setShowLayoutSelector] = useState(false);
   const [currentLayout, setCurrentLayout] = useState<string>("");
-  const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<Theme | null>(
+    initialContent?.theme || null
+  );
   const [selectedChapter, setSelectedChapter] = useState("");
   const [numberOfSlides, setNumberOfSlides] = useState(5);
   const [userPrompt, setUserPrompt] = useState("");
-  const [layouts, setLayouts] = useState<Record<string, Layout>>({});
-  const [defaultLayoutId, setDefaultLayoutId] = useState<string>("");
+  const { layouts, defaultLayoutId } = useLayouts();
 
   useEffect(() => {
-    const fetchLayouts = async () => {
-      try {
-        const response = await getLayouts();
-        if (response.success) {
-          const layoutsMap = response.data.reduce(
-            (acc: Record<string, Layout>, layout: Layout) => {
-              acc[layout._id] = layout;
-              return acc;
-            },
-            {}
-          );
-          setLayouts(layoutsMap);
+    if (defaultLayoutId) {
+      setCurrentLayout(defaultLayoutId);
+    }
+  }, [defaultLayoutId]);
 
-          // Find and set the default layout
-          const defaultLayout = response.data.find(
-            (layout: Layout) => layout.isDefault
-          );
-          if (defaultLayout) {
-            setCurrentLayout(defaultLayout._id);
-            setDefaultLayoutId(defaultLayout._id);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch layouts:", error);
-      }
-    };
-    fetchLayouts();
-  }, []);
+  // If we have initial content, transform it to slides format
+  useEffect(() => {
+    if (initialContent && !generatedSlides) {
+      const transformedSlides = initialContent.content.map((slide) => ({
+        ...slide,
+        id: `draft-${slide.slideNumber}`,
+        presentationId: "draft",
+        layout: defaultLayoutId,
+        customStyles: {
+          backgroundColor: initialContent.theme.colors.background,
+        },
+        elements: [
+          {
+            type: "title",
+            value: slide.title,
+            format: getThemeFormat(initialContent.theme, true),
+            x: 0,
+            y: 0,
+            width: 945,
+            height: 100,
+          },
+          {
+            type: "content",
+            value: slide.bulletPoints.join("\n"),
+            format: getThemeFormat(initialContent.theme, false),
+            x: 0,
+            y: 120,
+            width: 945,
+            height: 400,
+          },
+        ],
+      }));
+
+      setGeneratedSlides(transformedSlides);
+    }
+  }, [initialContent, defaultLayoutId, generatedSlides]);
 
   const getThemeFormat = (theme: Theme, isTitle: boolean) => {
     const defaults = isTitle ? theme.defaults.title : theme.defaults.content;
@@ -204,17 +183,105 @@ export default function LLMContentModal({
     setError(null);
 
     try {
-      const response = (await generateLLMContent({
-        prompts: {
-          chapter: chapters.find((c) => c.id === selectedChapter)?.title || "",
-          numberOfSlides: numberOfSlides.toString(),
-          userPrompt: userPrompt.trim(),
+      // const response = (await generateLLMContent({
+      //   prompts: {
+      //     chapter: chapters.find((c) => c.id === selectedChapter)?.title || "",
+      //     numberOfSlides: numberOfSlides.toString(),
+      //     userPrompt: userPrompt.trim(),
+      //   },
+      //   context: {
+      //     themeId: selectedTheme._id,
+      //     download: "false", // We'll generate slides first, then download
+      //   },
+      // })) as LLMResponse;
+
+      const response = {
+        success: true,
+        data: {
+          presentationId: "683acb311d73777a11b1de22",
+          slides: [
+            {
+              title: "Introduction to Algebra",
+              type: "content",
+              layout: "683297c361558c2d09e0258a",
+              elements: [
+                {
+                  type: "title",
+                  value: "Introduction to Algebra",
+                  x: 94,
+                  y: 53,
+                  width: 756,
+                  height: 80,
+                  position: "default",
+                  relatedElements: [],
+                  format: {
+                    fontFamily: "Trebuchet MS",
+                    fontSize: "44pt",
+                    color: "#EA580C",
+                    backgroundColor: "#FFFBEB",
+                    italic: false,
+                    underline: false,
+                    textAlign: "center",
+                  },
+                  _id: "683acb381d73777a11b1de26",
+                },
+                {
+                  type: "content",
+                  value:
+                    "Algebra is a branch of mathematics that deals with symbols and the rules for manipulating those symbols. It is about finding the unknown or putting real-life variables into equations and then solving them. \n\n**Key Concepts:**\n1. **Variables** - Symbols, usually letters, that represent unknown or changing numbers. \n2. **Expressions** - Combinations of numbers and variables using operations such as addition, subtraction, multiplication, and division.\n3. **Equations** - Mathematical statements that assert the equality of two expressions. Solving an equation involves finding the value of the variable that makes the equation true. \n4. **Inequalities** - Mathematical statements indicating that one expression is larger or smaller than another.\n\n**Applications of Algebra:**\n- Algebra is used in various real-life scenarios, such as calculating distances, determining costs, and analyzing data.\n- It is essential for advanced studies in mathematics, science, engineering, medicine, and economics.\n\n**Why Study Algebra?**\n- Develops logical thinking and problem-solving skills.\n- Provides a foundation for advanced mathematics and other disciplines.\n- Helps in understanding and describing patterns and relationships in the world around us.",
+                  x: 94,
+                  y: 186,
+                  width: 756,
+                  height: 133,
+                  position: "default",
+                  relatedElements: [],
+                  format: {
+                    fontFamily: "Avenir",
+                    fontSize: "24pt",
+                    color: "#9A3412",
+                    backgroundColor: "#FFFBEB",
+                    italic: false,
+                    underline: false,
+                    textAlign: "left",
+                  },
+                  _id: "683acb381d73777a11b1de27",
+                },
+                {
+                  type: "image",
+                  value:
+                    "https://consolidatedlabel.com/app/uploads/2007/10/low-res-72dpi.jpg",
+                  x: 380,
+                  y: 348,
+                  width: 186,
+                  height: 186,
+                  position: "default",
+                  relatedElements: [],
+                  format: {
+                    fontFamily: "Avenir",
+                    fontSize: "24pt",
+                    color: "#9A3412",
+                    backgroundColor: "#FFFBEB",
+                    italic: false,
+                    underline: false,
+                    textAlign: "left",
+                  },
+                  _id: "683acb381d73777a11b1de28",
+                },
+              ],
+              order: 1,
+              presentationId: "683acb311d73777a11b1de22",
+              themeId: "682e15ae338821734ce5ba3c",
+              _id: "683acb381d73777a11b1de25",
+              createdAt: "2025-05-31T09:26:16.230Z",
+              updatedAt: "2025-05-31T09:26:16.844Z",
+              __v: 0,
+              imageUrl:
+                "https://consolidatedlabel.com/app/uploads/2007/10/low-res-72dpi.jpg",
+            },
+          ],
+          message: "Slides generated and saved successfully Ehsan",
         },
-        context: {
-          themeId: selectedTheme._id,
-          download: "false", // We'll generate slides first, then download
-        },
-      })) as LLMResponse;
+      } as LLMResponse;
 
       if (!response.success || !response.data) {
         throw new Error(response.error || "Failed to generate content");
@@ -232,12 +299,13 @@ export default function LLMContentModal({
         id: slide._id,
         presentationId: presentationId,
         layout: slide.layout,
+        imageUrl: slide.imageUrl,
         customStyles: {
           backgroundColor: selectedTheme.colors.background,
         },
         // Only apply theme formatting to existing elements
         elements:
-          slide.elements?.map((element: SlideElement) => ({
+          slide.elements?.map((element: SlideElementContent) => ({
             ...element,
             format: {
               ...element.format,
@@ -317,89 +385,64 @@ export default function LLMContentModal({
       const layout = layouts[layoutId];
       const currentSlide = generatedSlides[currentSlideIndex];
 
-      // Create new elements based on the layout
+      // Create new elements based on the layout, but only with essential data
       const newElements = layout.elements.map((layoutElement) => {
         // Try to find existing element of same type
         const existingElement = currentSlide.elements?.find(
           (el) => el.type === layoutElement.type
         );
 
-        // Convert fontSize to string if it's a number
-        const fontSize =
-          typeof layoutElement.fontSize === "number"
-            ? `${layoutElement.fontSize}pt`
-            : layoutElement.fontSize ||
-              existingElement?.format?.fontSize ||
-              "24pt";
-
-        // Convert lineHeight to string if it's a number
-        const lineHeight =
-          typeof layoutElement.lineHeight === "number"
-            ? `${layoutElement.lineHeight}`
-            : layoutElement.lineHeight ||
-              existingElement?.format?.lineHeight ||
-              "1.5";
-
-        // Convert letterSpacing to string if it's a number
-        const letterSpacing =
-          typeof layoutElement.letterSpacing === "number"
-            ? `${layoutElement.letterSpacing}px`
-            : layoutElement.letterSpacing ||
-              existingElement?.format?.letterSpacing ||
-              "normal";
+        // Include minimal but type-safe format properties
+        const format = {
+          fontFamily:
+            layoutElement.fontFamily ||
+            existingElement?.format?.fontFamily ||
+            "Arial",
+          fontSize:
+            typeof layoutElement.fontSize === "number"
+              ? `${layoutElement.fontSize}pt`
+              : layoutElement.fontSize ||
+                existingElement?.format?.fontSize ||
+                "24pt",
+          color:
+            layoutElement.color || existingElement?.format?.color || "#000000",
+          backgroundColor:
+            layoutElement.backgroundColor ||
+            existingElement?.format?.backgroundColor ||
+            "transparent",
+          bold: layoutElement.bold ?? existingElement?.format?.bold ?? false,
+          italic:
+            layoutElement.italic ?? existingElement?.format?.italic ?? false,
+          underline:
+            layoutElement.underline ??
+            existingElement?.format?.underline ??
+            false,
+          textAlign: (layoutElement.textAlign ||
+            existingElement?.format?.textAlign ||
+            "left") as "left" | "center" | "right",
+          lineHeight: "1.5",
+          letterSpacing: "normal",
+          textTransform: "none" as const,
+        };
 
         return {
           type: layoutElement.type,
           value: existingElement?.value || "",
-          format: {
-            fontFamily:
-              layoutElement.fontFamily ||
-              existingElement?.format?.fontFamily ||
-              "Arial",
-            fontSize,
-            color:
-              layoutElement.color ||
-              existingElement?.format?.color ||
-              "#000000",
-            backgroundColor:
-              layoutElement.backgroundColor ||
-              existingElement?.format?.backgroundColor ||
-              "transparent",
-            bold: layoutElement.bold ?? existingElement?.format?.bold ?? false,
-            italic:
-              layoutElement.italic ?? existingElement?.format?.italic ?? false,
-            underline:
-              layoutElement.underline ??
-              existingElement?.format?.underline ??
-              false,
-            textAlign:
-              layoutElement.textAlign ||
-              existingElement?.format?.textAlign ||
-              "left",
-            lineHeight,
-            letterSpacing,
-            textTransform:
-              layoutElement.textTransform ||
-              existingElement?.format?.textTransform ||
-              "none",
-          },
+          format,
         };
       });
 
       try {
-        // Update the slide in the backend if we have the necessary IDs
         if (currentSlide._id && currentSlide.presentationId) {
-          // Ensure layoutType is a valid SlideLayout value
           if (!Object.values(SlideLayout).includes(layoutType)) {
             throw new Error(`Invalid layout type: ${layoutType}`);
           }
 
+          // Send minimal update payload while maintaining type safety
           const updateData = {
             layout: layoutType,
             elements: newElements,
           };
-
-          console.log("updateData", updateData);
 
           const updatedSlideResponse = await updateSlide(
             currentSlide.presentationId,
@@ -443,30 +486,21 @@ export default function LLMContentModal({
     setGeneratedSlides(updatedSlides);
   };
 
-  if (!isOpen) return null;
-
-  return (
-    <Box
-      sx={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        zIndex: 1000,
-        overflow: "auto",
-        padding: "16px",
-        [BREAKPOINTS.sm]: {
-          padding: "8px",
-        },
-      }}
-    >
-      {!generatedSlides ? (
-        // Form view
+  if (!generatedSlides) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100vh",
+          backgroundColor: "white",
+          display: "flex",
+          overflow: "auto",
+          padding: "16px",
+          [BREAKPOINTS.sm]: {
+            padding: "8px",
+          },
+        }}
+      >
         <Box
           as="form"
           onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
@@ -587,7 +621,6 @@ export default function LLMContentModal({
           <Flex justifyContent="flex-end" gap={2} mt="auto">
             <button
               type="button"
-              onClick={onClose}
               disabled={loading}
               style={{
                 padding: "8px 16px",
@@ -621,275 +654,270 @@ export default function LLMContentModal({
             </button>
           </Flex>
         </Box>
-      ) : (
-        // Preview view
-        <Flex
+      </Box>
+    );
+  } else {
+    return (
+      <Flex
+        sx={{
+          width: "100%",
+          height: "90vh",
+          margin: "auto",
+          backgroundColor: "white",
+          borderRadius: "8px",
+          overflow: "hidden",
+          flexDirection: "row",
+          [BREAKPOINTS.md]: {
+            flexDirection: "column",
+            height: "auto",
+          },
+        }}
+      >
+        {showLayoutSelector && (
+          <Box
+            sx={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "80%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              zIndex: 1000,
+              backgroundColor: "white",
+              borderRadius: "8px",
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              [BREAKPOINTS.md]: {
+                width: "90%",
+              },
+            }}
+          >
+            <LayoutSelector
+              onLayoutSelect={handleLayoutSelect}
+              currentLayout={currentLayout}
+            />
+          </Box>
+        )}
+        {/* Left side - Thumbnails */}
+        <Box
           sx={{
-            width: "100%",
-            height: "90vh",
-            margin: "auto",
+            width: "20%",
             backgroundColor: "white",
-            borderRadius: "8px",
-            overflow: "hidden",
-            flexDirection: "row",
+            borderRight: "1px solid #e2e8f0",
+            overflowY: "auto",
+            p: "1.5rem",
             [BREAKPOINTS.md]: {
-              flexDirection: "column",
+              width: "100%",
               height: "auto",
+              maxHeight: "250px",
+              borderRight: "none",
+              borderBottom: "1px solid #e2e8f0",
+              p: "1rem",
             },
           }}
         >
-          {showLayoutSelector && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: "80%",
-                maxHeight: "80vh",
-                overflowY: "auto",
-                zIndex: 1000,
-                [BREAKPOINTS.md]: {
-                  width: "90%",
-                },
-              }}
-            >
-              <LayoutSelector
-                onLayoutSelect={handleLayoutSelect}
-                currentLayout={currentLayout}
-              />
-            </Box>
-          )}
-          {/* Left side - Thumbnails */}
-          <Box
+          <Flex
             sx={{
-              width: "20%",
-              // height: "100%",
-              backgroundColor: "white",
-              borderRight: "1px solid #e2e8f0",
-              overflowY: "auto",
-              p: "1.5rem",
-              [BREAKPOINTS.md]: {
-                width: "100%",
-                height: "auto",
-                maxHeight: "250px",
-                borderRight: "none",
-                borderBottom: "1px solid #e2e8f0",
-                p: "1rem",
-              },
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 3,
+              flexWrap: "wrap",
+              gap: 2,
             }}
           >
-            <Flex
-              sx={{
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 3,
-                flexWrap: "wrap",
-                gap: 2,
-              }}
-            >
-              <Text sx={{ fontSize: 14, fontWeight: 500, color: "#4a5568" }}>
-                All Slides
-              </Text>
-              <Flex sx={{ gap: 2, flexWrap: "wrap" }}>
-                <button
-                  onClick={() => setShowLayoutSelector(true)}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "white",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Change Layout
-                </button>
-                <button
-                  onClick={handleDownload}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "#48bb78",
-                    color: "white",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Download
-                </button>
-              </Flex>
-            </Flex>
-            <Flex
-              sx={{
-                gap: 2,
-                flexDirection: "column",
-                [BREAKPOINTS.md]: {
-                  flexDirection: "row",
-                  overflowX: "auto",
-                  pb: 2,
-                  "&::-webkit-scrollbar": {
-                    height: "8px",
-                  },
-                  "&::-webkit-scrollbar-track": {
-                    backgroundColor: "#f1f1f1",
-                    borderRadius: "4px",
-                  },
-                  "&::-webkit-scrollbar-thumb": {
-                    backgroundColor: "#888",
-                    borderRadius: "4px",
-                    "&:hover": {
-                      backgroundColor: "#555",
-                    },
-                  },
-                },
-              }}
-            >
-              {generatedSlides.map((slide, index) => (
-                <Box
-                  key={`slide-thumb-${slide.id || index}`}
-                  onClick={() => setCurrentSlideIndex(index)}
-                  sx={{
-                    width: "100%",
-                    marginBottom: 2,
-                    [BREAKPOINTS.md]: {
-                      width: "200px",
-                      minWidth: "200px",
-                      marginBottom: 0,
-                      marginRight: 2,
-                    },
-                  }}
-                >
-                  <MiniSlidePreview
-                    slide={slide}
-                    isSelected={currentSlideIndex === index}
-                    layouts={layouts}
-                    defaultLayoutId={defaultLayoutId}
-                  />
-                </Box>
-              ))}
-            </Flex>
-          </Box>
-
-          {/* Right side - Current Slide Preview */}
-          <Box
-            sx={{
-              width: "70%",
-              height: "100%",
-              backgroundColor: "white",
-              p: "1.5rem",
-              display: "flex",
-              flexDirection: "column",
-              position: "relative",
-              margin: "0 auto",
-              [BREAKPOINTS.md]: {
-                width: "100%",
-                height: "auto",
-                p: "1rem",
-              },
-            }}
-          >
-            <Flex
-              sx={{
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 4,
-                flexWrap: "wrap",
-                gap: 2,
-                [BREAKPOINTS.sm]: {
-                  mb: 2,
-                },
-              }}
-            >
-              <Flex sx={{ gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-                <button
-                  onClick={() =>
-                    setCurrentSlideIndex((prev) => Math.max(0, prev - 1))
-                  }
-                  disabled={currentSlideIndex === 0}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "4px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "white",
-                    cursor: currentSlideIndex === 0 ? "not-allowed" : "pointer",
-                    opacity: currentSlideIndex === 0 ? 0.5 : 1,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  ← Previous
-                </button>
-                <Text
-                  sx={{
-                    fontSize: 14,
-                    color: "#4a5568",
-                    [BREAKPOINTS.sm]: {
-                      fontSize: 12,
-                    },
-                  }}
-                >
-                  Slide {currentSlideIndex + 1} of {generatedSlides.length}
-                </Text>
-                <button
-                  onClick={() =>
-                    setCurrentSlideIndex((prev) =>
-                      Math.min(generatedSlides.length - 1, prev + 1)
-                    )
-                  }
-                  disabled={currentSlideIndex === generatedSlides.length - 1}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "4px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "white",
-                    cursor:
-                      currentSlideIndex === generatedSlides.length - 1
-                        ? "not-allowed"
-                        : "pointer",
-                    opacity:
-                      currentSlideIndex === generatedSlides.length - 1
-                        ? 0.5
-                        : 1,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Next →
-                </button>
-              </Flex>
+            <Text sx={{ fontSize: 14, fontWeight: 500, color: "#4a5568" }}>
+              All Slides
+            </Text>
+            <Flex sx={{ gap: 2, flexWrap: "wrap" }}>
               <button
-                type="button"
-                onClick={onClose}
+                onClick={() => setShowLayoutSelector(true)}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: "4px",
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "white",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Change Layout
+              </button>
+              <button
+                onClick={handleDownload}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: "4px",
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#48bb78",
+                  color: "white",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Download
+              </button>
+            </Flex>
+          </Flex>
+          <Flex
+            sx={{
+              gap: 2,
+              flexDirection: "column",
+              [BREAKPOINTS.md]: {
+                flexDirection: "row",
+                overflowX: "auto",
+                pb: 2,
+                "&::-webkit-scrollbar": {
+                  height: "8px",
+                },
+                "&::-webkit-scrollbar-track": {
+                  backgroundColor: "#f1f1f1",
+                  borderRadius: "4px",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  backgroundColor: "#888",
+                  borderRadius: "4px",
+                  "&:hover": {
+                    backgroundColor: "#555",
+                  },
+                },
+              },
+            }}
+          >
+            {generatedSlides.map((slide, index) => (
+              <Box
+                key={`slide-thumb-${slide.id || index}`}
+                onClick={() => setCurrentSlideIndex(index)}
+                sx={{
+                  width: "100%",
+                  marginBottom: 2,
+                  [BREAKPOINTS.md]: {
+                    width: "200px",
+                    minWidth: "200px",
+                    marginBottom: 0,
+                    marginRight: 2,
+                  },
+                }}
+              >
+                <MiniSlidePreview
+                  slide={slide}
+                  isSelected={currentSlideIndex === index}
+                  layouts={layouts}
+                  defaultLayoutId={defaultLayoutId}
+                />
+              </Box>
+            ))}
+          </Flex>
+        </Box>
+
+        {/* Right side - Current Slide Preview */}
+        <Box
+          sx={{
+            width: "70%",
+            height: "100%",
+            backgroundColor: "white",
+            p: "1.5rem",
+            display: "flex",
+            flexDirection: "column",
+            position: "relative",
+            margin: "0 auto",
+            [BREAKPOINTS.md]: {
+              width: "100%",
+              height: "auto",
+              p: "1rem",
+            },
+          }}
+        >
+          <Flex
+            sx={{
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 4,
+              flexWrap: "wrap",
+              gap: 2,
+              [BREAKPOINTS.sm]: {
+                mb: 2,
+              },
+            }}
+          >
+            <Flex sx={{ gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+              <button
+                onClick={() =>
+                  setCurrentSlideIndex((prev) => Math.max(0, prev - 1))
+                }
+                disabled={currentSlideIndex === 0}
                 style={{
                   padding: "8px 16px",
                   borderRadius: "4px",
                   border: "1px solid #e2e8f0",
                   backgroundColor: "white",
+                  cursor: currentSlideIndex === 0 ? "not-allowed" : "pointer",
+                  opacity: currentSlideIndex === 0 ? 0.5 : 1,
                   whiteSpace: "nowrap",
                 }}
               >
-                Close
+                ← Previous
+              </button>
+              <Text
+                sx={{
+                  fontSize: 14,
+                  color: "#4a5568",
+                  [BREAKPOINTS.sm]: {
+                    fontSize: 12,
+                  },
+                }}
+              >
+                Slide {currentSlideIndex + 1} of {generatedSlides.length}
+              </Text>
+              <button
+                onClick={() =>
+                  setCurrentSlideIndex((prev) =>
+                    Math.min(generatedSlides.length - 1, prev + 1)
+                  )
+                }
+                disabled={currentSlideIndex === generatedSlides.length - 1}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "4px",
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "white",
+                  cursor:
+                    currentSlideIndex === generatedSlides.length - 1
+                      ? "not-allowed"
+                      : "pointer",
+                  opacity:
+                    currentSlideIndex === generatedSlides.length - 1 ? 0.5 : 1,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Next →
               </button>
             </Flex>
+          </Flex>
 
-            <Box sx={{ flex: 1 }}>
-              {generatedSlides[currentSlideIndex] && (
-                <SlidePreview
-                  slide={generatedSlides[currentSlideIndex]}
-                  onSlideChange={handleSlideChange}
-                  currentLayout={
-                    layouts[
-                      generatedSlides[currentSlideIndex].layout || currentLayout
-                    ]
-                  }
-                />
-              )}
-            </Box>
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            {generatedSlides[currentSlideIndex] && (
+              <SlidePreview
+                slide={generatedSlides[currentSlideIndex]}
+                onSlideChange={handleSlideChange}
+                currentLayout={
+                  layouts[
+                    generatedSlides[currentSlideIndex].layout || currentLayout
+                  ]
+                }
+              />
+            )}
           </Box>
-        </Flex>
-      )}
-    </Box>
-  );
+        </Box>
+      </Flex>
+    );
+  }
 }

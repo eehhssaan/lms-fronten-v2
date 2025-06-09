@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthProvider } from "@/context/AuthContext";
+import { LayoutsProvider } from "@/context/LayoutsContext";
 import { ThemeProvider } from "@emotion/react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -62,13 +63,15 @@ export default function ClientLayout({
   return (
     <AuthProvider>
       <ThemeProvider theme={theme}>
-        <div
-          className={`min-h-screen flex flex-col ${montserrat.variable} ${openSans.variable}`}
-        >
-          <Header />
-          <main className="flex-grow w-full">{children}</main>
-          <Footer />
-        </div>
+        <LayoutsProvider>
+          <div
+            className={`min-h-screen flex flex-col ${montserrat.variable} ${openSans.variable}`}
+          >
+            <Header />
+            <main className="flex-grow w-full">{children}</main>
+            <Footer />
+          </div>
+        </LayoutsProvider>
       </ThemeProvider>
     </AuthProvider>
   );

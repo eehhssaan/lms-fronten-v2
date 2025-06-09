@@ -2117,6 +2117,8 @@ export const generateLLMContent = async (params: {
       context: params.context,
     });
 
+    console.log("LLM Response:", response);
+
     if (!response.data.success) {
       throw new Error(response.data.error || "Failed to generate content");
     }
@@ -2124,7 +2126,7 @@ export const generateLLMContent = async (params: {
     // If download is requested, fetch the saved presentation
     if (isDownload && response.data.data?.presentationId) {
       const downloadResponse = await api.get(
-        `/presentations/${response.data.data.presentationId}/download`,
+        `/v1/presentations/${response.data.data.presentationId}/download`,
         {
           responseType: "blob",
           headers: {
@@ -2157,5 +2159,25 @@ export const generateLLMContent = async (params: {
   } catch (error) {
     console.error("Error in generateLLMContent:", error);
     throw error;
+  }
+};
+
+export const updateSlideElementPosition = async (
+  presentationId: string,
+  slideId: string,
+  elementId: string,
+  position: "left" | "right" | "top" | "default"
+): Promise<any> => {
+  try {
+    const response = await api.put(
+      `/presentations/${presentationId}/slides/${slideId}/elements/${elementId}/position`,
+      { position }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating element position:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to update element position"
+    );
   }
 };

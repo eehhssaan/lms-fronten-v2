@@ -15,7 +15,16 @@ const ElementPositionControl: React.FC<PositionControlProps> = ({
   onPositionChange,
 }) => {
   return (
-    <Box sx={{ display: "flex", gap: "8px", mb: 3 }}>
+    <Box
+      sx={{
+        display: "flex",
+        gap: "8px",
+        mb: 3,
+        backgroundColor: "gray",
+        padding: "12px",
+        borderRadius: "4px",
+      }}
+    >
       <Button
         onClick={() => onPositionChange("left")}
         sx={{

@@ -239,48 +239,59 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
       <Box
         sx={{
           position: "relative",
-          width: "945px",
-          height: "530px",
+          width: "100%",
+          maxWidth: "945px",
+          aspectRatio: "16/9",
           backgroundColor: slide.customStyles?.backgroundColor || "#FFFFFF",
           border: "1px solid #e2e8f0",
           borderRadius: "4px",
           overflow: "hidden",
         }}
       >
-        <Box>
-          {layoutToUse.elements.map((layoutElement) => {
-            const slideElement = slide.elements?.find(
-              (el: SlideElement) => el.type === layoutElement.type
-            );
+        <Box
+          sx={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+        >
+          <Box>
+            {layoutToUse.elements.map((layoutElement) => {
+              const slideElement = slide.elements?.find(
+                (el: SlideElement) => el.type === layoutElement.type
+              );
 
-            // Use the layout element directly and only override necessary properties
-            const elementWithDimensions = {
-              ...layoutElement,
-              _id: slideElement?._id || `temp-${layoutElement.type}`,
-              value: slideElement?.value || "",
-              format: slideElement?.format || {},
-              x: slideElement?.x ?? layoutElement.x,
-              y: slideElement?.y ?? layoutElement.y,
-              width: slideElement?.width ?? layoutElement.width,
-              height: slideElement?.height ?? layoutElement.height,
-              position:
-                slideElement?.position || layoutElement.position || "default",
-            } as SlideElement;
+              // Use the layout element directly and only override necessary properties
+              const elementWithDimensions = {
+                ...layoutElement,
+                _id: slideElement?._id || `temp-${layoutElement.type}`,
+                value: slideElement?.value || "",
+                format: slideElement?.format || {},
+                x: slideElement?.x ?? layoutElement.x,
+                y: slideElement?.y ?? layoutElement.y,
+                width: slideElement?.width ?? layoutElement.width,
+                height: slideElement?.height ?? layoutElement.height,
+                position:
+                  slideElement?.position || layoutElement.position || "default",
+              } as SlideElement;
 
-            return (
-              <SlideElementComponent
-                key={layoutElement.type}
-                element={elementWithDimensions}
-                value={slideElement?.value || ""}
-                onChange={handleElementChange}
-                onFormatChange={handleFormatChange}
-                format={slideElement?.format || {}}
-                isSelected={selectedElement?.type === layoutElement.type}
-                onSelect={() => setSelectedElement(elementWithDimensions)}
-                slide={slide}
-              />
-            );
-          })}
+              return (
+                <SlideElementComponent
+                  key={layoutElement.type}
+                  element={elementWithDimensions}
+                  value={slideElement?.value || ""}
+                  onChange={handleElementChange}
+                  onFormatChange={handleFormatChange}
+                  format={slideElement?.format || {}}
+                  isSelected={selectedElement?.type === layoutElement.type}
+                  onSelect={() => setSelectedElement(elementWithDimensions)}
+                  slide={slide}
+                />
+              );
+            })}
+          </Box>
         </Box>
       </Box>
     </>

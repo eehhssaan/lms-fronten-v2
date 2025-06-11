@@ -2105,7 +2105,17 @@ export const getTeachers = async (): Promise<User[]> => {
 };
 
 export const generateLLMContent = async (params: {
-  prompts: Record<string, string>;
+  prompts: {
+    chapter: string;
+    numberOfSlides: string;
+    userPrompt: string;
+    draftContent: Array<{
+      slideNumber: number;
+      title: string;
+      bulletPoints: string[];
+      type: "title" | "content" | "section";
+    }>;
+  };
   context: Record<string, string>;
 }) => {
   try {

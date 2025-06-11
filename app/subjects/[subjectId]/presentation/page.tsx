@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text } from "rebass";
 import { useParams, useRouter } from "next/navigation";
-import { Theme } from "@/types/presentation";
+import { Theme, Slide } from "@/types/presentation";
 import ThemeSelector from "@/components/ThemeSelector";
 import DraftPreview from "@/components/DraftPreview";
 import PresentationPreview from "@/components/PresentationPreview";
@@ -211,7 +211,7 @@ export default function PresentationGeneratorPage() {
           chapter: draftContent.chapter,
           numberOfSlides: draftContent.content.length.toString(),
           userPrompt: draftContent.userPrompt,
-          draftContent: JSON.stringify(draftContent.content),
+          draftContent: draftContent.content,
         },
         context: {
           themeId: selectedTheme._id,

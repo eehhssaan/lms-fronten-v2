@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Box, Text, Flex } from "rebass";
+import SlideEditModal from "./SlideEditModal";
 
 interface DraftSlide {
   slideNumber: number;
@@ -29,6 +30,7 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
   onGenerateFinal,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedSlide, setSelectedSlide] = useState<DraftSlide | null>(null);
   const { status, progress, content: slides } = content;
 
   const handleGenerateFinal = async () => {
@@ -39,6 +41,19 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSlideClick = (slide: DraftSlide) => {
+    if (onEdit) {
+      setSelectedSlide(slide);
+    }
+  };
+
+  const handleSaveSlide = (updatedSlide: DraftSlide) => {
+    if (onEdit) {
+      onEdit(updatedSlide.slideNumber, updatedSlide);
+    }
+    setSelectedSlide(null);
   };
 
   if (status === "generating") {
@@ -147,7 +162,7 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
                   }
                 : {},
             }}
-            onClick={() => onEdit?.(slide.slideNumber, slide)}
+            onClick={() => handleSlideClick(slide)}
           >
             <Text
               fontSize={slide.type === "title" ? 4 : 3}
@@ -176,6 +191,14 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
           </Box>
         ))}
       </Box>
+
+      {selectedSlide && (
+        <SlideEditModal
+          slide={selectedSlide}
+          onSave={handleSaveSlide}
+          onClose={() => setSelectedSlide(null)}
+        />
+      )}
     </Box>
   );
 };

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Box, Text, Flex } from "rebass";
 
 interface DraftSlide {
@@ -28,7 +28,18 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
   onEdit,
   onGenerateFinal,
 }) => {
+  const [isGenerating, setIsGenerating] = useState(false);
   const { status, progress, content: slides } = content;
+
+  const handleGenerateFinal = async () => {
+    if (!onGenerateFinal) return;
+    setIsGenerating(true);
+    try {
+      await onGenerateFinal();
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (status === "generating") {
     return (
@@ -93,17 +104,19 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
           Preview: {content.topic}
         </Text>
         <button
-          onClick={onGenerateFinal}
+          onClick={handleGenerateFinal}
+          disabled={isGenerating}
           style={{
             backgroundColor: "#0070f3",
             color: "white",
             border: "none",
             padding: "10px 20px",
             borderRadius: "4px",
-            cursor: "pointer",
+            cursor: isGenerating ? "not-allowed" : "pointer",
+            opacity: isGenerating ? 0.7 : 1,
           }}
         >
-          Generate Final Presentation
+          {isGenerating ? "Generating..." : "Generate Final Presentation"}
         </button>
       </Flex>
 

@@ -61,8 +61,6 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
     onChange(element.type, e.target.value);
   };
 
-  console.log("format", format);
-
   const textStyle = {
     width: "100%",
     height: "100%",

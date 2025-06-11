@@ -130,7 +130,7 @@ export const updateSlide = async (
 ): Promise<any> => {
   try {
     const response = await api.put(
-      `/presentations/${presentationId}/slides/${slideId}`,
+      `/v1/presentations/${presentationId}/slides/${slideId}`,
       data
     );
     return response.data;
@@ -211,7 +211,7 @@ export const updateSlideElementPosition = async (
 ): Promise<any> => {
   try {
     const response = await api.put(
-      `/presentations/${presentationId}/slides/${slideId}/elements/${elementId}/position`,
+      `/v1/presentations/${presentationId}/slides/${slideId}/elements/${elementId}/position`,
       { position }
     );
     return response.data;

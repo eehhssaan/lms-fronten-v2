@@ -340,15 +340,18 @@ export default function PresentationGeneratorPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !selectedTheme || !selectedChapter}
             style={{
               backgroundColor: "#0070f3",
               color: "white",
               border: "none",
               padding: "10px 20px",
               borderRadius: "4px",
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.7 : 1,
+              cursor:
+                loading || !selectedTheme || !selectedChapter
+                  ? "not-allowed"
+                  : "pointer",
+              opacity: loading || !selectedTheme || !selectedChapter ? 0.7 : 1,
             }}
           >
             {loading ? "Generating..." : "Generate Draft"}

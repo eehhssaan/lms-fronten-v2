@@ -4,6 +4,8 @@ import { default as SlidePreview, MiniSlidePreview } from "./SlidePreview";
 import { useLayouts } from "@/context/LayoutsContext";
 import { BREAKPOINTS } from "../constants/breakpoints";
 import { Slide } from "@/types/presentation";
+import { generatePowerPoint } from "@/lib/api/presentations";
+import { toast } from "react-hot-toast";
 
 interface PresentationPreviewProps {
   presentationId: string;
@@ -13,15 +15,44 @@ interface PresentationPreviewProps {
 
 const PresentationPreview: React.FC<PresentationPreviewProps> = ({
   presentationId,
-  slides,
+  slides: initialSlides,
   onBack,
 }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [slides, setSlides] = useState(initialSlides);
+  const [isDownloading, setIsDownloading] = useState(false);
   const { layouts, defaultLayoutId, loading } = useLayouts();
 
   const handleSlideChange = (updatedSlide: Partial<Slide>) => {
-    // In preview mode, we don't need to handle slide changes
-    console.log("Slide change in preview mode:", updatedSlide);
+    setSlides((currentSlides) =>
+      currentSlides.map((slide, index) =>
+        index === currentSlideIndex ? { ...slide, ...updatedSlide } : slide
+      )
+    );
+  };
+
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+      const blob = await generatePowerPoint(presentationId);
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "presentation.pptx"; // You might want to get a better name from the backend
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Presentation downloaded successfully");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download presentation");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -82,21 +113,21 @@ const PresentationPreview: React.FC<PresentationPreviewProps> = ({
             >
               Back to Draft
             </button>
-            <a
-              href={`/api/v1/presentations/${presentationId}/download`}
-              download
+            <button
+              onClick={handleDownload}
+              disabled={isDownloading}
               style={{
                 padding: "8px 16px",
                 borderRadius: "4px",
                 border: "none",
                 backgroundColor: "#0070f3",
                 color: "white",
-                cursor: "pointer",
-                textDecoration: "none",
+                cursor: isDownloading ? "not-allowed" : "pointer",
+                opacity: isDownloading ? 0.7 : 1,
               }}
             >
-              Download
-            </a>
+              {isDownloading ? "Downloading..." : "Download"}
+            </button>
           </Flex>
         </Flex>
 

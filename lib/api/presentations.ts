@@ -162,10 +162,20 @@ export const reorderSlides = async (
 export const generatePowerPoint = async (
   presentationId: string
 ): Promise<Blob> => {
-  const response = await api.get(`/presentations/${presentationId}/download`, {
-    responseType: "blob",
-  });
-  return response.data;
+  try {
+    const response = await api.get(
+      `/v1/presentations/${presentationId}/download`,
+      {
+        responseType: "blob",
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("Error downloading presentation:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to download presentation"
+    );
+  }
 };
 
 export const getLayouts = async (): Promise<LayoutResponse> => {

@@ -206,11 +206,12 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
             onSlideBackgroundChange={handleSlideBackgroundChange}
             currentSlideBackground={slide.customStyles?.backgroundColor}
           />
-          <ElementPositionControl
+          {/* will work on this later */}
+          {/* <ElementPositionControl
             elementId={selectedElement._id || ""}
             currentPosition={selectedElement.position || "default"}
             onPositionChange={handlePositionChange}
-          />
+          /> */}
           <Flex sx={{ gap: 3, mt: 3, alignItems: "center" }}>
             <button
               onClick={() => setShowLayoutSelector(!showLayoutSelector)}

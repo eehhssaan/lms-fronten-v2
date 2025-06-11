@@ -2181,3 +2181,25 @@ export const updateSlideElementPosition = async (
     );
   }
 };
+
+interface GenerateDraftParams {
+  numSlides: number;
+  language: string;
+  themeId: string;
+  chapter: string;
+}
+
+export const generateDraft = async (params: GenerateDraftParams) => {
+  try {
+    const response = await api.post("/v1/presentations/drafts", params);
+
+    if (!response.data.success) {
+      throw new Error(response.data.error || "Failed to generate draft");
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error("Error in generateDraft:", error);
+    throw error;
+  }
+};

@@ -8,7 +8,12 @@ import ThemeSelector from "@/components/ThemeSelector";
 import DraftPreview from "@/components/DraftPreview";
 import PresentationPreview from "@/components/PresentationPreview";
 import { toast } from "react-hot-toast";
-import { api, generateLLMContent, getSubjectChapters } from "@/lib/api";
+import {
+  api,
+  generateLLMContent,
+  getSubjectChapters,
+  generateDraft,
+} from "@/lib/api";
 
 interface Chapter {
   id: string;
@@ -29,6 +34,11 @@ interface DraftContent {
   content: DraftSlide[];
   status: "generating" | "complete" | "error";
   progress: number;
+  chapter: string;
+  userPrompt: string;
+  themeId?: string;
+  title?: string;
+  aspectRatio?: string;
 }
 
 interface DraftResponse {
@@ -157,19 +167,14 @@ export default function PresentationGeneratorPage() {
     setError(null);
 
     try {
-      const response = await api.post("/v1/presentations/drafts", {
-        topic: userPrompt.trim(),
+      const response = await generateDraft({
         numSlides: numberOfSlides,
         language: "English (US)",
         themeId: selectedTheme._id,
         chapter: chapters.find((c) => c.id === selectedChapter)?.title || "",
       });
 
-      if (!response.data.success) {
-        throw new Error(response.data.error || "Failed to generate draft");
-      }
-
-      setDraftContent(response.data.data);
+      setDraftContent(response.data);
       toast.success("Draft generation started!");
     } catch (error) {
       const message =
@@ -203,14 +208,14 @@ export default function PresentationGeneratorPage() {
     try {
       const response = await generateLLMContent({
         prompts: {
-          topic: draftContent.topic,
-          numberOfSlides: draftContent.numSlides.toString(),
-          content: JSON.stringify(draftContent.content),
+          chapter: draftContent.chapter,
+          numberOfSlides: draftContent.content.length.toString(),
+          userPrompt: draftContent.userPrompt,
+          draftContent: JSON.stringify(draftContent.content),
         },
         context: {
           themeId: selectedTheme._id,
           download: "false",
-          draftId: draftContent.id,
         },
       });
 

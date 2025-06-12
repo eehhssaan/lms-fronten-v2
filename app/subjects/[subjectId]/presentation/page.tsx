@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Box, Text } from "rebass";
 import { useParams, useRouter } from "next/navigation";
 import { Theme, Slide } from "@/types/presentation";
@@ -14,6 +14,10 @@ import {
   getSubjectChapters,
   generateDraft,
 } from "@/lib/api";
+import {
+  PresentationProvider,
+  usePresentationContext,
+} from "@/context/PresentationContext";
 
 interface Chapter {
   id: string;
@@ -81,11 +85,11 @@ interface LLMResponse {
 
 const POLLING_INTERVAL = 3000; // 3 seconds
 
-export default function PresentationGeneratorPage() {
+// Separate component that uses the context
+function PresentationGenerator() {
   const params = useParams();
-  const router = useRouter();
   const subjectId = params.subjectId as string;
-
+  const { setPresentationFromBackend } = usePresentationContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
@@ -223,7 +227,20 @@ export default function PresentationGeneratorPage() {
         throw new Error(response.error || "Failed to generate presentation");
       }
 
+      console.log("response.data", response);
+
+      // Save to PresentationContext
+      setPresentationFromBackend({
+        _id: response.data.presentationId,
+        title: draftContent.title || "Untitled Presentation",
+        description: "",
+        theme: selectedTheme,
+        slides: response.data.slides,
+      });
+
+      // Keep existing finalContent state for UI
       setFinalContent(response.data);
+
       toast.success("Final presentation generated successfully!");
     } catch (error) {
       const message =
@@ -231,6 +248,16 @@ export default function PresentationGeneratorPage() {
           ? error.message
           : "Failed to generate presentation";
       toast.error(message);
+    }
+  };
+
+  const handleSavePresentation = async () => {
+    try {
+      // The actual save will be handled by the PresentationContext
+      toast.success("Presentation saved successfully");
+    } catch (error) {
+      console.error("Error saving presentation:", error);
+      toast.error("Failed to save presentation");
     }
   };
 
@@ -358,11 +385,21 @@ export default function PresentationGeneratorPage() {
           </button>
         </Box>
       ) : finalContent ? (
-        <PresentationPreview
-          presentationId={finalContent.presentationId}
-          slides={finalContent.slides}
-          onBack={() => setFinalContent(null)}
-        />
+        <PresentationProvider>
+          <PresentationInitializer
+            presentationId={finalContent.presentationId}
+            initialData={{
+              _id: finalContent.presentationId,
+              slides: finalContent.slides,
+            }}
+          />
+          <SaveHandler presentationId={finalContent.presentationId} />
+          <PresentationPreview
+            presentationId={finalContent.presentationId}
+            onBack={() => setFinalContent(null)}
+            onSave={() => (window as any).__handlePresentationSave?.()}
+          />
+        </PresentationProvider>
       ) : draftContent ? (
         <DraftPreview
           content={draftContent}
@@ -371,5 +408,64 @@ export default function PresentationGeneratorPage() {
         />
       ) : null}
     </Box>
+  );
+}
+
+// Custom hook to initialize presentation data
+function PresentationInitializer({
+  presentationId,
+  initialData,
+}: {
+  presentationId: string;
+  initialData: any;
+}) {
+  const { setPresentationFromBackend } = usePresentationContext();
+
+  useEffect(() => {
+    setPresentationFromBackend(initialData);
+  }, [presentationId, initialData, setPresentationFromBackend]);
+
+  return null;
+}
+
+function SaveHandler({ presentationId }: { presentationId: string }) {
+  const { getSerializablePresentation, markAsSaved } = usePresentationContext();
+  const saveRef = useRef<(() => Promise<void>) | null>(null);
+
+  saveRef.current = async () => {
+    try {
+      const presentationData = getSerializablePresentation();
+      if (!presentationData) {
+        throw new Error("No presentation data to save");
+      }
+      console.log("presentationData", presentationData);
+
+      // Send the presentation data as is
+      await api.put(`/v1/presentations/${presentationId}`, presentationData);
+
+      markAsSaved();
+      toast.success("Presentation saved successfully");
+    } catch (error) {
+      console.error("Error saving presentation:", error);
+      toast.error("Failed to save presentation");
+    }
+  };
+
+  useEffect(() => {
+    (window as any).__handlePresentationSave = () => saveRef.current?.();
+    return () => {
+      delete (window as any).__handlePresentationSave;
+    };
+  }, []);
+
+  return null;
+}
+
+// Main page component that provides the context
+export default function PresentationGeneratorPage() {
+  return (
+    <PresentationProvider>
+      <PresentationGenerator />
+    </PresentationProvider>
   );
 }

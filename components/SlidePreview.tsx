@@ -23,219 +23,123 @@ interface SlidePreviewProps {
     aspectRatio?: string;
   };
   onSlideChange: (updatedSlide: Partial<Slide>) => void;
+  onElementChange?: (elementId: string, updates: Partial<SlideElement>) => void;
+  onLayoutChange?: (layoutId: string) => void;
+  onBackgroundChange?: (backgroundColor: string) => void;
   currentLayout?: Layout;
 }
 
 const SlidePreview: React.FC<SlidePreviewProps> = ({
   slide,
   onSlideChange,
+  onElementChange,
+  onLayoutChange,
+  onBackgroundChange,
   currentLayout,
 }) => {
   const [selectedElement, setSelectedElement] = useState<SlideElement | null>(
     null
   );
+  const [showFormatToolbar, setShowFormatToolbar] = useState(false);
   const [showLayoutSelector, setShowLayoutSelector] = useState(false);
-  const { layouts, defaultLayoutId, loading } = useLayouts();
-  const layoutToUse = currentLayout || layouts[defaultLayoutId];
+  const { layouts } = useLayouts();
 
-  const handleLayoutSelect = async (
-    layoutId: string,
-    layoutType: SlideLayout
-  ) => {
-    try {
-      const updatedSlide = {
-        ...slide,
-        layout: layoutId,
-      };
-
-      onSlideChange(updatedSlide);
-
-      if (slide._id && slide.presentationId) {
-        await updateSlide(slide.presentationId, slide._id, {
-          layout: layoutId,
-        });
-      }
-
-      setShowLayoutSelector(false);
-      toast.success("Layout updated successfully");
-    } catch (error) {
-      toast.error("Failed to update layout");
-      console.error("Error updating layout:", error);
-    }
+  const handleElementClick = (element: SlideElement) => {
+    setSelectedElement(element);
+    setShowFormatToolbar(true);
   };
 
-  const handleElementChange = async (type: string, value: string) => {
-    try {
-      const updatedElements =
-        slide.elements?.map((el) =>
-          el.type === type ? { ...el, value } : el
-        ) || [];
+  const handleFormatChange = (format: Partial<TextFormat>) => {
+    if (!selectedElement?._id) return;
 
-      const updatedSlide = {
-        ...slide,
-        [type === "title" ? "title" : "content"]: value,
-        elements: updatedElements,
-      };
+    onElementChange?.(selectedElement._id, {
+      format: { ...selectedElement.format, ...format },
+    });
 
-      onSlideChange(updatedSlide);
-
-      if (slide._id && slide.presentationId) {
-        await updateSlide(slide.presentationId, slide._id, {
-          [type === "title" ? "title" : "content"]: value,
-          elements: updatedElements,
-        });
-      }
-    } catch (error) {
-      toast.error(`Failed to update ${type}`);
-      console.error(`Error updating ${type}:`, error);
-    }
+    onSlideChange({
+      elements: slide.elements.map((el) =>
+        el._id === selectedElement._id
+          ? { ...el, format: { ...el.format, ...format } }
+          : el
+      ),
+    });
   };
 
-  const handleFormatChange = async (type: string, format: TextFormat) => {
-    try {
-      const updatedElements =
-        slide.elements?.map((el) =>
-          el.type === type ? { ...el, format: { ...el.format, ...format } } : el
-        ) || [];
+  const handlePositionChange = (updates: Partial<SlideElement>) => {
+    if (!selectedElement?._id) return;
 
-      const updatedSlide = {
-        ...slide,
-        elements: updatedElements,
-      };
+    onElementChange?.(selectedElement._id, updates);
 
-      onSlideChange(updatedSlide);
-
-      if (slide._id && slide.presentationId) {
-        await updateSlide(slide.presentationId, slide._id, {
-          elements: updatedElements,
-        });
-      }
-    } catch (error) {
-      toast.error("Failed to update format");
-      console.error("Error updating format:", error);
-    }
+    onSlideChange({
+      elements: slide.elements.map((el) =>
+        el._id === selectedElement._id ? { ...el, ...updates } : el
+      ),
+    });
   };
 
-  const handleSlideBackgroundChange = async (backgroundColor: string) => {
-    try {
-      const updatedSlide = {
-        ...slide,
-        customStyles: {
-          ...slide.customStyles,
-          backgroundColor,
-        },
-      };
-
-      onSlideChange(updatedSlide);
-
-      if (slide._id && slide.presentationId) {
-        await updateSlide(slide.presentationId, slide._id, {
-          customStyles: {
-            ...slide.customStyles,
-            backgroundColor,
-          },
-        });
-      }
-    } catch (error) {
-      toast.error("Failed to update background");
-      console.error("Error updating background:", error);
-    }
+  const handleLayoutSelect = (layoutId: string, layoutType: SlideLayout) => {
+    console.log("layoutId123", layoutId);
+    console.log("layoutType123", layoutType);
+    onLayoutChange?.(layoutId);
+    onSlideChange({
+      layout: layoutId,
+    });
+    setShowLayoutSelector(false);
   };
 
-  const handlePositionChange = async (
-    position: "left" | "right" | "top" | "default"
-  ) => {
-    try {
-      if (
-        selectedElement &&
-        selectedElement._id &&
-        slide._id &&
-        slide.presentationId
-      ) {
-        const updatedSlideData = await updateSlideElementPosition(
-          slide.presentationId,
-          slide._id,
-          selectedElement._id,
-          position
-        );
-
-        // Update the selected element with new position
-        const updatedElement = updatedSlideData.elements.find(
-          (el: any) => el._id === selectedElement._id
-        );
-        if (updatedElement) {
-          setSelectedElement(updatedElement);
-        }
-
-        // Update the slide with new data
-        onSlideChange(updatedSlideData);
-
-        toast.success("Position updated successfully");
-      }
-    } catch (error) {
-      toast.error("Failed to update position");
-      console.error("Error updating position:", error);
-    }
+  const handleBackgroundChange = (color: string) => {
+    onBackgroundChange?.(color);
+    onSlideChange({
+      customStyles: {
+        ...slide.customStyles,
+        backgroundColor: color,
+      },
+    });
   };
-
-  if (loading) {
-    return (
-      <Box p={4} bg="white" borderRadius={8}>
-        <Text>Loading layouts...</Text>
-      </Box>
-    );
-  }
-
-  if (!layoutToUse) {
-    return (
-      <Box p={4} bg="white" borderRadius={8}>
-        <Text color="error">Layout not found</Text>
-      </Box>
-    );
-  }
 
   return (
     <>
-      {selectedElement && (
-        <Box mb={3}>
-          <TextFormatToolbar
-            format={selectedElement.format || {}}
-            onFormatChange={(format) =>
-              handleFormatChange(selectedElement.type, format)
-            }
-            onSlideBackgroundChange={handleSlideBackgroundChange}
-            currentSlideBackground={slide.customStyles?.backgroundColor}
-          />
-          {/* will work on this later */}
-          {/* <ElementPositionControl
-            elementId={selectedElement._id || ""}
-            currentPosition={selectedElement.position || "default"}
-            onPositionChange={handlePositionChange}
-          /> */}
-          <Flex sx={{ gap: 3, mt: 3, alignItems: "center" }}>
-            <button
-              onClick={() => setShowLayoutSelector(!showLayoutSelector)}
-              style={{
-                padding: "8px 16px",
-                borderRadius: "4px",
-                border: "1px solid #e2e8f0",
-                backgroundColor: "white",
-                cursor: "pointer",
-              }}
-            >
-              Change Layout
-            </button>
-          </Flex>
-          {showLayoutSelector && (
-            <Box mt={3}>
-              <LayoutSelector
-                onLayoutSelect={handleLayoutSelect}
-                currentLayout={slide.layout || defaultLayoutId}
-              />
-            </Box>
-          )}
-        </Box>
+      {showFormatToolbar && selectedElement && (
+        <TextFormatToolbar
+          format={selectedElement.format}
+          onChange={handleFormatChange}
+          onClose={() => {
+            setShowFormatToolbar(false);
+            setSelectedElement(null);
+          }}
+        />
       )}
+      {showLayoutSelector && (
+        <LayoutSelector
+          onLayoutSelect={handleLayoutSelect}
+          currentLayout={currentLayout?._id || ""}
+        />
+      )}
+
+      {selectedElement && (
+        <ElementPositionControl
+          elementId={selectedElement._id || ""}
+          currentPosition={selectedElement.position || "default"}
+          onPositionChange={async (position) => {
+            handlePositionChange({ position });
+          }}
+        />
+      )}
+      <button
+        onClick={() => setShowLayoutSelector(true)}
+        style={{
+          position: "absolute",
+          bottom: "16px",
+          right: "16px",
+          padding: "8px 16px",
+          borderRadius: "4px",
+          backgroundColor: "#0070f3",
+          color: "white",
+        }}
+      >
+        Change Layout
+      </button>
+
       <Box
         sx={{
           position: "relative",
@@ -248,51 +152,44 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
           overflow: "hidden",
         }}
       >
-        <Box
-          sx={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-          }}
-        >
-          <Box>
-            {layoutToUse.elements.map((layoutElement) => {
-              const slideElement = slide.elements?.find(
-                (el: SlideElement) => el.type === layoutElement.type
-              );
+        {currentLayout?.elements.map((layoutElement) => {
+          const slideElement = slide.elements?.find(
+            (el) => el.type === layoutElement.type
+          );
 
-              // Use the layout element directly and only override necessary properties
-              const elementWithDimensions = {
+          return (
+            <SlideElementComponent
+              key={layoutElement.type}
+              element={{
                 ...layoutElement,
+                ...slideElement,
                 _id: slideElement?._id || `temp-${layoutElement.type}`,
                 value: slideElement?.value || "",
                 format: slideElement?.format || {},
-                x: slideElement?.x ?? layoutElement.x,
-                y: slideElement?.y ?? layoutElement.y,
-                width: slideElement?.width ?? layoutElement.width,
-                height: slideElement?.height ?? layoutElement.height,
-                position:
-                  slideElement?.position || layoutElement.position || "default",
-              } as SlideElement;
-
-              return (
-                <SlideElementComponent
-                  key={layoutElement.type}
-                  element={elementWithDimensions}
-                  value={slideElement?.value || ""}
-                  onChange={handleElementChange}
-                  onFormatChange={handleFormatChange}
-                  format={slideElement?.format || {}}
-                  isSelected={selectedElement?.type === layoutElement.type}
-                  onSelect={() => setSelectedElement(elementWithDimensions)}
-                  slide={slide}
-                />
-              );
-            })}
-          </Box>
-        </Box>
+              }}
+              value={slideElement?.value || ""}
+              onChange={(type, value) =>
+                handleElementClick(
+                  slideElement || {
+                    ...layoutElement,
+                    _id: `temp-${layoutElement.type}`,
+                  }
+                )
+              }
+              onFormatChange={(type, format) => handleFormatChange(format)}
+              format={slideElement?.format || {}}
+              onSelect={() =>
+                handleElementClick(
+                  slideElement || {
+                    ...layoutElement,
+                    _id: `temp-${layoutElement.type}`,
+                  }
+                )
+              }
+              isSelected={selectedElement?._id === slideElement?._id}
+            />
+          );
+        })}
       </Box>
     </>
   );
@@ -304,11 +201,37 @@ export const MiniSlidePreview: React.FC<{
   layouts?: Record<string, Layout>;
   defaultLayoutId?: string;
 }> = ({ slide, isSelected = false, layouts = {}, defaultLayoutId = "" }) => {
-  const layoutToUse = slide.layout
-    ? layouts[slide.layout]
-    : layouts[defaultLayoutId];
+  // Helper function to get the correct layout ID
+  const getLayoutId = (slide: any) => {
+    // If the slide has a layout ID that exists in our layouts, use it
+    if (slide.layout && layouts[slide.layout]) {
+      return slide.layout;
+    }
+
+    // If the slide has a layout ID that doesn't exist in our layouts
+    // (like a MongoDB ID from backend), find the matching layout type
+    if (slide.layout) {
+      const matchingLayout = Object.values(layouts).find(
+        (layout) => layout._id === slide.layout
+      );
+      if (matchingLayout) {
+        return matchingLayout._id;
+      }
+    }
+
+    // Fallback to default layout
+    return defaultLayoutId;
+  };
+
+  const layoutToUse = layouts[getLayoutId(slide)];
 
   if (!layoutToUse) {
+    console.log(
+      "Layout not found for slide:",
+      slide._id,
+      "layout:",
+      slide.layout
+    );
     return (
       <Box p={2} bg="white" borderRadius={4}>
         <Text fontSize="10px" color="error">
@@ -322,7 +245,7 @@ export const MiniSlidePreview: React.FC<{
     <Box
       sx={{
         height: "180px",
-        backgroundColor: slide.customStyles?.backgroundColor || "#FFFFFF",
+        backgroundColor: slide.customStyles?.backgroundColor,
         border: isSelected ? "2px solid #3182ce" : "1px solid #e2e8f0",
         borderRadius: "4px",
         overflow: "hidden",

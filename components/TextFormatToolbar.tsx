@@ -3,16 +3,17 @@ import { Box, Button, Flex, Text } from "rebass";
 import { TextFormat } from "../types/presentation";
 
 interface TextFormatToolbarProps {
-  format: TextFormat;
-  onFormatChange: (newFormat: TextFormat) => void;
+  format?: Partial<TextFormat>;
+  onChange: (format: Partial<TextFormat>) => void;
+  onClose: () => void;
   className?: string;
   onSlideBackgroundChange?: (color: string) => void;
   currentSlideBackground?: string;
 }
 
 const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
-  format,
-  onFormatChange,
+  format = {},
+  onChange,
   className,
   onSlideBackgroundChange,
   currentSlideBackground,
@@ -158,7 +159,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
           <select
             value={format.fontFamily || "Arial"}
             onChange={(e) =>
-              onFormatChange({ ...format, fontFamily: e.target.value })
+              onChange({ ...format, fontFamily: e.target.value })
             }
             style={{
               padding: "4px 8px",
@@ -183,9 +184,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
           <Text sx={{ fontSize: 1, color: "gray.600" }}>Size:</Text>
           <select
             value={getFontSizeValue(format.fontSize)}
-            onChange={(e) =>
-              onFormatChange({ ...format, fontSize: e.target.value })
-            }
+            onChange={(e) => onChange({ ...format, fontSize: e.target.value })}
             style={{
               padding: "4px 8px",
               border: "1px solid #e2e8f0",
@@ -209,9 +208,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
           <input
             type="color"
             value={format.color || "#000000"}
-            onChange={(e) =>
-              onFormatChange({ ...format, color: e.target.value })
-            }
+            onChange={(e) => onChange({ ...format, color: e.target.value })}
             style={{
               width: "32px",
               height: "32px",
@@ -232,7 +229,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
             {(alignments as Array<"left" | "center" | "right">).map((align) => (
               <Button
                 key={align}
-                onClick={() => onFormatChange({ ...format, textAlign: align })}
+                onClick={() => onChange({ ...format, textAlign: align })}
                 sx={{
                   bg:
                     (format.textAlign || "left") === align
@@ -269,7 +266,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
         >
           <Button
             onClick={() =>
-              onFormatChange({ ...format, bold: !(format.bold || false) })
+              onChange({ ...format, bold: !(format.bold || false) })
             }
             sx={{
               bg: format.bold ? "primary" : "transparent",
@@ -291,7 +288,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
           </Button>
           <Button
             onClick={() =>
-              onFormatChange({ ...format, italic: !(format.italic || false) })
+              onChange({ ...format, italic: !(format.italic || false) })
             }
             sx={{
               bg: format.italic ? "primary" : "transparent",
@@ -313,7 +310,7 @@ const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({
           </Button>
           <Button
             onClick={() =>
-              onFormatChange({
+              onChange({
                 ...format,
                 underline: !(format.underline || false),
               })

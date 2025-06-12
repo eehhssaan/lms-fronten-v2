@@ -1,7 +1,6 @@
 import React from "react";
 import { Box } from "rebass";
 import { TextFormat, Slide, SlideElement } from "../types/presentation";
-import { background } from "@chakra-ui/react";
 
 interface SlideElementProps {
   element: SlideElement & {
@@ -14,6 +13,7 @@ interface SlideElementProps {
   isSelected: boolean;
   onSelect: () => void;
   slide?: Slide;
+  onClick?: () => void;
 }
 
 const SlideElementComponent: React.FC<SlideElementProps> = ({
@@ -25,6 +25,7 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
   isSelected,
   onSelect,
   slide,
+  onClick,
 }) => {
   // Convert percentage strings to numbers for calculations
   const getPositionValue = (value: string | number) => {

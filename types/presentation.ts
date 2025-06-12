@@ -106,16 +106,6 @@ export interface CreateSlideDto {
   columnTwoContent?: string;
 }
 
-export interface UpdateSlideDto {
-  title?: string;
-  content?: string;
-  layout?: SlideLayout;
-  order?: number;
-  imageUrl?: string;
-  columnOneContent?: string;
-  columnTwoContent?: string;
-}
-
 export interface CreateThemeDto {
   name: string;
   description?: string;
@@ -232,4 +222,33 @@ export interface SlideElement extends SlideElementLayout {
   format?: TextFormat;
   placeholder?: string;
   position?: "left" | "right" | "top" | "default";
+}
+
+export interface LocalSlide {
+  _id: string;
+  title: string;
+  layout?: string;
+  type: string;
+  elements: SlideElement[];
+  customStyles?: {
+    backgroundColor?: string;
+  };
+  order?: number;
+}
+
+export interface PresentationSettings {
+  aspectRatio: "16:9" | "4:3";
+  defaultTransition: "fade" | "slide" | "none";
+  showSlideNumbers: boolean;
+}
+
+export interface LocalPresentation {
+  _id: string;
+  title: string;
+  description?: string;
+  theme?: Theme;
+  slides: LocalSlide[];
+  lastModified: number;
+  isDirty: boolean;
+  settings?: PresentationSettings;
 }

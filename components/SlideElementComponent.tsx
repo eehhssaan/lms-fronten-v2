@@ -42,18 +42,16 @@ const SlideElementComponent: React.FC<SlideElementProps> = ({
     top: getPositionValue(element.y),
     width: getPositionValue(element.width),
     height: getPositionValue(element.height),
-    transform: "translateX(-50%)", // Center horizontally
     border: isSelected ? "2px solid #3182ce" : "none",
-    // Handle position-based adjustments
-    ...(element.position &&
-      element.position !== "default" && {
-        transform:
-          element.position === "right"
-            ? "translateX(-100%)"
-            : element.position === "top"
-            ? "translateY(100%)"
-            : "translateX(-50%)", // Keep centering for default
-      }),
+    // Remove any default transforms
+    transform: "none",
+    // Only apply transforms for specific positions that actually need them
+    ...(element.position === "right" && {
+      transform: "translateX(-100%)",
+    }),
+    ...(element.position === "top" && {
+      transform: "translateY(100%)",
+    }),
   };
 
   const handleChange = (

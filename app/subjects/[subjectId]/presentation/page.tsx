@@ -438,7 +438,6 @@ function SaveHandler({ presentationId }: { presentationId: string }) {
       if (!presentationData) {
         throw new Error("No presentation data to save");
       }
-      console.log("presentationData", presentationData);
 
       // Send the presentation data as is
       await api.put(`/v1/presentations/${presentationId}`, presentationData);

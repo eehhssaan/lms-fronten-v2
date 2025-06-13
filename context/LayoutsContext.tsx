@@ -28,6 +28,11 @@ export const LayoutsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Add effect to log layouts when they change
+  useEffect(() => {
+    console.log("Current layouts:", layouts);
+  }, [layouts]);
+
   return (
     <LayoutsContext.Provider
       value={{ layouts, defaultLayoutId, loading, error }}

@@ -30,6 +30,10 @@ export default function SubjectChaptersPage() {
 
   const breadcrumbItems = useSubjectBreadcrumb(subject?.name);
 
+  const handleCreateContent = (chapterId: string) => {
+    router.push(`/subjects/${subjectId}/presentation?chapterId=${chapterId}`);
+  };
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/auth");
@@ -133,6 +137,7 @@ export default function SubjectChaptersPage() {
                   });
                 }}
                 canManage={canManageSubject}
+                onCreateContent={handleCreateContent}
               />
             </Box>
           </Box>

@@ -18,6 +18,7 @@ interface ChapterManagerProps {
   chapters: Chapter[];
   onChaptersUpdated: () => void;
   canManage?: boolean;
+  onCreateContent?: (chapterId: string) => void;
 }
 
 export default function ChapterManager({
@@ -25,6 +26,7 @@ export default function ChapterManager({
   chapters,
   onChaptersUpdated,
   canManage = false,
+  onCreateContent,
 }: ChapterManagerProps) {
   const { user } = useAuth();
   const [isAdding, setIsAdding] = useState(false);
@@ -409,6 +411,15 @@ export default function ChapterManager({
                             ? "Deleting..."
                             : "Delete"}
                         </Button>
+                        {onCreateContent && (
+                          <Button
+                            onClick={() => onCreateContent(chapter._id)}
+                            variant="secondary"
+                            size="small"
+                          >
+                            Create Content
+                          </Button>
+                        )}
                       </Flex>
                     </Box>
                   )}

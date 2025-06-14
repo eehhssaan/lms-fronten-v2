@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Text } from "rebass";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Theme, Slide } from "@/types/presentation";
 import ThemeSelector from "@/components/ThemeSelector";
 import DraftPreview from "@/components/DraftPreview";
@@ -101,6 +101,15 @@ function PresentationGenerator() {
   const [finalContent, setFinalContent] = useState<LLMResponse["data"] | null>(
     null
   );
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const chapterId = searchParams.get("chapterId");
+    if (chapterId) {
+      setSelectedChapter(chapterId);
+    }
+  }, [searchParams]);
 
   // Fetch chapters when component mounts
   useEffect(() => {
@@ -461,7 +470,7 @@ function SaveHandler({ presentationId }: { presentationId: string }) {
 }
 
 // Main page component that provides the context
-export default function PresentationGeneratorPage() {
+export default function SubjectPresentationPage() {
   return (
     <PresentationProvider>
       <PresentationGenerator />

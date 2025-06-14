@@ -106,10 +106,6 @@ export default function SubjectDetailPage() {
     subject?.headTeacher && user?._id === subject.headTeacher._id;
   const canManageSubject = isAdminOrHeadTeacher || isHeadTeacherOfSubject;
 
-  const handleCreateContent = () => {
-    router.push(`/subjects/${subjectId}/presentation`);
-  };
-
   return (
     <Box as="div" className="container" py={4} px={[3, 4]}>
       <SubjectBreadcrumb items={breadcrumbItems} />
@@ -156,13 +152,6 @@ export default function SubjectDetailPage() {
                   {showContentManager
                     ? "Hide Content Manager"
                     : "Manage Content"}
-                </Button>
-                <Button
-                  onClick={handleCreateContent}
-                  variant="secondary"
-                  size="small"
-                >
-                  Create Subject Content
                 </Button>
               </Flex>
 

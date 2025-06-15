@@ -17,6 +17,27 @@ export default function FinalPPTXPreview() {
   const [presentationData, setPresentationData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const handleSave = async () => {
+    try {
+      console.log("presentationData");
+      setLoading(true);
+      const response = await api.put(
+        `/v1/presentations/${presentationId}`,
+        presentationData
+      );
+      if (!response.data.success) {
+        throw new Error(response.data.error || "Failed to save presentation");
+      }
+      toast.success("Presentation saved successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to save presentation";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchPresentation = async () => {
       if (!presentationId) {
@@ -25,7 +46,7 @@ export default function FinalPPTXPreview() {
       }
 
       try {
-        const response = await api.get(`/presentations/${presentationId}`);
+        const response = await api.get(`/v1/presentations/${presentationId}`);
         if (!response.data.success) {
           throw new Error(
             response.data.error || "Failed to fetch presentation"
@@ -57,8 +78,9 @@ export default function FinalPPTXPreview() {
 
   return (
     <PresentationPreview
-      subjectId={subjectId}
-      initialContent={presentationData}
+      presentationId={presentationId as string}
+      onBack={() => router.push(`/subjects/${subjectId}/presentation`)}
+      onSave={handleSave}
     />
   );
 }

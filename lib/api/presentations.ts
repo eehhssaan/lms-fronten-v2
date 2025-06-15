@@ -51,21 +51,21 @@ export const setDefaultTheme = async (themeId: string): Promise<Theme> => {
 
 // Presentation APIs
 export const getPresentations = async (): Promise<Presentation[]> => {
-  const response = await api.get("/presentations");
+  const response = await api.get("/v1/presentations");
   return response.data;
 };
 
 export const getPresentation = async (
   presentationId: string
-): Promise<{ presentation: Presentation; slides: Slide[] }> => {
-  const response = await api.get(`/presentations/${presentationId}`);
+): Promise<Presentation> => {
+  const response = await api.get(`/v1/presentations/${presentationId}`);
   return response.data;
 };
 
 export const createPresentation = async (
   presentationData: Partial<Presentation>
 ): Promise<Presentation> => {
-  const response = await api.post("/presentations", presentationData);
+  const response = await api.post("/v1/presentations", presentationData);
   return response.data;
 };
 
@@ -74,7 +74,7 @@ export const updatePresentation = async (
   presentationData: Partial<Presentation>
 ): Promise<Presentation> => {
   const response = await api.put(
-    `/presentations/${presentationId}`,
+    `/v1/presentations/${presentationId}`,
     presentationData
   );
   return response.data;
@@ -83,7 +83,7 @@ export const updatePresentation = async (
 export const deletePresentation = async (
   presentationId: string
 ): Promise<void> => {
-  await api.delete(`/presentations/${presentationId}`);
+  await api.delete(`/v1/presentations/${presentationId}`);
 };
 
 export const updatePresentationTheme = async (

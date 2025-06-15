@@ -229,6 +229,7 @@ function PresentationGenerator() {
         context: {
           themeId: selectedTheme._id,
           download: "false",
+          chapterId: selectedChapter,
         },
       });
 

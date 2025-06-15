@@ -74,7 +74,7 @@ const PresentationManager: React.FC<PresentationManagerProps> = ({
 
     try {
       await deletePresentation(id);
-      setPresentations(presentations.filter((p) => p.id !== id));
+      setPresentations(presentations.filter((p) => p._id !== id));
       toast.success("Presentation deleted successfully");
     } catch (err) {
       toast.error("Failed to delete presentation");
@@ -212,7 +212,7 @@ const PresentationManager: React.FC<PresentationManagerProps> = ({
         ) : (
           presentations.map((presentation) => (
             <Box
-              key={presentation.id}
+              key={presentation._id}
               sx={{
                 p: 3,
                 mb: 3,
@@ -254,7 +254,7 @@ const PresentationManager: React.FC<PresentationManagerProps> = ({
                     Edit
                   </Button>
                   <Button
-                    onClick={() => handleDelete(presentation.id)}
+                    onClick={() => handleDelete(presentation._id)}
                     sx={{
                       bg: "red.500",
                       color: "white",

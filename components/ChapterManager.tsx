@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, Heading, Text, Flex } from "rebass";
 import Button from "@/components/Button";
 import { Chapter } from "@/types";
+import { Presentation } from "@/types/presentation";
 import ErrorMessage from "@/components/ErrorMessage";
 import Loading from "@/components/Loading";
+import { Spinner } from "@/components/ui/Spinner";
 import {
   createChapter,
   updateChapter,
@@ -11,7 +13,10 @@ import {
   bulkUploadChapters,
   getChapterTemplate,
 } from "@/lib/api";
+import { getPresentations, deletePresentation } from "@/lib/api/presentations";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 interface ChapterManagerProps {
   subjectId: string;
@@ -41,6 +46,47 @@ export default function ChapterManager({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [presentations, setPresentations] = useState<
+    Record<string, Presentation[]>
+  >({});
+  const [loadingPresentations, setLoadingPresentations] = useState(false);
+  const router = useRouter();
+
+  // Fetch presentations for each chapter
+  useEffect(() => {
+    const fetchPresentations = async () => {
+      setLoadingPresentations(true);
+      try {
+        const allPresentations = await getPresentations();
+        console.log("allPresentations", allPresentations);
+        // Group presentations by chapter
+        const presentationsByChapter = allPresentations.reduce(
+          (acc: Record<string, Presentation[]>, presentation) => {
+            if (presentation.chapterId) {
+              if (!acc[presentation.chapterId]) {
+                acc[presentation.chapterId] = [];
+              }
+              acc[presentation.chapterId].push(presentation);
+            }
+            return acc;
+          },
+          {}
+        );
+        setPresentations(presentationsByChapter);
+      } catch (err) {
+        console.error("Failed to fetch presentations:", err);
+        toast.error("Failed to load presentations");
+      } finally {
+        setLoadingPresentations(false);
+      }
+    };
+
+    console.log("presentations");
+
+    fetchPresentations();
+  }, []);
+
+  console.log("!");
 
   const resetForm = () => {
     setTitle("");
@@ -189,6 +235,39 @@ export default function ChapterManager({
       document.body.removeChild(a);
     } catch (err: any) {
       setError(err.message || "Failed to download template");
+    }
+  };
+
+  const handleDeletePresentation = async (presentationId: string) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this presentation? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await deletePresentation(presentationId);
+      // Refresh presentations
+      const allPresentations = await getPresentations();
+      const presentationsByChapter = allPresentations.reduce(
+        (acc: Record<string, Presentation[]>, presentation) => {
+          if (presentation.chapterId) {
+            if (!acc[presentation.chapterId]) {
+              acc[presentation.chapterId] = [];
+            }
+            acc[presentation.chapterId].push(presentation);
+          }
+          return acc;
+        },
+        {}
+      );
+      setPresentations(presentationsByChapter);
+      toast.success("Presentation deleted successfully");
+    } catch (err) {
+      console.error("Failed to delete presentation:", err);
+      toast.error("Failed to delete presentation");
     }
   };
 
@@ -360,6 +439,9 @@ export default function ChapterManager({
                 <Box as="th" p={3} textAlign="center">
                   Status
                 </Box>
+                <Box as="th" p={3} textAlign="center">
+                  Presentations
+                </Box>
                 {canManage && (
                   <Box as="th" p={3} textAlign="right">
                     Actions
@@ -389,6 +471,58 @@ export default function ChapterManager({
                       <Text color="green">Active</Text>
                     ) : (
                       <Text color="red">Inactive</Text>
+                    )}
+                  </Box>
+                  <Box as="td" p={3} textAlign="center">
+                    {loadingPresentations ? (
+                      <Spinner size={24} />
+                    ) : (
+                      <Box>
+                        {presentations[chapter._id]?.length || 0} Presentations
+                        {presentations[chapter._id]?.length > 0 && (
+                          <Box mt={2}>
+                            {presentations[chapter._id].map((presentation) => (
+                              <Flex
+                                key={presentation._id}
+                                alignItems="center"
+                                justifyContent="space-between"
+                                p={2}
+                                bg="gray.50"
+                                mb={1}
+                                borderRadius="md"
+                              >
+                                <Text fontSize="sm">{presentation.title}</Text>
+                                <Flex gap={2}>
+                                  <Button
+                                    onClick={() =>
+                                      router.push(
+                                        `/subjects/${subjectId}/presentation/${presentation._id}`
+                                      )
+                                    }
+                                    variant="secondary"
+                                    size="small"
+                                  >
+                                    View
+                                  </Button>
+                                  {canManage && (
+                                    <Button
+                                      onClick={() =>
+                                        handleDeletePresentation(
+                                          presentation._id
+                                        )
+                                      }
+                                      variant="danger"
+                                      size="small"
+                                    >
+                                      Delete
+                                    </Button>
+                                  )}
+                                </Flex>
+                              </Flex>
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
                     )}
                   </Box>
                   {canManage && (

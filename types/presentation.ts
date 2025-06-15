@@ -74,7 +74,7 @@ export enum SlideLayout {
 }
 
 export interface Presentation {
-  id: string;
+  _id: string;
   title: string;
   description?: string;
   themeId: string;
@@ -82,6 +82,8 @@ export interface Presentation {
   slides?: Slide[];
   createdAt?: Date;
   updatedAt?: Date;
+  chapterId?: string;
+  chapterTitle?: string;
 }
 
 export interface CreatePresentationDto {

@@ -396,10 +396,30 @@ export interface Presentation {
   createdAt: string;
   updatedAt: string;
   slides?: Slide[];
+  scope: "subject" | "course";
+  courseId?: string;
+  draftId?: string;
 }
 
 export interface ChapterPresentation {
   chapterId: string;
   chapterTitle: string;
+  subjectId: string;
   presentation: Presentation;
+}
+
+export interface ChapterPresentations {
+  chapterId: string;
+  chapterTitle: string;
+  subjectId: string;
+  presentations: Array<{
+    _id: string;
+    title: string;
+    scope: "course" | "subject";
+    slides: Array<{
+      _id: string;
+      title: string;
+      order: number;
+    }>;
+  }>;
 }

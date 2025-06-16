@@ -4,12 +4,14 @@ import React, { useEffect, useState } from "react";
 import { Box, Heading, Text, Flex } from "rebass";
 import { Presentation } from "@/types";
 import { Slide as PresentationSlide, SlideLayout } from "@/types/presentation";
-import { getChapterPresentation } from "@/lib/api";
+import { getChapterPresentation, api } from "@/lib/api";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
 import { use } from "react";
 import SlidePreview, { MiniSlidePreview } from "@/components/SlidePreview";
 import { useLayouts } from "@/context/LayoutsContext";
+import { useSearchParams } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 // Map backend layout types to frontend layout IDs
 const getLayoutId = (
@@ -41,6 +43,11 @@ const getLayoutId = (
   return defaultLayoutId;
 };
 
+interface APIResponse {
+  success: boolean;
+  data: Presentation[];
+}
+
 const PresentationPage = ({
   params,
 }: {
@@ -55,40 +62,102 @@ const PresentationPage = ({
 
   const courseId = resolvedParams.id;
   const chapterId = resolvedParams.chapterId;
+  const searchParams = useSearchParams();
+  const subjectId = searchParams.get("subjectId");
+  const presentationId = searchParams.get("presentationId");
 
-  const [presentation, setPresentation] = useState<Presentation | null>(null);
+  const [presentations, setPresentations] = useState<Presentation[]>([]);
+  const [selectedPresentation, setSelectedPresentation] =
+    useState<Presentation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const { layouts, defaultLayoutId } = useLayouts();
 
   useEffect(() => {
-    const fetchPresentation = async () => {
+    const fetchPresentations = async () => {
       try {
         setLoading(true);
-        const data = await getChapterPresentation(courseId, chapterId);
-        setPresentation(data);
+        const response = await getChapterPresentation(courseId, chapterId);
+        setPresentations(response.data);
+
+        // If we have a presentationId in the URL, select that presentation
+        if (presentationId) {
+          const presentation = response.data.find(
+            (p) => p._id === presentationId
+          );
+          if (presentation) {
+            setSelectedPresentation(presentation);
+          } else {
+            setError("Requested presentation not found");
+          }
+        } else if (response.data.length > 0) {
+          // Otherwise select the first presentation
+          setSelectedPresentation(response.data[0]);
+        }
       } catch (err: any) {
-        setError(err.message || "Failed to load presentation");
+        setError(err.message || "Failed to load presentations");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPresentation();
-  }, [courseId, chapterId]);
+    fetchPresentations();
+  }, [courseId, chapterId, presentationId]);
+
+  const handleDownload = async () => {
+    if (!selectedPresentation) return;
+
+    try {
+      const response = await api.get(
+        `/api/courses/${courseId}/presentations/${selectedPresentation._id}/download`,
+        {
+          responseType: "blob",
+          headers: {
+            Accept:
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          },
+        }
+      );
+
+      // Get filename from Content-Disposition header or create default
+      const contentDisposition = response.headers["content-disposition"];
+      const filename = contentDisposition
+        ? contentDisposition.split("filename=")[1].replace(/['"]/g, "")
+        : `presentation-${Date.now()}.pptx`;
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Presentation downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading presentation:", error);
+      toast.error("Failed to download presentation");
+    }
+  };
 
   if (loading) return <Loading />;
   if (error) return <ErrorMessage message={error} />;
-  if (!presentation) return <ErrorMessage message="Presentation not found" />;
-  if (!presentation.slides || presentation.slides.length === 0) {
+  if (!selectedPresentation)
+    return <ErrorMessage message="No presentation selected" />;
+  if (
+    !selectedPresentation.slides ||
+    selectedPresentation.slides.length === 0
+  ) {
     return <ErrorMessage message="No slides found in this presentation" />;
   }
 
   // At this point, we know presentation.slides exists and has at least one slide
-  const slides = presentation.slides;
+  const slides = selectedPresentation.slides;
   const currentSlide = slides[currentSlideIndex];
-  const theme = presentation.themeId;
+  const theme = selectedPresentation.themeId;
 
   // Get the current layout
   const mappedLayoutId = getLayoutId(
@@ -102,14 +171,73 @@ const PresentationPage = ({
     <Box p={4}>
       {/* Header */}
       <Box mb={4}>
-        <Text fontSize={2} color={theme.colors.text}>
-          {presentation.chapterTitle}
+        <Heading as="h1" fontSize={4} mb={2}>
+          {selectedPresentation.title}
+        </Heading>
+        <Text color="gray.600">
+          {selectedPresentation.description || "No description available"}
         </Text>
       </Box>
 
-      {/* Main Content Area */}
-      <Flex sx={{ gap: 4, height: "calc(100vh - 200px)" }}>
-        {/* Left Sidebar - Thumbnails */}
+      {/* Presentation Controls */}
+      <Flex mb={4} gap={2}>
+        <button
+          onClick={() => setCurrentSlideIndex((prev) => Math.max(0, prev - 1))}
+          disabled={currentSlideIndex === 0}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            border: "1px solid #e2e8f0",
+            backgroundColor: "white",
+            cursor: currentSlideIndex === 0 ? "not-allowed" : "pointer",
+            opacity: currentSlideIndex === 0 ? 0.5 : 1,
+          }}
+        >
+          ← Previous
+        </button>
+        <Text sx={{ lineHeight: "36px" }}>
+          Slide {currentSlideIndex + 1} of {slides.length}
+        </Text>
+        <button
+          onClick={() =>
+            setCurrentSlideIndex((prev) =>
+              Math.min(slides.length - 1, prev + 1)
+            )
+          }
+          disabled={currentSlideIndex === slides.length - 1}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            border: "1px solid #e2e8f0",
+            backgroundColor: "white",
+            cursor:
+              currentSlideIndex === slides.length - 1
+                ? "not-allowed"
+                : "pointer",
+            opacity: currentSlideIndex === slides.length - 1 ? 0.5 : 1,
+          }}
+        >
+          Next →
+        </button>
+        <Box sx={{ flex: 1 }} />
+        <button
+          onClick={handleDownload}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            backgroundColor: "#0070f3",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Download
+        </button>
+      </Flex>
+
+      {/* Main Content */}
+      <Flex gap={4} sx={{ height: "calc(100vh - 250px)" }}>
+        {/* Slide Thumbnails */}
         <Box
           sx={{
             flexShrink: 0,
@@ -193,7 +321,7 @@ const PresentationPage = ({
                 slide={
                   {
                     ...currentSlide,
-                    layout: mappedLayoutId, // Use the mapped layout ID
+                    layout: mappedLayoutId,
                     aspectRatio: "16/9",
                     elements: currentSlide.elements.map((element) => ({
                       ...element,

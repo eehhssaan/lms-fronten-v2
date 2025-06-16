@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Text } from "rebass";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Theme, Slide } from "@/types/presentation";
 import ThemeSelector from "@/components/ThemeSelector";
 import DraftPreview from "@/components/DraftPreview";
@@ -18,11 +18,6 @@ import {
   PresentationProvider,
   usePresentationContext,
 } from "@/context/PresentationContext";
-
-interface Chapter {
-  id: string;
-  title: string;
-}
 
 interface DraftSlide {
   slideNumber: number;
@@ -45,53 +40,18 @@ interface DraftContent {
   aspectRatio?: string;
   courseId?: string;
   scope?: "subject" | "course";
-  subjectId: string;
-}
-
-interface DraftResponse {
-  success: boolean;
-  data: DraftContent;
-}
-
-interface LLMResponse {
-  success: boolean;
-  error?: string;
-  data?: {
-    presentationId: string;
-    slides: Array<{
-      _id: string;
-      title: string;
-      layout?: string;
-      type: string;
-      elements: Array<{
-        _id?: string;
-        type: string;
-        value: string;
-        format?: {
-          fontSize?: string;
-          fontFamily?: string;
-          color?: string;
-          backgroundColor?: string;
-          bold?: boolean;
-          italic?: boolean;
-          underline?: boolean;
-          textAlign?: "left" | "center" | "right";
-          lineHeight?: string;
-          letterSpacing?: string;
-          textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
-        };
-      }>;
-    }>;
-    message?: string;
-  };
 }
 
 const POLLING_INTERVAL = 3000; // 3 seconds
 
-// Separate component that uses the context
 function PresentationGenerator() {
   const params = useParams();
-  const subjectId = params.subjectId as string;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = params.id as string;
+  const chapterId = params.chapterId as string;
+  const subjectId = searchParams.get("subjectId");
+
   const { setPresentationFromBackend } = usePresentationContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,29 +59,17 @@ function PresentationGenerator() {
   const [numberOfSlides, setNumberOfSlides] = useState(5);
   const [userPrompt, setUserPrompt] = useState("");
   const [draftContent, setDraftContent] = useState<DraftContent | null>(null);
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [selectedChapter, setSelectedChapter] = useState("");
-  const [finalContent, setFinalContent] = useState<LLMResponse["data"] | null>(
-    null
-  );
-  const [title, setTitle] = useState("");
-
-  const searchParams = useSearchParams();
-  const courseId = searchParams.get("courseId") || undefined;
-  const scope = courseId ? "course" : "subject";
-
-  useEffect(() => {
-    const chapterId = searchParams.get("chapterId");
-    console.log("chapterId", chapterId);
-    if (chapterId) {
-      setSelectedChapter(chapterId);
-    }
-  }, [searchParams]);
+  const [chapters, setChapters] = useState<{ id: string; title: string }[]>([]);
+  const [finalContent, setFinalContent] = useState<any>(null);
 
   // Fetch chapters when component mounts
   useEffect(() => {
     const fetchChapters = async () => {
       try {
+        if (!subjectId) {
+          toast.error("Subject ID is required");
+          return;
+        }
         const response = await getSubjectChapters(subjectId);
         if (response.data) {
           setChapters(
@@ -138,7 +86,7 @@ function PresentationGenerator() {
     };
 
     fetchChapters();
-  }, [subjectId]);
+  }, [courseId, subjectId]);
 
   // Polling for draft status
   useEffect(() => {
@@ -178,11 +126,6 @@ function PresentationGenerator() {
       return;
     }
 
-    if (!selectedChapter) {
-      toast.error("Please select a chapter");
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
@@ -191,14 +134,15 @@ function PresentationGenerator() {
         numSlides: numberOfSlides,
         language: "English (US)",
         themeId: selectedTheme._id,
-        chapter: chapters.find((c) => c.id === selectedChapter)?.title || "",
+        chapter: chapters.find((c) => c.id === chapterId)?.title || "",
+        courseId,
+        scope: "course",
       });
 
       setDraftContent({
         ...response.data,
         courseId,
-        scope,
-        subjectId,
+        scope: "course",
       });
       toast.success("Draft generation started!");
     } catch (error) {
@@ -211,20 +155,15 @@ function PresentationGenerator() {
     }
   };
 
-  const handleEditSlide = (
-    slideNumber: number,
-    updatedSlide: DraftResponse["data"]["content"][0]
-  ) => {
+  const handleEditSlide = (slideNumber: number, updatedSlide: DraftSlide) => {
     if (!draftContent) return;
 
-    const updatedContent = {
+    setDraftContent({
       ...draftContent,
       content: draftContent.content.map((slide) =>
         slide.slideNumber === slideNumber ? updatedSlide : slide
       ),
-    };
-
-    setDraftContent(updatedContent);
+    });
   };
 
   const handleGenerateFinal = async () => {
@@ -241,9 +180,9 @@ function PresentationGenerator() {
         context: {
           themeId: selectedTheme._id,
           download: "false",
-          chapterId: selectedChapter,
-          ...(courseId ? { courseId, scope } : {}),
-          subjectId,
+          chapterId,
+          courseId,
+          scope: "course",
         },
       });
 
@@ -254,11 +193,11 @@ function PresentationGenerator() {
       // Save to PresentationContext
       setPresentationFromBackend({
         _id: response.data.presentationId,
-        title: draftContent.title || title || "Untitled Presentation",
+        title: draftContent.title || "Untitled Presentation",
         theme: selectedTheme,
         slides: response.data.slides,
-        ...(courseId ? { courseId, scope } : {}),
-        subjectId,
+        courseId,
+        scope: "course",
       });
 
       // Keep existing finalContent state for UI
@@ -277,7 +216,7 @@ function PresentationGenerator() {
   return (
     <Box p={4}>
       <Text as="h1" fontSize={4} fontWeight="bold" mb={4}>
-        Create {scope === "course" ? "Course" : "Subject"} Presentation
+        Create Course Presentation
       </Text>
 
       {!draftContent && !finalContent ? (
@@ -298,8 +237,12 @@ function PresentationGenerator() {
               Chapter:
             </Text>
             <select
-              value={selectedChapter}
-              onChange={(e) => setSelectedChapter(e.target.value)}
+              value={chapterId}
+              onChange={(e) =>
+                router.push(
+                  `/courses/${courseId}/chapters/${e.target.value}/presentation/create?subjectId=${subjectId}`
+                )
+              }
               style={{
                 width: "100%",
                 padding: "8px",
@@ -308,7 +251,6 @@ function PresentationGenerator() {
                 backgroundColor: "white",
               }}
             >
-              <option value="">Select a chapter...</option>
               {chapters.map((chapter) => (
                 <option key={chapter.id} value={chapter.id}>
                   {chapter.title}
@@ -323,9 +265,7 @@ function PresentationGenerator() {
             </Text>
             <ThemeSelector
               currentThemeId={selectedTheme?._id}
-              onThemeSelect={(theme) => {
-                setSelectedTheme(theme);
-              }}
+              onThemeSelect={(theme) => setSelectedTheme(theme)}
             />
           </Box>
 
@@ -380,18 +320,15 @@ function PresentationGenerator() {
 
           <button
             type="submit"
-            disabled={loading || !selectedTheme || !selectedChapter}
+            disabled={loading || !selectedTheme}
             style={{
               backgroundColor: "#0070f3",
               color: "white",
               border: "none",
               padding: "10px 20px",
               borderRadius: "4px",
-              cursor:
-                loading || !selectedTheme || !selectedChapter
-                  ? "not-allowed"
-                  : "pointer",
-              opacity: loading || !selectedTheme || !selectedChapter ? 0.7 : 1,
+              cursor: loading || !selectedTheme ? "not-allowed" : "pointer",
+              opacity: loading || !selectedTheme ? 0.7 : 1,
             }}
           >
             {loading ? "Generating..." : "Generate Draft"}
@@ -409,7 +346,11 @@ function PresentationGenerator() {
           <SaveHandler presentationId={finalContent.presentationId} />
           <PresentationPreview
             presentationId={finalContent.presentationId}
-            onBack={() => setFinalContent(null)}
+            onBack={() =>
+              router.push(
+                `/courses/${courseId}/chapters/${chapterId}/presentation`
+              )
+            }
             onSave={() => (window as any).__handlePresentationSave?.()}
           />
         </PresentationProvider>
@@ -444,6 +385,9 @@ function PresentationInitializer({
 function SaveHandler({ presentationId }: { presentationId: string }) {
   const { getSerializablePresentation, markAsSaved } = usePresentationContext();
   const saveRef = useRef<(() => Promise<void>) | null>(null);
+  const params = useParams();
+  const courseId = params.id as string;
+  const chapterId = params.chapterId as string;
 
   saveRef.current = async () => {
     try {
@@ -452,8 +396,13 @@ function SaveHandler({ presentationId }: { presentationId: string }) {
         throw new Error("No presentation data to save");
       }
 
-      // Send the presentation data as is
-      await api.put(`/v1/presentations/${presentationId}`, presentationData);
+      // Use the course-specific endpoint with chapterId and themeId
+      await api.post(`/api/courses/${courseId}/presentations`, {
+        ...presentationData,
+        chapterId: chapterId,
+        themeId: presentationData.theme?._id,
+        draftId: presentationId,
+      });
 
       markAsSaved();
       toast.success("Presentation saved successfully");
@@ -474,7 +423,7 @@ function SaveHandler({ presentationId }: { presentationId: string }) {
 }
 
 // Main page component that provides the context
-export default function SubjectPresentationPage() {
+export default function CreateCoursePresentationPage() {
   return (
     <PresentationProvider>
       <PresentationGenerator />

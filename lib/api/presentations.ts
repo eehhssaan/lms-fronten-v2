@@ -63,20 +63,31 @@ export const getPresentation = async (
 };
 
 export const createPresentation = async (
-  presentationData: Partial<Presentation>
+  presentationData: Partial<Presentation> & { draftId?: string },
+  courseId?: string
 ): Promise<Presentation> => {
-  const response = await api.post("/v1/presentations", presentationData);
+  const endpoint = courseId
+    ? `/courses/${courseId}/presentations`
+    : "/v1/presentations";
+
+  const response = await api.post(endpoint, {
+    ...presentationData,
+    scope: courseId ? "course" : "subject",
+    courseId,
+  });
   return response.data;
 };
 
 export const updatePresentation = async (
   presentationId: string,
-  presentationData: Partial<Presentation>
+  presentationData: Partial<Presentation>,
+  courseId?: string
 ): Promise<Presentation> => {
-  const response = await api.put(
-    `/v1/presentations/${presentationId}`,
-    presentationData
-  );
+  const endpoint = courseId
+    ? `/courses/${courseId}/presentations/${presentationId}`
+    : `/v1/presentations/${presentationId}`;
+
+  const response = await api.put(endpoint, presentationData);
   return response.data;
 };
 

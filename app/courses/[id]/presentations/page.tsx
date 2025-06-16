@@ -43,6 +43,7 @@ export default function CoursePresentationsPage({
           setLoading(true);
           setError(null);
           const courseData = await getCourse(courseId);
+
           setCourse(courseData);
         } catch (err: any) {
           console.error("Failed to fetch course data:", err);

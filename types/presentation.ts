@@ -84,6 +84,7 @@ export interface Presentation {
   updatedAt?: Date;
   chapterId?: string;
   chapterTitle?: string;
+  subjectId?: string;
 }
 
 export interface CreatePresentationDto {

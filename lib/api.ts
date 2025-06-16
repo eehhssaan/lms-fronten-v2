@@ -9,6 +9,7 @@ import {
   Chapter,
   ChapterPresentation,
   Presentation,
+  ChapterPresentations,
 } from "@/types";
 
 // Determine the base URL for API requests
@@ -2129,8 +2130,6 @@ export const generateLLMContent = async (params: {
       context: params.context,
     });
 
-    console.log("LLM Response:", response);
-
     if (!response.data.success) {
       throw new Error(response.data.error || "Failed to generate content");
     }
@@ -2199,6 +2198,8 @@ interface GenerateDraftParams {
   language: string;
   themeId: string;
   chapter: string;
+  courseId?: string;
+  scope?: "course" | "subject";
 }
 
 export const generateDraft = async (params: GenerateDraftParams) => {
@@ -2219,7 +2220,7 @@ export const generateDraft = async (params: GenerateDraftParams) => {
 // Presentation API functions
 export const getCoursePresentations = async (
   courseId: string
-): Promise<ChapterPresentation[]> => {
+): Promise<ChapterPresentations[]> => {
   try {
     const response = await api.get(`/courses/${courseId}/presentations`);
     return response.data.data;
@@ -2234,12 +2235,12 @@ export const getCoursePresentations = async (
 export const getChapterPresentation = async (
   courseId: string,
   chapterId: string
-): Promise<Presentation> => {
+): Promise<{ success: boolean; data: Presentation[] }> => {
   try {
     const response = await api.get(
       `/courses/${courseId}/chapters/${chapterId}/presentation`
     );
-    return response.data.data;
+    return response.data;
   } catch (error: any) {
     console.error("Error fetching chapter presentation:", error);
     throw new Error(

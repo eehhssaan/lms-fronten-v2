@@ -7,6 +7,8 @@ import {
   Subject,
   Assignment,
   Chapter,
+  ChapterPresentation,
+  Presentation,
 } from "@/types";
 
 // Determine the base URL for API requests
@@ -2211,5 +2213,37 @@ export const generateDraft = async (params: GenerateDraftParams) => {
   } catch (error) {
     console.error("Error in generateDraft:", error);
     throw error;
+  }
+};
+
+// Presentation API functions
+export const getCoursePresentations = async (
+  courseId: string
+): Promise<ChapterPresentation[]> => {
+  try {
+    const response = await api.get(`/courses/${courseId}/presentations`);
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error fetching course presentations:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch course presentations"
+    );
+  }
+};
+
+export const getChapterPresentation = async (
+  courseId: string,
+  chapterId: string
+): Promise<Presentation> => {
+  try {
+    const response = await api.get(
+      `/courses/${courseId}/chapters/${chapterId}/presentation`
+    );
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Error fetching chapter presentation:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch chapter presentation"
+    );
   }
 };

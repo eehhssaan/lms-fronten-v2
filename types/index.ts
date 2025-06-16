@@ -92,6 +92,7 @@ export interface Course {
   subject?: {
     _id: string;
     name: string;
+    presentations?: ChapterPresentation[];
   };
   grade?: string;
   teacher?: {
@@ -307,4 +308,98 @@ export interface Chapter {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+// Presentation types
+interface PresentationTheme {
+  colors: {
+    background: string;
+    text: string;
+    accent1: string;
+    accent2: string;
+    accent3: string;
+  };
+  fonts: {
+    heading: string;
+    body: string;
+  };
+  defaults: {
+    title: {
+      fontSize: string;
+      fontWeight: string;
+      color: string;
+    };
+    content: {
+      fontSize: string;
+      fontWeight: string;
+      color: string;
+    };
+  };
+  _id: string;
+  name: string;
+  description: string;
+  isDefault: boolean;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SlideElement {
+  format: {
+    fontFamily: string;
+    fontSize: string;
+    color: string;
+    backgroundColor: string;
+    italic: boolean;
+    underline: boolean;
+    textAlign: string;
+  };
+  type: "title" | "content" | "image";
+  value: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  position: string;
+  relatedElements: any[];
+  _id: string;
+}
+
+interface Slide {
+  customStyles: {
+    backgroundColor: string;
+  };
+  _id: string;
+  title: string;
+  type: string;
+  layout: string;
+  elements: SlideElement[];
+  order: number;
+  presentationId: string;
+  themeId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Presentation {
+  _id: string;
+  title: string;
+  description: string;
+  chapterId: string;
+  chapterTitle: string;
+  themeId: PresentationTheme;
+  defaultLayout: string;
+  aspectRatio: string;
+  author: string;
+  isPublic: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  slides?: Slide[];
+}
+
+export interface ChapterPresentation {
+  chapterId: string;
+  chapterTitle: string;
+  presentation: Presentation;
 }

@@ -50,6 +50,7 @@ export const PresentationProvider: React.FC<{ children: React.ReactNode }> = ({
         _id: slide._id,
         title: slide.title,
         layout: slide.layout,
+        layoutType: slide.layoutType,
         elements: slide.elements.map((element: any) => ({
           ...element,
           x: element.x ?? 0,

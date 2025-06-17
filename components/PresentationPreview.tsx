@@ -38,12 +38,24 @@ const PresentationPreview: React.FC<PresentationPreviewProps> = ({
 
   // Helper function to get the correct layout ID
   const getLayoutId = (slide: Slide) => {
-    // If the slide has a layout ID that exists in our layouts, use it
+    // First try to use layoutType if available
+    if (slide.layoutType) {
+      // Find the layout that matches this type
+      const matchingLayout = Object.values(layouts).find(
+        (layout) => layout.type === slide.layoutType
+      );
+
+      if (matchingLayout) {
+        return matchingLayout._id;
+      }
+    }
+
+    // Fallback: If the slide has a layout ID that exists in our layouts, use it
     if (slide.layout && layouts[slide.layout]) {
       return slide.layout;
     }
 
-    // If the slide has a layout ID that doesn't exist in our layouts
+    // Fallback: If the slide has a layout ID that doesn't exist in our layouts
     // (like a MongoDB ID from backend), find the matching layout type
     if (slide.layout) {
       const matchingLayout = Object.values(layouts).find(
@@ -54,7 +66,7 @@ const PresentationPreview: React.FC<PresentationPreviewProps> = ({
       }
     }
 
-    // Fallback to default layout
+    // Final fallback to default layout
     return defaultLayoutId;
   };
 
@@ -148,7 +160,7 @@ const PresentationPreview: React.FC<PresentationPreviewProps> = ({
       {/* Left side - Thumbnails */}
       <Box
         sx={{
-          width: "20%",
+          width: "15%",
           backgroundColor: "white",
           borderRight: "1px solid #e2e8f0",
           overflowY: "auto",

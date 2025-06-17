@@ -51,6 +51,7 @@ export interface Slide {
   title?: string;
   type?: string;
   layout?: string;
+  layoutType?: string;
   backgroundColor?: string;
   imageUrl?: string;
   elements: SlideElement[];
@@ -231,6 +232,7 @@ export interface LocalSlide {
   _id: string;
   title: string;
   layout?: string;
+  layoutType?: string;
   type: string;
   elements: SlideElement[];
   customStyles?: {

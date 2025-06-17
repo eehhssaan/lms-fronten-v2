@@ -40,6 +40,7 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
   const [selectedElement, setSelectedElement] = useState<SlideElement | null>(
     null
   );
+
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
   const [showLayoutSelector, setShowLayoutSelector] = useState(false);
   const { layouts } = useLayouts();
@@ -96,6 +97,7 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
     onLayoutChange?.(layoutId);
     onSlideChange({
       layout: layoutId,
+      layoutType: layoutType,
     });
     setShowLayoutSelector(false);
   };
@@ -166,9 +168,9 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
         }}
       >
         {currentLayout?.elements.map((layoutElement) => {
-          const slideElement = slide.elements?.find(
-            (el) => el.type === layoutElement.type
-          );
+          const slideElement = slide.elements?.find((el) => {
+            return el.type === layoutElement.type;
+          });
 
           // Create element with layout coordinates taking precedence
           const mergedElement = {
@@ -209,19 +211,29 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
 };
 
 export const MiniSlidePreview: React.FC<{
-  slide: any;
+  slide: Slide;
   isSelected?: boolean;
   layouts?: Record<string, Layout>;
   defaultLayoutId?: string;
 }> = ({ slide, isSelected = false, layouts = {}, defaultLayoutId = "" }) => {
-  // Helper function to get the correct layout ID
   const getLayoutId = (slide: any) => {
-    // If the slide has a layout ID that exists in our layouts, use it
+    // First try to use layoutType if available
+    if (slide.layoutType) {
+      // Find the layout that matches this type
+      const matchingLayout = Object.values(layouts).find(
+        (layout) => layout.type === slide.layoutType
+      );
+      if (matchingLayout) {
+        return matchingLayout._id;
+      }
+    }
+
+    // Fallback: If the slide has a layout ID that exists in our layouts, use it
     if (slide.layout && layouts[slide.layout]) {
       return slide.layout;
     }
 
-    // If the slide has a layout ID that doesn't exist in our layouts
+    // Fallback: If the slide has a layout ID that doesn't exist in our layouts
     // (like a MongoDB ID from backend), find the matching layout type
     if (slide.layout) {
       const matchingLayout = Object.values(layouts).find(
@@ -232,7 +244,7 @@ export const MiniSlidePreview: React.FC<{
       }
     }
 
-    // Fallback to default layout
+    // Final fallback to default layout
     return defaultLayoutId;
   };
 

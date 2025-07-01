@@ -1,22 +1,20 @@
 import React, { useState } from "react";
-import { Box, Text, Flex } from "rebass";
+import { Box, Text } from "rebass";
 import TextFormatToolbar from "./TextFormatToolbar";
-import {
-  updateSlide,
-  updateSlideElementPosition,
-} from "../lib/api/presentations";
 import {
   TextFormat,
   SlideElement,
   Layout,
   Slide,
   SlideLayout,
+  ContentItem,
+  LayoutElement,
 } from "../types/presentation";
-import toast from "react-hot-toast";
-import { useLayouts } from "@/context/LayoutsContext";
+import { ContentLayout } from "./ContentLayoutSelector";
 import SlideElementComponent from "./SlideElementComponent";
-import ElementPositionControl from "./ElementPositionControl";
 import LayoutSelector from "./LayoutSelector";
+import GridContainer from "./grid/GridContainer";
+import GridItem from "./grid/GridItem";
 
 interface SlidePreviewProps {
   slide: Slide & {
@@ -29,12 +27,26 @@ interface SlidePreviewProps {
   currentLayout?: Layout;
 }
 
+// Convert absolute coordinates to grid coordinates if not provided
+const getGridCoordinates = (element: LayoutElement) => {
+  if (element.grid) {
+    return element.grid;
+  }
+
+  // Return default grid coordinates if no grid is provided
+  return {
+    columnStart: 1,
+    columnEnd: 12,
+    rowStart: 1,
+    rowEnd: 6,
+  };
+};
+
 const SlidePreview: React.FC<SlidePreviewProps> = ({
   slide,
   onSlideChange,
   onElementChange,
   onLayoutChange,
-  onBackgroundChange,
   currentLayout,
 }) => {
   const [selectedElement, setSelectedElement] = useState<SlideElement | null>(
@@ -43,14 +55,16 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
 
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
   const [showLayoutSelector, setShowLayoutSelector] = useState(false);
-  const { layouts } = useLayouts();
 
   const handleElementClick = (element: SlideElement) => {
     setSelectedElement(element);
     setShowFormatToolbar(true);
   };
 
-  const handleElementValueChange = (type: string, value: string) => {
+  const handleElementValueChange = (
+    type: string,
+    value: string | ContentItem[]
+  ) => {
     const element = slide.elements?.find((el) => el.type === type);
     if (!element?._id) return;
 
@@ -81,18 +95,6 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
     });
   };
 
-  const handlePositionChange = (updates: Partial<SlideElement>) => {
-    if (!selectedElement?._id) return;
-
-    onElementChange?.(selectedElement._id, updates);
-
-    onSlideChange({
-      elements: slide.elements.map((el) =>
-        el._id === selectedElement._id ? { ...el, ...updates } : el
-      ),
-    });
-  };
-
   const handleLayoutSelect = (layoutId: string, layoutType: SlideLayout) => {
     onLayoutChange?.(layoutId);
     onSlideChange({
@@ -102,13 +104,23 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
     setShowLayoutSelector(false);
   };
 
-  const handleBackgroundChange = (color: string) => {
-    onBackgroundChange?.(color);
+  const handleContentLayoutChange = (
+    elementId: string,
+    layout: ContentLayout
+  ) => {
+    if (!elementId) return;
+
+    const element = slide.elements.find((el) => el._id === elementId);
+    if (!element) return;
+
+    onElementChange?.(elementId, {
+      contentLayout: layout,
+    });
+
     onSlideChange({
-      customStyles: {
-        ...slide.customStyles,
-        backgroundColor: color,
-      },
+      elements: slide.elements.map((el) =>
+        el._id === elementId ? { ...el, contentLayout: layout } : el
+      ),
     });
   };
 
@@ -131,80 +143,109 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
         />
       )}
 
-      {/* {selectedElement && (
-        <ElementPositionControl
-          elementId={selectedElement._id || ""}
-          currentPosition={selectedElement.position || "default"}
-          onPositionChange={async (position) => {
-            handlePositionChange({ position });
-          }}
-        />
-      )} */}
-      <button
-        onClick={() => setShowLayoutSelector(true)}
-        style={{
-          position: "absolute",
-          bottom: "16px",
-          right: "16px",
-          padding: "8px 16px",
-          borderRadius: "4px",
-          backgroundColor: "#0070f3",
-          color: "white",
-        }}
-      >
-        Change Layout
-      </button>
-
       <Box
+        onClick={() => {
+          setSelectedElement(null);
+          setShowFormatToolbar(false);
+        }}
         sx={{
           position: "relative",
           width: "100%",
-          maxWidth: "945px",
-          aspectRatio: "16/9",
-          backgroundColor: slide.customStyles?.backgroundColor || "#FFFFFF",
-          border: "1px solid #e2e8f0",
-          borderRadius: "4px",
-          overflow: "hidden",
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "20px",
         }}
       >
-        {currentLayout?.elements.map((layoutElement) => {
-          const slideElement = slide.elements?.find((el) => {
-            return el.type === layoutElement.type;
-          });
+        <button
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            setShowLayoutSelector(true);
+          }}
+          style={{
+            position: "absolute",
+            bottom: "16px",
+            right: "16px",
+            padding: "8px 16px",
+            borderRadius: "4px",
+            backgroundColor: "#0070f3",
+            color: "white",
+          }}
+        >
+          Image Position
+        </button>
 
-          // Create element with layout coordinates taking precedence
-          const mergedElement = {
-            _id: slideElement?._id || `temp-${layoutElement.type}`,
-            type: layoutElement.type,
-            value: slideElement?.value || "",
-            format: slideElement?.format || {},
-            // Explicitly use layout coordinates
-            x: layoutElement.x,
-            y: layoutElement.y,
-            width: layoutElement.width,
-            height: layoutElement.height,
-          };
+        <Box
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          sx={{
+            position: "relative",
+            width: "100%",
+            maxWidth: "945px",
+            aspectRatio: "16/9",
+            backgroundColor: slide.customStyles?.backgroundColor || "#FFFFFF",
+            border: "1px solid #e2e8f0",
+            borderRadius: "4px",
+            overflow: "hidden",
+            padding: "20px",
+          }}
+        >
+          <GridContainer columns={12} rows={6} gap={0} showGrid={false}>
+            {currentLayout?.elements.map((layoutElement) => {
+              const slideElement = slide.elements?.find((el) => {
+                return el.type === layoutElement.type;
+              });
 
-          return (
-            <SlideElementComponent
-              key={layoutElement.type}
-              element={mergedElement}
-              value={slideElement?.value || ""}
-              onChange={(type, value) => handleElementValueChange(type, value)}
-              onFormatChange={(type, format) => handleFormatChange(format)}
-              format={slideElement?.format || {}}
-              onSelect={() =>
-                handleElementClick(
-                  slideElement || {
-                    ...layoutElement,
-                    _id: `temp-${layoutElement.type}`,
-                  }
-                )
-              }
-              isSelected={selectedElement?._id === slideElement?._id}
-            />
-          );
-        })}
+              const gridCoords = getGridCoordinates(layoutElement);
+
+              // Create element with layout coordinates taking precedence
+              const mergedElement = {
+                _id: slideElement?._id || `temp-${layoutElement.type}`,
+                type: layoutElement.type,
+                value: slideElement?.value || "",
+                format: slideElement?.format || {},
+                contentLayout: slideElement?.contentLayout,
+                gridPosition: gridCoords,
+              };
+
+              return (
+                <GridItem
+                  key={layoutElement.type}
+                  {...gridCoords}
+                  showBounds={false}
+                >
+                  <SlideElementComponent
+                    element={mergedElement}
+                    value={slideElement?.value || ""}
+                    onChange={(type, value) =>
+                      handleElementValueChange(type, value)
+                    }
+                    onFormatChange={(type, format) =>
+                      handleFormatChange(format)
+                    }
+                    onLayoutChange={(layout) => {
+                      if (slideElement?._id) {
+                        handleContentLayoutChange(slideElement._id, layout);
+                      }
+                    }}
+                    format={slideElement?.format || {}}
+                    onSelect={() =>
+                      handleElementClick(
+                        slideElement || {
+                          ...layoutElement,
+                          _id: `temp-${layoutElement.type}`,
+                          value: layoutElement.value || "",
+                          format: layoutElement.format || {},
+                        }
+                      )
+                    }
+                    isSelected={selectedElement?._id === slideElement?._id}
+                  />
+                </GridItem>
+              );
+            })}
+          </GridContainer>
+        </Box>
       </Box>
     </>
   );
@@ -250,18 +291,12 @@ export const MiniSlidePreview: React.FC<{
 
   const layoutToUse = layouts[getLayoutId(slide)];
 
-  const MINI_WIDTH = 320;
-  const MINI_HEIGHT = 180;
-  const BASE_WIDTH = 945;
-  const BASE_HEIGHT = 540;
+  // Scale factor for thumbnail size (16:9 aspect ratio)
+  const SCALE_FACTOR = 0.15; // Increased from 0.125 to 0.15 for better visibility
+  const MINI_WIDTH = Math.floor(1920 * SCALE_FACTOR); // ~288px
+  const MINI_HEIGHT = Math.floor(1080 * SCALE_FACTOR); // ~162px
 
   if (!layoutToUse) {
-    console.log(
-      "Layout not found for slide:",
-      slide._id,
-      "layout:",
-      slide.layout
-    );
     return (
       <Box p={2} bg="white" borderRadius={4}>
         <Text fontSize="10px" color="error">
@@ -277,67 +312,58 @@ export const MiniSlidePreview: React.FC<{
         position: "relative",
         width: `${MINI_WIDTH}px`,
         height: `${MINI_HEIGHT}px`,
-        backgroundColor: slide.customStyles?.backgroundColor,
+        backgroundColor: slide.customStyles?.backgroundColor || "#FFFFFF",
         border: isSelected ? "2px solid #3182ce" : "1px solid #e2e8f0",
         borderRadius: "4px",
         overflow: "hidden",
+        padding: "8px", // Increased from 4px for better content spacing
+        cursor: "pointer",
+        boxShadow: isSelected
+          ? "0 0 0 2px rgba(49, 130, 206, 0.3)"
+          : "0 1px 2px rgba(0,0,0,0.05)",
+        transform: "scale(0.9)", // Added to give some breathing room
+        transformOrigin: "top left",
       }}
     >
-      {layoutToUse.elements.map((layoutElement) => {
-        const slideElement = slide.elements?.find(
-          (el: SlideElement) => el.type === layoutElement.type
-        );
+      <GridContainer columns={12} rows={6} gap={2} showGrid={false}>
+        {layoutToUse.elements.map((layoutElement) => {
+          const slideElement = slide.elements?.find(
+            (el) => el.type === layoutElement.type
+          );
 
-        // Scale coordinates
-        const left = (Number(layoutElement.x) / BASE_WIDTH) * MINI_WIDTH;
-        const top = (Number(layoutElement.y) / BASE_HEIGHT) * MINI_HEIGHT;
-        const width = (Number(layoutElement.width) / BASE_WIDTH) * MINI_WIDTH;
-        const height =
-          (Number(layoutElement.height) / BASE_HEIGHT) * MINI_HEIGHT;
+          const gridCoords = getGridCoordinates(layoutElement);
 
-        return (
-          <Box
-            key={layoutElement.type}
-            sx={{
-              position: "absolute",
-              left: `${left}px`,
-              top: `${top}px`,
-              width: `${width}px`,
-              height: `${height}px`,
-              backgroundColor: slideElement?.format?.backgroundColor,
-              fontSize: layoutElement.type === "title" ? "10px" : "8px",
-              fontWeight: layoutElement.type === "title" ? "bold" : "normal",
-              color:
-                slideElement?.format?.color ||
-                (layoutElement.type === "title" ? "#6B46C1" : "#2D3748"),
-              textAlign: (slideElement?.format?.textAlign ||
-                (layoutElement.type === "title" ? "center" : "left")) as
-                | "left"
-                | "center"
-                | "right",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {layoutElement.type === "image" && slideElement?.value ? (
-              <img
-                src={slideElement.value}
-                alt="Slide content"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
+          // Create element with layout coordinates taking precedence
+          const mergedElement = {
+            _id: slideElement?._id || `temp-${layoutElement.type}`,
+            type: layoutElement.type,
+            value: slideElement?.value || "",
+            format: slideElement?.format || {},
+            contentLayout: slideElement?.contentLayout,
+            gridPosition: gridCoords,
+          };
+
+          return (
+            <GridItem
+              key={layoutElement.type}
+              {...gridCoords}
+              showBounds={false}
+            >
+              <SlideElementComponent
+                element={mergedElement}
+                value={slideElement?.value || ""}
+                onChange={() => {}} // No-op since this is just a preview
+                onFormatChange={() => {}} // No-op since this is just a preview
+                onLayoutChange={() => {}} // No-op since this is just a preview
+                format={slideElement?.format || {}}
+                onSelect={() => {}} // No-op since this is just a preview
+                isSelected={false}
+                isMiniPreview={true}
               />
-            ) : (
-              slideElement?.value || layoutElement.placeholder || ""
-            )}
-          </Box>
-        );
-      })}
+            </GridItem>
+          );
+        })}
+      </GridContainer>
     </Box>
   );
 };

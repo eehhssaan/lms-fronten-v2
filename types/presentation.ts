@@ -1,3 +1,5 @@
+import { ContentLayout } from "@/components/ContentLayoutSelector";
+
 export interface Theme {
   _id: string;
   name: string;
@@ -14,54 +16,44 @@ export interface Theme {
     body: string;
   };
   defaults: {
-    title: {
-      fontSize: string;
-      fontWeight: "normal" | "bold";
-      color: string;
-    };
-    content: {
-      fontSize: string;
-      fontWeight: "normal" | "bold";
-      color: string;
-    };
+    title: TextFormat;
+    content: TextFormat;
   };
-  isDefault?: boolean;
-  isPublic?: boolean;
-  createdBy?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  isDefault: boolean;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TextFormat {
-  fontSize?: string;
   fontFamily?: string;
+  fontSize?: string;
   color?: string;
   backgroundColor?: string;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
-  textAlign?: "left" | "center" | "right";
+  textAlign?: string;
   lineHeight?: string;
   letterSpacing?: string;
-  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+  textTransform?: string;
 }
 
 export interface Slide {
   _id?: string;
-  title?: string;
-  type?: string;
-  layout?: string;
-  layoutType?: string;
-  backgroundColor?: string;
-  imageUrl?: string;
+  title: string;
+  type: string;
+  layout: string;
+  layoutType: string;
   elements: SlideElement[];
+  order: number;
+  presentationId: string;
+  themeId: string;
   customStyles?: {
     backgroundColor?: string;
-    textColor?: string;
-    fontFamily?: string;
-    fontSize?: string;
   };
-  presentationId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export enum SlideLayout {
@@ -77,15 +69,18 @@ export enum SlideLayout {
 export interface Presentation {
   _id: string;
   title: string;
-  description?: string;
-  themeId: string;
-  theme?: Theme;
-  slides?: Slide[];
-  createdAt?: Date;
-  updatedAt?: Date;
-  chapterId?: string;
-  chapterTitle?: string;
-  subjectId?: string;
+  description: string;
+  chapterId: string;
+  chapterTitle: string;
+  themeId: Theme;
+  defaultLayout: string;
+  aspectRatio: string;
+  author: string;
+  scope: string;
+  isPublic: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreatePresentationDto {
@@ -173,13 +168,11 @@ export interface UpdateThemeDto {
 export interface Layout {
   _id: string;
   name: string;
-  description: string;
-  type: SlideLayout;
-  elements: SlideElement[];
-  thumbnail?: string;
+  type: string;
+  elements: LayoutElement[];
+  description?: string;
   isDefault?: boolean;
   isPublic?: boolean;
-  createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -219,13 +212,48 @@ export interface ElementPositionMetadata {
   lastPosition: "left" | "right" | "top" | "default";
 }
 
-export interface SlideElement extends SlideElementLayout {
+export interface BaseElement {
   _id?: string;
   type: string;
-  value: string;
-  format?: TextFormat;
+  format: TextFormat;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  position?: string;
   placeholder?: string;
-  position?: "left" | "right" | "top" | "default";
+  relatedElements?: string[];
+}
+
+export interface LayoutElement {
+  type: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  grid: {
+    columnStart: number;
+    columnEnd: number;
+    rowStart: number;
+    rowEnd: number;
+  };
+  format: TextFormat;
+  placeholder?: string;
+  value?: string | ContentItem[];
+  contentLayout?: ContentLayout;
+  fontFamily?: string;
+  fontSize?: string | number;
+  color?: string;
+  backgroundColor?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  textAlign?: string;
+}
+
+export interface SlideElement extends BaseElement {
+  value: string | ContentItem[];
+  contentLayout?: ContentLayout;
 }
 
 export interface LocalSlide {
@@ -256,4 +284,9 @@ export interface LocalPresentation {
   lastModified: number;
   isDirty: boolean;
   settings?: PresentationSettings;
+}
+
+export interface ContentItem {
+  title: string;
+  detail: string;
 }

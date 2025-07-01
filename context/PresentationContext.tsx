@@ -1,130 +1,137 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import {
-  LocalPresentation,
-  LocalSlide,
-  SlideElement,
-} from "@/types/presentation";
+import { Presentation, Slide, Theme, ContentItem } from "@/types/presentation";
+import { ContentLayout } from "@/components/ContentLayoutSelector";
 
-interface PresentationContextType {
-  presentation: LocalPresentation | null;
-  setPresentationFromBackend: (backendData: any) => void;
-  updateSlide: (slideId: string, updates: Partial<LocalSlide>) => void;
+interface PresentationContextValue {
+  presentation: {
+    _id: string;
+    title: string;
+    description: string;
+    chapterId: string;
+    chapterTitle: string;
+    themeId: Theme;
+    defaultLayout: string;
+    aspectRatio: string;
+    author: string;
+    scope: string;
+    isPublic: boolean;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+    slides: Slide[];
+  } | null;
+  isDirty: boolean;
+  setPresentationFromBackend: (data: any) => void;
+  updateSlide: (slideId: string, updates: Partial<Slide>) => void;
   updateSlideElement: (
     slideId: string,
     elementId: string,
-    updates: Partial<SlideElement>
+    updates: {
+      value?: string | ContentItem[];
+      format?: any;
+      contentLayout?: ContentLayout;
+    }
   ) => void;
-  updateSlideLayout: (slideId: string, layoutId: string) => void;
+  updateSlideLayout: (
+    slideId: string,
+    layoutId: string,
+    layoutType: string
+  ) => void;
   updateSlideBackground: (slideId: string, backgroundColor: string) => void;
-  getSerializablePresentation: () => any; // For sending back to backend
-  isDirty: boolean;
+  getSerializablePresentation: () => any;
   markAsSaved: () => void;
 }
 
-const PresentationContext = createContext<PresentationContextType | null>(null);
-
-export const usePresentationContext = () => {
-  const context = useContext(PresentationContext);
-  if (!context) {
-    throw new Error(
-      "usePresentationContext must be used within a PresentationProvider"
-    );
-  }
-  return context;
-};
+const PresentationContext = createContext<PresentationContextValue | undefined>(
+  undefined
+);
 
 export const PresentationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [presentation, setPresentation] = useState<LocalPresentation | null>(
-    null
-  );
+  const [presentation, setPresentation] =
+    useState<PresentationContextValue["presentation"]>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
-  const setPresentationFromBackend = useCallback((backendData: any) => {
-    const localPresentation: LocalPresentation = {
-      _id: backendData._id,
-      title: backendData.title || "Untitled Presentation",
-      description: backendData.description,
-      theme: backendData.theme,
-      slides: backendData.slides.map((slide: any) => ({
-        _id: slide._id,
-        title: slide.title,
-        layout: slide.layout,
-        layoutType: slide.layoutType,
-        elements: slide.elements.map((element: any) => ({
-          ...element,
-          x: element.x ?? 0,
-          y: element.y ?? 0,
-          width: element.width ?? 100,
-          height: element.height ?? 100,
-        })),
-        customStyles: slide.customStyles,
-        order: slide.order,
-      })),
-      lastModified: Date.now(),
-      isDirty: false,
-    };
-    setPresentation(localPresentation);
+  const setPresentationFromBackend = useCallback((data: any) => {
+    setPresentation({
+      ...data.presentation,
+      slides: data.slides,
+    });
   }, []);
 
   const updateSlide = useCallback(
-    (slideId: string, updates: Partial<LocalSlide>) => {
+    (slideId: string, updates: Partial<Slide>) => {
       setPresentation((prev) => {
-        if (!prev) return prev;
+        if (!prev) return null;
         return {
           ...prev,
           slides: prev.slides.map((slide) =>
             slide._id === slideId ? { ...slide, ...updates } : slide
           ),
-          lastModified: Date.now(),
-          isDirty: true,
         };
       });
+      setIsDirty(true);
     },
     []
   );
 
   const updateSlideElement = useCallback(
-    (slideId: string, elementId: string, updates: Partial<SlideElement>) => {
+    (
+      slideId: string,
+      elementId: string,
+      updates: {
+        value?: string | ContentItem[];
+        format?: any;
+        contentLayout?: ContentLayout;
+      }
+    ) => {
       setPresentation((prev) => {
-        if (!prev) return prev;
+        if (!prev) return null;
         return {
           ...prev,
           slides: prev.slides.map((slide) => {
             if (slide._id !== slideId) return slide;
             return {
               ...slide,
-              elements: slide.elements.map((element) =>
-                element._id === elementId ? { ...element, ...updates } : element
-              ),
+              elements: slide.elements.map((element) => {
+                if (element._id !== elementId) return element;
+                return {
+                  ...element,
+                  ...updates,
+                };
+              }),
             };
           }),
-          lastModified: Date.now(),
-          isDirty: true,
         };
       });
+      setIsDirty(true);
     },
     []
   );
 
-  const updateSlideLayout = useCallback((slideId: string, layoutId: string) => {
-    setPresentation((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        slides: prev.slides.map((slide) =>
-          slide._id === slideId ? { ...slide, layout: layoutId } : slide
-        ),
-        lastModified: Date.now(),
-        isDirty: true,
-      };
-    });
-  }, []);
+  const updateSlideLayout = useCallback(
+    (slideId: string, layoutId: string, layoutType: string) => {
+      setPresentation((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          slides: prev.slides.map((slide) =>
+            slide._id === slideId
+              ? { ...slide, layout: layoutId, layoutType }
+              : slide
+          ),
+        };
+      });
+      setIsDirty(true);
+    },
+    []
+  );
 
   const updateSlideBackground = useCallback(
     (slideId: string, backgroundColor: string) => {
       setPresentation((prev) => {
-        if (!prev) return prev;
+        if (!prev) return null;
         return {
           ...prev,
           slides: prev.slides.map((slide) =>
@@ -138,47 +145,65 @@ export const PresentationProvider: React.FC<{ children: React.ReactNode }> = ({
                 }
               : slide
           ),
-          lastModified: Date.now(),
-          isDirty: true,
         };
       });
+      setIsDirty(true);
     },
     []
   );
 
   const getSerializablePresentation = useCallback(() => {
     if (!presentation) return null;
-
-    // Use destructuring to get only the fields we want to send to backend
-    const {
-      lastModified,
-      isDirty,
-      settings,
-      theme,
-      ...presentationForBackend
-    } = presentation;
-    return presentationForBackend;
+    return {
+      presentation: {
+        _id: presentation._id,
+        title: presentation.title,
+        description: presentation.description,
+        chapterId: presentation.chapterId,
+        chapterTitle: presentation.chapterTitle,
+        themeId: presentation.themeId,
+        defaultLayout: presentation.defaultLayout,
+        aspectRatio: presentation.aspectRatio,
+        author: presentation.author,
+        scope: presentation.scope,
+        isPublic: presentation.isPublic,
+        isActive: presentation.isActive,
+        createdAt: presentation.createdAt,
+        updatedAt: presentation.updatedAt,
+      },
+      slides: presentation.slides,
+    };
   }, [presentation]);
 
   const markAsSaved = useCallback(() => {
-    setPresentation((prev) => (prev ? { ...prev, isDirty: false } : prev));
+    setIsDirty(false);
   }, []);
 
   return (
     <PresentationContext.Provider
       value={{
         presentation,
+        isDirty,
         setPresentationFromBackend,
         updateSlide,
         updateSlideElement,
         updateSlideLayout,
         updateSlideBackground,
         getSerializablePresentation,
-        isDirty: presentation?.isDirty || false,
         markAsSaved,
       }}
     >
       {children}
     </PresentationContext.Provider>
   );
+};
+
+export const usePresentationContext = () => {
+  const context = useContext(PresentationContext);
+  if (context === undefined) {
+    throw new Error(
+      "usePresentationContext must be used within a PresentationProvider"
+    );
+  }
+  return context;
 };

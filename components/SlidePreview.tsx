@@ -36,9 +36,9 @@ const getGridCoordinates = (element: LayoutElement) => {
   // Return default grid coordinates if no grid is provided
   return {
     columnStart: 1,
-    columnEnd: 12,
+    columnEnd: 20,
     rowStart: 1,
-    rowEnd: 6,
+    rowEnd: 10,
   };
 };
 
@@ -190,7 +190,7 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
             padding: "20px",
           }}
         >
-          <GridContainer columns={12} rows={6} gap={0} showGrid={false}>
+          <GridContainer columns={20} rows={10} gap={0} showGrid={true}>
             {currentLayout?.elements.map((layoutElement) => {
               const slideElement = slide.elements?.find((el) => {
                 return el.type === layoutElement.type;
@@ -325,7 +325,7 @@ export const MiniSlidePreview: React.FC<{
         transformOrigin: "top left",
       }}
     >
-      <GridContainer columns={12} rows={6} gap={2} showGrid={false}>
+      <GridContainer columns={20} rows={10} gap={2} showGrid={false}>
         {layoutToUse.elements.map((layoutElement) => {
           const slideElement = slide.elements?.find(
             (el) => el.type === layoutElement.type

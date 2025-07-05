@@ -69,7 +69,6 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
   const textStyle = {
     width: "100%",
     height: "100%",
-    marginLeft: isMiniPreview ? "0px" : "20px",
     padding: isMiniPreview ? "4px" : "8px",
     backgroundColor: format.backgroundColor || "transparent",
     color: format.color || "inherit",

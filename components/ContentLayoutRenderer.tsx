@@ -33,7 +33,6 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
           key={index}
           mb={2}
           sx={{
-            backgroundColor: "rgba(49, 130, 206, 0.05)",
             borderRadius: "8px",
             border: "1px solid rgba(49, 130, 206, 0.1)",
             padding: "2px",
@@ -54,7 +53,6 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
               border: "none",
               outline: "none",
               fontSize: "20px",
-              backgroundColor: "transparent",
               color: "#8B4513",
             }}
           />

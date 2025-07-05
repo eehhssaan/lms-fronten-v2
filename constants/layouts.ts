@@ -11,7 +11,7 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
         type: "title",
         grid: {
           columnStart: 1,
-          columnEnd: 13,
+          columnEnd: 21,
           rowStart: 1,
           rowEnd: 2,
         },
@@ -23,9 +23,9 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
         type: "content",
         grid: {
           columnStart: 1,
-          columnEnd: 13,
+          columnEnd: 21,
           rowStart: 2,
-          rowEnd: 7,
+          rowEnd: 11,
         },
         format: {},
         placeholder: "Click to add content",
@@ -43,10 +43,9 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
     elements: [
       {
         type: "title",
-
         grid: {
           columnStart: 1,
-          columnEnd: 13,
+          columnEnd: 21,
           rowStart: 1,
           rowEnd: 2,
         },
@@ -59,9 +58,9 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
 
         grid: {
           columnStart: 1,
-          columnEnd: 13,
+          columnEnd: 21,
           rowStart: 2,
-          rowEnd: 5,
+          rowEnd: 9,
         },
         format: {},
         placeholder: "Click to add content",
@@ -73,8 +72,8 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
         grid: {
           columnStart: 5,
           columnEnd: 9,
-          rowStart: 5,
-          rowEnd: 7,
+          rowStart: 9,
+          rowEnd: 11,
         },
         format: {},
         placeholder: "Click to add image",
@@ -94,9 +93,9 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
 
         grid: {
           columnStart: 1,
-          columnEnd: 13,
+          columnEnd: 21,
           rowStart: 1,
-          rowEnd: 7,
+          rowEnd: 11,
         },
         format: {},
         placeholder: "Click to add content",
@@ -115,7 +114,7 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
         type: "title",
         grid: {
           columnStart: 1,
-          columnEnd: 13,
+          columnEnd: 21,
           rowStart: 1,
           rowEnd: 2,
         },
@@ -126,10 +125,10 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
       {
         type: "content",
         grid: {
-          columnStart: 5,
-          columnEnd: 13,
+          columnStart: 8,
+          columnEnd: 21,
           rowStart: 2,
-          rowEnd: 7,
+          rowEnd: 11,
         },
         format: {},
         placeholder: "Click to add content",
@@ -139,9 +138,9 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
         type: "image",
         grid: {
           columnStart: 1,
-          columnEnd: 5,
+          columnEnd: 8,
           rowStart: 2,
-          rowEnd: 7,
+          rowEnd: 11,
         },
         format: {},
         placeholder: "Click to add image",
@@ -160,7 +159,7 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
         type: "title",
         grid: {
           columnStart: 1,
-          columnEnd: 13,
+          columnEnd: 21,
           rowStart: 1,
           rowEnd: 2,
         },
@@ -172,9 +171,9 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
         type: "content",
         grid: {
           columnStart: 1,
-          columnEnd: 8,
+          columnEnd: 14,
           rowStart: 2,
-          rowEnd: 7,
+          rowEnd: 11,
         },
         format: {},
         placeholder: "Click to add content",
@@ -183,10 +182,10 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
       {
         type: "image",
         grid: {
-          columnStart: 8,
-          columnEnd: 13,
+          columnStart: 14,
+          columnEnd: 21,
           rowStart: 2,
-          rowEnd: 7,
+          rowEnd: 11,
         },
         format: {},
         placeholder: "Click to add image",
@@ -206,7 +205,7 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
 
         grid: {
           columnStart: 1,
-          columnEnd: 13,
+          columnEnd: 21,
           rowStart: 1,
           rowEnd: 2,
         },
@@ -219,9 +218,9 @@ export const DEFAULT_LAYOUTS: Record<string, Layout> = {
 
         grid: {
           columnStart: 1,
-          columnEnd: 13,
+          columnEnd: 21,
           rowStart: 2,
-          rowEnd: 7,
+          rowEnd: 11,
         },
         format: {},
         placeholder: "Click to add image",

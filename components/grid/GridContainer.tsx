@@ -12,8 +12,8 @@ interface GridContainerProps {
 
 const GridContainer: React.FC<GridContainerProps> = ({
   children,
-  columns = 12,
-  rows = 6,
+  columns = 20,
+  rows = 10,
   gap = 8,
   style,
   showGrid = true,

@@ -160,7 +160,7 @@ const PresentationPreview: React.FC<PresentationPreviewProps> = ({
       {/* Left side - Thumbnails */}
       <Box
         sx={{
-          width: "15%",
+          width: "17%",
           backgroundColor: "white",
           borderRight: "1px solid #e2e8f0",
           overflowY: "auto",

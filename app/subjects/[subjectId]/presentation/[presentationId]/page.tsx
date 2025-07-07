@@ -173,7 +173,7 @@ export default function PresentationDetailPage() {
                   type: "content",
                   value: [
                     {
-                      title: "Basic Elements",
+                      title: "Basic Elements Basic ElementsBasic Elements",
                       detail:
                         "The fundamental elements of geometry are points, lines, and planes.",
                     },

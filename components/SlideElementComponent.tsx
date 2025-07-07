@@ -69,14 +69,14 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
   const textStyle = {
     width: "100%",
     height: "100%",
-    padding: isMiniPreview ? "4px" : "8px",
+    padding: isMiniPreview ? "1px" : "8px",
     backgroundColor: format.backgroundColor || "transparent",
-    color: format.color || "inherit",
+    color: format.color || "#8B4513",
     fontFamily: format.fontFamily || "inherit",
     fontSize: isMiniPreview
       ? element.type === "title"
-        ? "16px"
-        : "11px"
+        ? "11px"
+        : "7px"
       : format.fontSize || "inherit",
     fontWeight: element.type === "title" || format.bold ? "bold" : "normal",
     fontStyle: format.italic ? "italic" : "normal",
@@ -91,10 +91,10 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
     ...(isMiniPreview && {
       whiteSpace: element.type === "title" ? "nowrap" : "normal",
       display: "-webkit-box",
-      WebkitLineClamp: element.type === "title" ? "2" : "4",
+      WebkitLineClamp: element.type === "title" ? "1" : "2",
       WebkitBoxOrient: "vertical" as const,
-      lineHeight: element.type === "title" ? "1.3" : "1.4",
-      maxHeight: element.type === "content" ? "95%" : undefined,
+      lineHeight: element.type === "title" ? "1.1" : "1.2",
+      maxHeight: element.type === "content" ? "80%" : undefined,
       opacity: 1,
     }),
   };
@@ -144,12 +144,12 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
         onDoubleClick={handleDoubleClick}
         sx={{
           ...getPositionStyles(),
-          color: format.color || "inherit",
+          color: format.color || "#8B4513",
           fontFamily: format.fontFamily || "inherit",
           fontSize: isMiniPreview
             ? element.type === "title"
-              ? "16px"
-              : "11px"
+              ? "11px"
+              : "7px"
             : format.fontSize || "inherit",
           fontWeight: format.bold ? "bold" : "normal",
           fontStyle: format.italic ? "italic" : "normal",
@@ -171,10 +171,10 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
           ...(isMiniPreview && {
             textOverflow: "ellipsis",
             display: element.type === "content" ? "-webkit-box" : "-webkit-box",
-            WebkitLineClamp: element.type === "title" ? "2" : "4",
+            WebkitLineClamp: element.type === "title" ? "1" : "2",
             WebkitBoxOrient: "vertical" as const,
-            maxHeight: element.type === "content" ? "95%" : undefined,
-            padding: "4px",
+            maxHeight: element.type === "content" ? "80%" : undefined,
+            padding: "1px",
           }),
         }}
       >
@@ -193,6 +193,7 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
                 onChange(element.type, newItems);
               }
             }}
+            isMiniPreview={isMiniPreview}
           />
         ) : element.type === "image" ? (
           <img
@@ -201,7 +202,9 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
             style={{
               width: "100%",
               height: "100%",
-              objectFit: "contain",
+              objectFit: isMiniPreview ? "cover" : "contain",
+              objectPosition: "center",
+              maxHeight: isMiniPreview ? "80%" : "100%",
             }}
           />
         ) : (

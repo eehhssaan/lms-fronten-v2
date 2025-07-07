@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Text } from "rebass";
 import TextFormatToolbar from "./TextFormatToolbar";
 import {
@@ -12,9 +12,11 @@ import {
 } from "../types/presentation";
 import { ContentLayout } from "./ContentLayoutSelector";
 import SlideElementComponent from "./SlideElementComponent";
-import LayoutSelector from "./LayoutSelector";
+import { LayoutSelector } from "./LayoutSelector";
 import GridContainer from "./grid/GridContainer";
 import GridItem from "./grid/GridItem";
+import { useLayouts } from "@/context/LayoutsContext";
+import { MdOutlinePhotoSizeSelectLarge } from "react-icons/md";
 
 interface SlidePreviewProps {
   slide: Slide & {
@@ -52,9 +54,15 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
   const [selectedElement, setSelectedElement] = useState<SlideElement | null>(
     null
   );
-
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
   const [showLayoutSelector, setShowLayoutSelector] = useState(false);
+  const { layouts } = useLayouts();
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Current layout:", currentLayout);
+    console.log("Available layouts:", layouts);
+  }, [currentLayout, layouts]);
 
   const handleElementClick = (element: SlideElement) => {
     setSelectedElement(element);
@@ -95,12 +103,18 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
     });
   };
 
-  const handleLayoutSelect = (layoutId: string, layoutType: SlideLayout) => {
-    onLayoutChange?.(layoutId);
-    onSlideChange({
-      layout: layoutId,
-      layoutType: layoutType,
-    });
+  const handleLayoutSelect = (layoutId: string) => {
+    console.log("Layout selected:", layoutId);
+    const selectedLayout = layouts[layoutId];
+    console.log("Selected layout details:", selectedLayout);
+
+    if (selectedLayout) {
+      onLayoutChange?.(layoutId);
+      onSlideChange({
+        layout: layoutId,
+        layoutType: selectedLayout.type,
+      });
+    }
     setShowLayoutSelector(false);
   };
 
@@ -136,12 +150,12 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
           }}
         />
       )}
-      {showLayoutSelector && (
-        <LayoutSelector
-          onLayoutSelect={handleLayoutSelect}
-          currentLayout={currentLayout?._id || ""}
-        />
-      )}
+      <LayoutSelector
+        isOpen={showLayoutSelector}
+        onClose={() => setShowLayoutSelector(false)}
+        onLayoutChange={handleLayoutSelect}
+        currentLayout={currentLayout?._id || ""}
+      />
 
       <Box
         onClick={() => {
@@ -151,7 +165,7 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
         sx={{
           position: "relative",
           width: "100%",
-          minHeight: "100vh",
+          // minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -161,6 +175,7 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
         <button
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
+            console.log("Opening layout selector");
             setShowLayoutSelector(true);
           }}
           style={{
@@ -171,8 +186,13 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
             borderRadius: "4px",
             backgroundColor: "#0070f3",
             color: "white",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
           }}
         >
+          <MdOutlinePhotoSizeSelectLarge size={20} />
           Image Position
         </button>
 
@@ -190,7 +210,7 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
             padding: "20px",
           }}
         >
-          <GridContainer columns={20} rows={10} gap={0} showGrid={true}>
+          <GridContainer columns={20} rows={10} gap={0} showGrid={false}>
             {currentLayout?.elements.map((layoutElement) => {
               const slideElement = slide.elements?.find((el) => {
                 return el.type === layoutElement.type;
@@ -292,9 +312,9 @@ export const MiniSlidePreview: React.FC<{
   const layoutToUse = layouts[getLayoutId(slide)];
 
   // Scale factor for thumbnail size (16:9 aspect ratio)
-  const SCALE_FACTOR = 0.15; // Increased from 0.125 to 0.15 for better visibility
-  const MINI_WIDTH = Math.floor(1920 * SCALE_FACTOR); // ~288px
-  const MINI_HEIGHT = Math.floor(1080 * SCALE_FACTOR); // ~162px
+  const SCALE_FACTOR = 0.14; // Reduced from 0.16
+  const MINI_WIDTH = Math.floor(1920 * SCALE_FACTOR); // ~269px
+  const MINI_HEIGHT = Math.floor(1080 * SCALE_FACTOR); // ~151px
 
   if (!layoutToUse) {
     return (
@@ -316,16 +336,16 @@ export const MiniSlidePreview: React.FC<{
         border: isSelected ? "2px solid #3182ce" : "1px solid #e2e8f0",
         borderRadius: "4px",
         overflow: "hidden",
-        padding: "8px", // Increased from 4px for better content spacing
+        padding: "12px", // Reduced from 16px
         cursor: "pointer",
         boxShadow: isSelected
           ? "0 0 0 2px rgba(49, 130, 206, 0.3)"
           : "0 1px 2px rgba(0,0,0,0.05)",
-        transform: "scale(0.9)", // Added to give some breathing room
+        transform: "scale(0.98)", // Increased from 0.95 for better fit
         transformOrigin: "top left",
       }}
     >
-      <GridContainer columns={20} rows={10} gap={2} showGrid={false}>
+      <GridContainer columns={20} rows={10} gap={0} showGrid={false}>
         {layoutToUse.elements.map((layoutElement) => {
           const slideElement = slide.elements?.find(
             (el) => el.type === layoutElement.type
@@ -340,7 +360,7 @@ export const MiniSlidePreview: React.FC<{
             value: slideElement?.value || "",
             format: slideElement?.format || {},
             contentLayout: slideElement?.contentLayout,
-            gridPosition: gridCoords,
+            gridPosition: gridCoords, // Added missing gridPosition
           };
 
           return (

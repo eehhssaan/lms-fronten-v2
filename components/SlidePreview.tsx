@@ -27,6 +27,7 @@ interface SlidePreviewProps {
   onLayoutChange?: (layoutId: string) => void;
   onBackgroundChange?: (backgroundColor: string) => void;
   currentLayout?: Layout;
+  readOnly?: boolean;
 }
 
 // Convert absolute coordinates to grid coordinates if not provided
@@ -50,6 +51,7 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
   onElementChange,
   onLayoutChange,
   currentLayout,
+  readOnly = false,
 }) => {
   const [selectedElement, setSelectedElement] = useState<SlideElement | null>(
     null
@@ -65,6 +67,7 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
   }, [currentLayout, layouts]);
 
   const handleElementClick = (element: SlideElement) => {
+    if (readOnly) return;
     setSelectedElement(element);
     setShowFormatToolbar(true);
   };
@@ -140,15 +143,19 @@ const SlidePreview: React.FC<SlidePreviewProps> = ({
 
   return (
     <>
-      {showFormatToolbar && selectedElement && (
-        <TextFormatToolbar
-          format={selectedElement.format}
-          onChange={handleFormatChange}
-          onClose={() => {
-            setShowFormatToolbar(false);
-            setSelectedElement(null);
-          }}
-        />
+      {showFormatToolbar && selectedElement && !readOnly && (
+        <>
+          {" "}
+          {console.log("hhiiii")}
+          <TextFormatToolbar
+            format={selectedElement.format}
+            onChange={handleFormatChange}
+            onClose={() => {
+              setShowFormatToolbar(false);
+              setSelectedElement(null);
+            }}
+          />
+        </>
       )}
       <LayoutSelector
         isOpen={showLayoutSelector}

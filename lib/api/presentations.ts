@@ -6,6 +6,7 @@ import {
   CreateThemeDto,
   UpdateThemeDto,
   Layout,
+  PresentationDraftResponse,
 } from "../../types/presentation";
 
 interface LayoutResponse {
@@ -243,3 +244,92 @@ export const updateSlideElementPosition = async (
     );
   }
 };
+
+interface GeneratePresentationDraftParams {
+  chapter: string;
+  numSlides: number;
+  language?: string;
+  themeId?: string;
+  scope: "subject" | "course";
+  courseId?: string;
+}
+
+export async function generatePresentationDraft(
+  params: GeneratePresentationDraftParams
+): Promise<PresentationDraftResponse> {
+  const response = await fetch("/api/v1/presentations/drafts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to generate presentation draft");
+  }
+
+  return response.json();
+}
+
+export async function getPresentationDraft(
+  draftId: string
+): Promise<PresentationDraftResponse> {
+  const response = await fetch(`/api/v1/presentations/drafts/${draftId}`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch presentation draft");
+  }
+
+  return response.json();
+}
+
+export async function updatePresentationDraft(
+  draftId: string,
+  params: Partial<GeneratePresentationDraftParams>
+): Promise<PresentationDraftResponse> {
+  const response = await fetch(`/api/v1/presentations/drafts/${draftId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update presentation draft");
+  }
+
+  return response.json();
+}
+
+export async function deletePresentationDraft(
+  draftId: string
+): Promise<{ success: boolean }> {
+  const response = await fetch(`/api/v1/presentations/drafts/${draftId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete presentation draft");
+  }
+
+  return response.json();
+}
+
+export async function generateFinalPresentation(
+  draftId: string
+): Promise<{ success: boolean; url: string }> {
+  const response = await fetch(
+    `/api/v1/presentations/drafts/${draftId}/generate`,
+    {
+      method: "POST",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to generate final presentation");
+  }
+
+  return response.json();
+}

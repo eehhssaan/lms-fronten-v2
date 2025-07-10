@@ -1,37 +1,26 @@
 import React, { useState } from "react";
 import { Box, Text, Flex } from "rebass";
 import SlideEditModal from "./SlideEditModal";
-
-interface DraftSlide {
-  slideNumber: number;
-  title: string;
-  bulletPoints: string[];
-  type: "title" | "content" | "section";
-}
-
-interface DraftContent {
-  id: string;
-  topic: string;
-  numSlides: number;
-  content: DraftSlide[];
-  status: "generating" | "complete" | "error";
-  progress: number;
-}
+import {
+  PresentationDraft,
+  PresentationDraftSlide,
+} from "../types/presentation";
 
 interface DraftPreviewProps {
-  content: DraftContent;
-  onEdit?: (slideNumber: number, updatedSlide: DraftSlide) => void;
+  draft: PresentationDraft;
+  onEdit?: (slideNumber: number, updatedSlide: PresentationDraftSlide) => void;
   onGenerateFinal?: () => void;
 }
 
 const DraftPreview: React.FC<DraftPreviewProps> = ({
-  content,
+  draft,
   onEdit,
   onGenerateFinal,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedSlide, setSelectedSlide] = useState<DraftSlide | null>(null);
-  const { status, progress, content: slides } = content;
+  const [selectedSlide, setSelectedSlide] =
+    useState<PresentationDraftSlide | null>(null);
+  const { status, progress, content: slides } = draft;
 
   const handleGenerateFinal = async () => {
     if (!onGenerateFinal) return;
@@ -43,13 +32,13 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
     }
   };
 
-  const handleSlideClick = (slide: DraftSlide) => {
+  const handleSlideClick = (slide: PresentationDraftSlide) => {
     if (onEdit) {
       setSelectedSlide(slide);
     }
   };
 
-  const handleSaveSlide = (updatedSlide: DraftSlide) => {
+  const handleSaveSlide = (updatedSlide: PresentationDraftSlide) => {
     if (onEdit) {
       onEdit(updatedSlide.slideNumber, updatedSlide);
     }
@@ -116,7 +105,7 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
     <Box>
       <Flex justifyContent="space-between" alignItems="center" mb={4}>
         <Text fontSize={3} fontWeight="bold">
-          Preview: {content.topic}
+          Preview: {draft.chapter}
         </Text>
         <button
           onClick={handleGenerateFinal}
@@ -146,7 +135,7 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
       >
         {slides.map((slide) => (
           <Box
-            key={slide.slideNumber}
+            key={slide._id}
             sx={{
               backgroundColor: "white",
               padding: "20px",
@@ -177,10 +166,29 @@ const DraftPreview: React.FC<DraftPreviewProps> = ({
 
             {slide.bulletPoints.length > 0 && (
               <Box as="ul" sx={{ paddingLeft: "20px", margin: 0 }}>
-                {slide.bulletPoints.map((point, index) => (
-                  <Text as="li" key={index} mb={2}>
-                    {point}
-                  </Text>
+                {slide.bulletPoints.map((point) => (
+                  <Box key={point._id} as="li" mb={2}>
+                    <Text fontWeight="bold">{point.title}</Text>
+                    {point.description && (
+                      <Text mt={1} color="gray.600">
+                        {point.description}
+                      </Text>
+                    )}
+                    {point.subPoints.length > 0 && (
+                      <Box as="ul" mt={2} sx={{ paddingLeft: "20px" }}>
+                        {point.subPoints.map((subPoint) => (
+                          <Box key={subPoint._id} as="li" mb={1}>
+                            <Text fontWeight="bold">{subPoint.title}</Text>
+                            {subPoint.description && (
+                              <Text mt={1} color="gray.600">
+                                {subPoint.description}
+                              </Text>
+                            )}
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
                 ))}
               </Box>
             )}

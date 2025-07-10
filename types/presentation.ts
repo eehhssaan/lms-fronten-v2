@@ -290,3 +290,45 @@ export interface ContentItem {
   title: string;
   detail: string;
 }
+
+export interface PresentationDraftSubPoint {
+  title: string;
+  description?: string;
+  _id: string;
+}
+
+export interface PresentationDraftBulletPoint {
+  title: string;
+  description?: string;
+  _id: string;
+  subPoints: PresentationDraftSubPoint[];
+}
+
+export interface PresentationDraftSlide {
+  slideNumber: number;
+  title: string;
+  bulletPoints: PresentationDraftBulletPoint[];
+  type: "title" | "content" | "section";
+  _id: string;
+}
+
+export interface PresentationDraft {
+  _id: string;
+  chapter: string;
+  numSlides: number;
+  language: string;
+  themeId: string;
+  scope: "subject" | "course";
+  status: "generating" | "complete" | "error";
+  progress: number;
+  userId: string;
+  content: PresentationDraftSlide[];
+  createdAt: string;
+  updatedAt: string;
+  courseId?: string;
+}
+
+export interface PresentationDraftResponse {
+  success: boolean;
+  data: PresentationDraft;
+}

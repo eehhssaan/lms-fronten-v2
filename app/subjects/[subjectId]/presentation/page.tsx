@@ -172,27 +172,28 @@ function PresentationGenerator() {
 
     setLoading(true);
     try {
-      // Convert the draft content to the expected format
+      // Convert the draft content to a more concise format
       const formattedDraftContent = draftContent.content.map((slide) => ({
         slideNumber: slide.slideNumber,
         title: slide.title,
         type: slide.type,
-        bulletPoints: slide.bulletPoints.map(
-          (point) =>
-            point.title +
-            (point.description ? `: ${point.description}` : "") +
-            (point.subPoints.length > 0
-              ? "\n" +
-                point.subPoints
-                  .map(
-                    (sub) =>
-                      `  - ${sub.title}${
-                        sub.description ? `: ${sub.description}` : ""
-                      }`
-                  )
-                  .join("\n")
-              : "")
-        ),
+        bulletPoints: slide.bulletPoints.map((point) => {
+          let text = point.title;
+          if (point.description) text += `: ${point.description}`;
+          if (point.subPoints.length > 0) {
+            text +=
+              " | Subpoints: " +
+              point.subPoints
+                .map(
+                  (sub) =>
+                    `${sub.title}${
+                      sub.description ? `: ${sub.description}` : ""
+                    }`
+                )
+                .join("; ");
+          }
+          return text;
+        }),
       }));
 
       const response = await generateLLMContent({
@@ -289,7 +290,7 @@ function PresentationGenerator() {
             value={numberOfSlides}
             onChange={(e) => setNumberOfSlides(parseInt(e.target.value, 10))}
             min={1}
-            max={20}
+            max={50}
             style={{
               width: "100%",
               padding: "8px",

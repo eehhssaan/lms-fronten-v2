@@ -106,7 +106,6 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
               border: "none",
               outline: "none",
               fontSize: isMiniPreview ? "7px" : "20px",
-              color: "#8B4513",
             }}
           />
           <AutoScalingContent
@@ -117,7 +116,6 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
               border: "none",
               outline: "none",
               resize: "none",
-              color: "#8B4513",
               lineHeight: isMiniPreview ? "1.1" : "1.5",
               padding: isMiniPreview ? "1px" : "2px",
             }}
@@ -292,7 +290,6 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 outline: "none",
                 fontSize: isMiniPreview ? "7px" : "20px",
                 backgroundColor: "transparent",
-                color: "#8B4513",
                 marginBottom: isMiniPreview ? "1px" : "2px",
                 textAlign: "left",
               }}
@@ -306,7 +303,6 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 outline: "none",
                 resize: "none",
                 backgroundColor: "transparent",
-                color: "#8B4513",
                 lineHeight: isMiniPreview ? "1.1" : "1.5",
                 padding: isMiniPreview ? "1px" : "4px",
                 textAlign: "left",
@@ -365,7 +361,6 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 outline: "none",
                 fontSize: isMiniPreview ? "7px" : "20px",
                 backgroundColor: "transparent",
-                color: "#8B4513",
                 marginBottom: isMiniPreview ? "1px" : "2px",
                 textAlign: "left",
               }}
@@ -379,7 +374,6 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 outline: "none",
                 resize: "none",
                 backgroundColor: "transparent",
-                color: "#8B4513",
                 lineHeight: isMiniPreview ? "1.1" : "1.5",
                 padding: isMiniPreview ? "1px" : "4px",
                 textAlign: "left",

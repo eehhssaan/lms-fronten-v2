@@ -295,19 +295,29 @@ export interface PaginatedResponse<T> {
   data: T[];
 }
 
+export interface BulletPoint {
+  title: string;
+  description?: string;
+  order: number;
+}
+
+export interface Subtopic {
+  title: string;
+  description?: string;
+  order: number;
+  bulletPoints: BulletPoint[];
+}
+
 export interface Chapter {
   _id: string;
   title: string;
   description?: string;
   order: number;
-  isActive: boolean;
   subject: string;
-  createdBy: {
-    _id: string;
-    name: string;
-  };
-  createdAt: string;
-  updatedAt: string;
+  subtopics: Subtopic[];
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Presentation types

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Box, Heading, Text, Flex } from "rebass";
 import Button from "@/components/Button";
-import { Chapter } from "@/types";
+import { Chapter, Subtopic, BulletPoint } from "@/types";
 import { Presentation } from "@/types/presentation";
 import ErrorMessage from "@/components/ErrorMessage";
 import Loading from "@/components/Loading";
@@ -18,12 +18,25 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
+// Add new interfaces for expanded state tracking
+interface ExpandedState {
+  [key: string]: {
+    chapter: boolean;
+    subtopics: { [key: string]: boolean };
+  };
+}
+
 interface ChapterManagerProps {
   subjectId: string;
   chapters: Chapter[];
   onChaptersUpdated: () => void;
   canManage?: boolean;
   onCreateContent?: (chapterId: string) => void;
+}
+
+interface SubtopicFormData extends Omit<Subtopic, "bulletPoints"> {
+  bulletPoints: (BulletPoint & { id: string })[];
+  id: string;
 }
 
 export default function ChapterManager({
@@ -42,6 +55,7 @@ export default function ChapterManager({
   const [description, setDescription] = useState("");
   const [order, setOrder] = useState(1);
   const [isActive, setIsActive] = useState(true);
+  const [subtopics, setSubtopics] = useState<SubtopicFormData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +65,37 @@ export default function ChapterManager({
   >({});
   const [loadingPresentations, setLoadingPresentations] = useState(false);
   const router = useRouter();
+
+  // Add new state for active chapter and tab
+  const [activeChapter, setActiveChapter] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"content" | "presentations">(
+    "content"
+  );
+
+  // Set first chapter as active when chapters change
+  useEffect(() => {
+    if (chapters.length > 0 && !activeChapter) {
+      setActiveChapter(chapters[0]._id);
+    }
+  }, [chapters]);
+
+  // Add new state for tracking expanded sections
+  const [expanded, setExpanded] = useState<ExpandedState>({});
+
+  // Initialize expanded state when chapters change
+  useEffect(() => {
+    const newExpanded: ExpandedState = {};
+    chapters.forEach((chapter) => {
+      newExpanded[chapter._id] = {
+        chapter: false,
+        subtopics: {},
+      };
+      chapter.subtopics.forEach((subtopic) => {
+        newExpanded[chapter._id].subtopics[subtopic.title] = false;
+      });
+    });
+    setExpanded(newExpanded);
+  }, [chapters]);
 
   // Fetch presentations for each chapter
   useEffect(() => {
@@ -93,6 +138,7 @@ export default function ChapterManager({
     setDescription("");
     setOrder(1);
     setIsActive(true);
+    setSubtopics([]);
     setError(null);
   };
 
@@ -102,6 +148,101 @@ export default function ChapterManager({
     setDescription(chapter.description || "");
     setOrder(chapter.order);
     setIsActive(chapter.isActive);
+    setSubtopics(
+      chapter.subtopics.map((subtopic) => ({
+        ...subtopic,
+        id: Math.random().toString(36).substr(2, 9),
+        bulletPoints: subtopic.bulletPoints.map((bp) => ({
+          ...bp,
+          id: Math.random().toString(36).substr(2, 9),
+        })),
+      }))
+    );
+  };
+
+  const addSubtopic = () => {
+    setSubtopics([
+      ...subtopics,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        title: "",
+        description: "",
+        order: subtopics.length + 1,
+        bulletPoints: [],
+      },
+    ]);
+  };
+
+  const removeSubtopic = (subtopicId: string) => {
+    setSubtopics(subtopics.filter((st) => st.id !== subtopicId));
+  };
+
+  const updateSubtopic = (
+    subtopicId: string,
+    field: keyof Subtopic,
+    value: string | number
+  ) => {
+    setSubtopics(
+      subtopics.map((st) =>
+        st.id === subtopicId ? { ...st, [field]: value } : st
+      )
+    );
+  };
+
+  const addBulletPoint = (subtopicId: string) => {
+    setSubtopics(
+      subtopics.map((st) =>
+        st.id === subtopicId
+          ? {
+              ...st,
+              bulletPoints: [
+                ...st.bulletPoints,
+                {
+                  id: Math.random().toString(36).substr(2, 9),
+                  title: "",
+                  description: "",
+                  order: st.bulletPoints.length + 1,
+                },
+              ],
+            }
+          : st
+      )
+    );
+  };
+
+  const removeBulletPoint = (subtopicId: string, bulletPointId: string) => {
+    setSubtopics(
+      subtopics.map((st) =>
+        st.id === subtopicId
+          ? {
+              ...st,
+              bulletPoints: st.bulletPoints.filter(
+                (bp) => bp.id !== bulletPointId
+              ),
+            }
+          : st
+      )
+    );
+  };
+
+  const updateBulletPoint = (
+    subtopicId: string,
+    bulletPointId: string,
+    field: keyof BulletPoint,
+    value: string | number
+  ) => {
+    setSubtopics(
+      subtopics.map((st) =>
+        st.id === subtopicId
+          ? {
+              ...st,
+              bulletPoints: st.bulletPoints.map((bp) =>
+                bp.id === bulletPointId ? { ...bp, [field]: value } : bp
+              ),
+            }
+          : st
+      )
+    );
   };
 
   const handleCancelEdit = () => {
@@ -121,6 +262,10 @@ export default function ChapterManager({
         description,
         order,
         isActive,
+        subtopics: subtopics.map(({ id, ...st }) => ({
+          ...st,
+          bulletPoints: st.bulletPoints.map(({ id, ...bp }) => bp),
+        })),
       };
 
       if (isEditing) {
@@ -149,6 +294,10 @@ export default function ChapterManager({
       description,
       order,
       isActive,
+      subtopics: subtopics.map(({ id, ...st }) => ({
+        ...st,
+        bulletPoints: st.bulletPoints.map(({ id, ...bp }) => bp),
+      })),
     };
 
     setIsSubmitting(true);
@@ -209,14 +358,23 @@ export default function ChapterManager({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check file extension
+    const fileExtension = file.name.split(".").pop()?.toLowerCase();
+    if (fileExtension !== "csv" && fileExtension !== "xlsx") {
+      toast.error("Please upload a CSV or Excel file");
+      return;
+    }
+
     setUploading(true);
     setError(null);
 
     try {
       await bulkUploadChapters(subjectId, file);
+      toast.success("Chapters uploaded successfully");
       onChaptersUpdated();
     } catch (err: any) {
       setError(err.message || "Failed to upload chapters");
+      toast.error(err.message || "Failed to upload chapters");
     } finally {
       setUploading(false);
     }
@@ -228,13 +386,15 @@ export default function ChapterManager({
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "chapter_template.xlsx";
+      a.download = "chapter_template.csv"; // Changed to .csv
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      toast.success("Template downloaded successfully");
     } catch (err: any) {
       setError(err.message || "Failed to download template");
+      toast.error(err.message || "Failed to download template");
     }
   };
 
@@ -271,50 +431,75 @@ export default function ChapterManager({
     }
   };
 
+  const toggleChapter = (chapterId: string) => {
+    setExpanded((prev) => ({
+      ...prev,
+      [chapterId]: {
+        ...prev[chapterId],
+        chapter: !prev[chapterId]?.chapter,
+      },
+    }));
+  };
+
+  const toggleSubtopic = (chapterId: string, subtopicTitle: string) => {
+    setExpanded((prev) => ({
+      ...prev,
+      [chapterId]: {
+        ...prev[chapterId],
+        subtopics: {
+          ...prev[chapterId]?.subtopics,
+          [subtopicTitle]: !prev[chapterId]?.subtopics[subtopicTitle],
+        },
+      },
+    }));
+  };
+
+  const activeChapterData = chapters.find((c) => c._id === activeChapter);
+
   return (
     <Box>
-      <Flex justifyContent="space-between" alignItems="center" mb={3}>
-        {canManage && (
-          <Flex gap={2}>
+      {/* Top Actions Bar */}
+      <Flex justifyContent="space-between" alignItems="center" mb={4}>
+        <Flex gap={2}>
+          <Button
+            onClick={handleDownloadTemplate}
+            variant="secondary"
+            size="small"
+          >
+            Download CSV Template
+          </Button>
+          <label>
             <Button
-              onClick={handleDownloadTemplate}
+              as="span"
               variant="secondary"
               size="small"
+              disabled={uploading}
             >
-              Download Template
+              {uploading ? "Uploading..." : "Upload CSV/Excel"}
             </Button>
-            <label>
-              <Button
-                as="span"
-                variant="secondary"
-                size="small"
-                disabled={uploading}
-              >
-                {uploading ? "Uploading..." : "Bulk Upload"}
-              </Button>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleBulkUpload}
-                style={{ display: "none" }}
-              />
-            </label>
-            {!isAdding && !isEditing && (
-              <Button
-                onClick={() => setIsAdding(true)}
-                variant="primary"
-                size="small"
-              >
-                Add Chapter
-              </Button>
-            )}
-          </Flex>
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleBulkUpload}
+              style={{ display: "none" }}
+            />
+          </label>
+        </Flex>
+        {canManage && !isAdding && !isEditing && (
+          <Button
+            onClick={() => setIsAdding(true)}
+            variant="primary"
+            size="small"
+          >
+            Add Chapter
+          </Button>
         )}
       </Flex>
 
       {error && <ErrorMessage message={error} />}
       {deleteError && <ErrorMessage message={deleteError} />}
 
+      {/* Form Section */}
       {canManage && (isAdding || isEditing) && (
         <Box
           className="card"
@@ -387,6 +572,152 @@ export default function ChapterManager({
               </label>
             </Box>
 
+            <Box mb={4}>
+              <Heading as="h5" fontSize={1} mb={2}>
+                Subtopics
+              </Heading>
+              {subtopics.map((subtopic) => (
+                <Box key={subtopic.id} mb={3}>
+                  <Flex
+                    justifyContent="space-between"
+                    alignItems="center"
+                    mb={2}
+                  >
+                    <Heading as="h6" fontSize={1}>
+                      Subtopic {subtopic.order}
+                    </Heading>
+                    <Button
+                      onClick={() => removeSubtopic(subtopic.id)}
+                      variant="danger"
+                      size="small"
+                    >
+                      Remove Subtopic
+                    </Button>
+                  </Flex>
+                  <Box mb={2}>
+                    <Text as="label" display="block" mb={1} fontWeight="bold">
+                      Title{" "}
+                      <Text as="span" color="red">
+                        *
+                      </Text>
+                    </Text>
+                    <input
+                      type="text"
+                      value={subtopic.title}
+                      onChange={(e) =>
+                        updateSubtopic(subtopic.id, "title", e.target.value)
+                      }
+                      required
+                      className="form-control"
+                    />
+                  </Box>
+                  <Box mb={2}>
+                    <Text as="label" display="block" mb={1} fontWeight="bold">
+                      Description
+                    </Text>
+                    <textarea
+                      value={subtopic.description}
+                      onChange={(e) =>
+                        updateSubtopic(
+                          subtopic.id,
+                          "description",
+                          e.target.value
+                        )
+                      }
+                      className="form-control"
+                      rows={2}
+                    />
+                  </Box>
+                  <Box mb={2}>
+                    <Heading as="h6" fontSize={1} mb={1}>
+                      Bullet Points
+                    </Heading>
+                    {subtopic.bulletPoints.map((bulletPoint) => (
+                      <Box key={bulletPoint.id} mb={1}>
+                        <Flex
+                          justifyContent="space-between"
+                          alignItems="center"
+                        >
+                          <Heading as="h6" fontSize={1}>
+                            Bullet Point {bulletPoint.order}
+                          </Heading>
+                          <Button
+                            onClick={() =>
+                              removeBulletPoint(subtopic.id, bulletPoint.id)
+                            }
+                            variant="danger"
+                            size="small"
+                          >
+                            Remove Bullet Point
+                          </Button>
+                        </Flex>
+                        <Box mb={1}>
+                          <Text
+                            as="label"
+                            display="block"
+                            mb={1}
+                            fontWeight="bold"
+                          >
+                            Title{" "}
+                            <Text as="span" color="red">
+                              *
+                            </Text>
+                          </Text>
+                          <input
+                            type="text"
+                            value={bulletPoint.title}
+                            onChange={(e) =>
+                              updateBulletPoint(
+                                subtopic.id,
+                                bulletPoint.id,
+                                "title",
+                                e.target.value
+                              )
+                            }
+                            required
+                            className="form-control"
+                          />
+                        </Box>
+                        <Box mb={1}>
+                          <Text
+                            as="label"
+                            display="block"
+                            mb={1}
+                            fontWeight="bold"
+                          >
+                            Description
+                          </Text>
+                          <textarea
+                            value={bulletPoint.description}
+                            onChange={(e) =>
+                              updateBulletPoint(
+                                subtopic.id,
+                                bulletPoint.id,
+                                "description",
+                                e.target.value
+                              )
+                            }
+                            className="form-control"
+                            rows={1}
+                          />
+                        </Box>
+                      </Box>
+                    ))}
+                    <Button
+                      onClick={() => addBulletPoint(subtopic.id)}
+                      variant="secondary"
+                      size="small"
+                    >
+                      Add Bullet Point
+                    </Button>
+                  </Box>
+                </Box>
+              ))}
+              <Button onClick={addSubtopic} variant="secondary" size="small">
+                Add Subtopic
+              </Button>
+            </Box>
+
             <Flex justifyContent="flex-end" gap={2}>
               <Button
                 type="button"
@@ -416,152 +747,270 @@ export default function ChapterManager({
       )}
 
       {chapters.length > 0 ? (
-        <Box
-          className="table-responsive"
-          sx={{
-            border: "1px solid",
-            borderColor: "gray.200",
-            borderRadius: "md",
-          }}
-        >
-          <Box as="table" width="100%">
-            <Box as="thead">
-              <Box as="tr" bg="gray.100">
-                <Box as="th" p={3} textAlign="left">
-                  Title
-                </Box>
-                <Box as="th" p={3} textAlign="left">
-                  Description
-                </Box>
-                <Box as="th" p={3} textAlign="center">
-                  Order
-                </Box>
-                <Box as="th" p={3} textAlign="center">
-                  Status
-                </Box>
-                <Box as="th" p={3} textAlign="center">
-                  Presentations
+        <Flex sx={{ gap: 4 }}>
+          {/* Sidebar Navigation */}
+          <Box
+            sx={{
+              width: "280px",
+              flexShrink: 0,
+              borderRight: "1px solid",
+              borderColor: "gray.200",
+              height: "calc(100vh - 200px)",
+              overflowY: "auto",
+              position: "sticky",
+              top: "20px",
+            }}
+          >
+            {chapters.map((chapter) => (
+              <Box
+                key={chapter._id}
+                onClick={() => setActiveChapter(chapter._id)}
+                sx={{
+                  p: 3,
+                  cursor: "pointer",
+                  bg: activeChapter === chapter._id ? "blue.50" : "transparent",
+                  borderLeft: "3px solid",
+                  borderColor:
+                    activeChapter === chapter._id ? "blue.500" : "transparent",
+                  "&:hover": {
+                    bg: activeChapter === chapter._id ? "blue.50" : "gray.50",
+                  },
+                }}
+              >
+                <Flex alignItems="center" justifyContent="space-between">
+                  <Box>
+                    <Text fontWeight="bold">
+                      {chapter.order}. {chapter.title}
+                    </Text>
+                    <Text fontSize="sm" color="gray.600" mt={1}>
+                      {chapter.subtopics.length} subtopics
+                    </Text>
+                  </Box>
+                  <Text
+                    fontSize="xs"
+                    px={2}
+                    py={1}
+                    bg={chapter.isActive ? "green.100" : "red.100"}
+                    color={chapter.isActive ? "green.700" : "red.700"}
+                    borderRadius="full"
+                  >
+                    {chapter.isActive ? "Active" : "Inactive"}
+                  </Text>
+                </Flex>
+              </Box>
+            ))}
+          </Box>
+
+          {/* Main Content Area */}
+          {activeChapterData && (
+            <Box flex="1">
+              {/* Chapter Header */}
+              <Flex justifyContent="space-between" alignItems="center" mb={4}>
+                <Box>
+                  <Heading as="h2" fontSize={24}>
+                    {activeChapterData.order}. {activeChapterData.title}
+                  </Heading>
+                  {activeChapterData.description && (
+                    <Text color="gray.600" mt={2}>
+                      {activeChapterData.description}
+                    </Text>
+                  )}
                 </Box>
                 {canManage && (
-                  <Box as="th" p={3} textAlign="right">
-                    Actions
-                  </Box>
+                  <Flex gap={2}>
+                    <Button
+                      onClick={() => handleStartEdit(activeChapterData)}
+                      variant="secondary"
+                      size="small"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      onClick={() => handleDelete(activeChapterData._id)}
+                      variant="danger"
+                      size="small"
+                      disabled={deletingChapterIds.includes(
+                        activeChapterData._id
+                      )}
+                    >
+                      {deletingChapterIds.includes(activeChapterData._id)
+                        ? "Deleting..."
+                        : "Delete"}
+                    </Button>
+                    {onCreateContent && (
+                      <Button
+                        onClick={() => onCreateContent(activeChapterData._id)}
+                        variant="primary"
+                        size="small"
+                      >
+                        Create Content
+                      </Button>
+                    )}
+                  </Flex>
                 )}
-              </Box>
-            </Box>
-            <Box as="tbody">
-              {chapters.map((chapter) => (
+              </Flex>
+
+              {/* Tab Navigation */}
+              <Flex
+                mb={4}
+                sx={{
+                  borderBottom: "1px solid",
+                  borderColor: "gray.200",
+                }}
+              >
                 <Box
-                  as="tr"
-                  key={chapter._id}
-                  borderTop="1px solid"
-                  borderColor="gray.200"
+                  onClick={() => setActiveTab("content")}
+                  sx={{
+                    px: 4,
+                    py: 2,
+                    cursor: "pointer",
+                    borderBottom: "2px solid",
+                    borderColor:
+                      activeTab === "content" ? "blue.500" : "transparent",
+                    color: activeTab === "content" ? "blue.500" : "gray.600",
+                    fontWeight: activeTab === "content" ? "bold" : "normal",
+                  }}
                 >
-                  <Box as="td" p={3}>
-                    {chapter.title}
-                  </Box>
-                  <Box as="td" p={3}>
-                    {chapter.description}
-                  </Box>
-                  <Box as="td" p={3} textAlign="center">
-                    {chapter.order}
-                  </Box>
-                  <Box as="td" p={3} textAlign="center">
-                    {chapter.isActive ? (
-                      <Text color="green">Active</Text>
-                    ) : (
-                      <Text color="red">Inactive</Text>
-                    )}
-                  </Box>
-                  <Box as="td" p={3} textAlign="center">
-                    {loadingPresentations ? (
-                      <Spinner size={24} />
-                    ) : (
-                      <Box>
-                        {presentations[chapter._id]?.length || 0} Presentations
-                        {presentations[chapter._id]?.length > 0 && (
-                          <Box mt={2}>
-                            {presentations[chapter._id].map((presentation) => (
-                              <Flex
-                                key={presentation._id}
-                                alignItems="center"
-                                justifyContent="space-between"
-                                p={2}
-                                bg="gray.50"
-                                mb={1}
-                                borderRadius="md"
-                              >
-                                <Text fontSize="sm">{presentation.title}</Text>
-                                <Flex gap={2}>
-                                  <Button
-                                    onClick={() =>
-                                      router.push(
-                                        `/subjects/${subjectId}/presentation/${presentation._id}`
-                                      )
-                                    }
-                                    variant="secondary"
-                                    size="small"
-                                  >
-                                    View
-                                  </Button>
-                                  {canManage && (
-                                    <Button
-                                      onClick={() =>
-                                        handleDeletePresentation(
-                                          presentation._id
-                                        )
-                                      }
-                                      variant="danger"
-                                      size="small"
-                                    >
-                                      Delete
-                                    </Button>
-                                  )}
-                                </Flex>
-                              </Flex>
-                            ))}
-                          </Box>
-                        )}
-                      </Box>
-                    )}
-                  </Box>
-                  {canManage && (
-                    <Box as="td" p={3} textAlign="right">
-                      <Flex justifyContent="flex-end" gap={2}>
-                        <Button
-                          onClick={() => handleStartEdit(chapter)}
-                          variant="secondary"
-                          size="small"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          onClick={() => handleDelete(chapter._id)}
-                          variant="danger"
-                          size="small"
-                          disabled={deletingChapterIds.includes(chapter._id)}
-                        >
-                          {deletingChapterIds.includes(chapter._id)
-                            ? "Deleting..."
-                            : "Delete"}
-                        </Button>
-                        {onCreateContent && (
+                  Content Structure
+                </Box>
+                <Box
+                  onClick={() => setActiveTab("presentations")}
+                  sx={{
+                    px: 4,
+                    py: 2,
+                    cursor: "pointer",
+                    borderBottom: "2px solid",
+                    borderColor:
+                      activeTab === "presentations"
+                        ? "blue.500"
+                        : "transparent",
+                    color:
+                      activeTab === "presentations" ? "blue.500" : "gray.600",
+                    fontWeight:
+                      activeTab === "presentations" ? "bold" : "normal",
+                  }}
+                >
+                  Presentations (
+                  {presentations[activeChapterData._id]?.length || 0})
+                </Box>
+              </Flex>
+
+              {/* Tab Content */}
+              {activeTab === "content" ? (
+                <Box>
+                  {activeChapterData.subtopics.map((subtopic, index) => (
+                    <Box
+                      key={index}
+                      mb={4}
+                      p={4}
+                      bg="white"
+                      sx={{
+                        border: "1px solid",
+                        borderColor: "gray.200",
+                        borderRadius: "md",
+                        boxShadow: "sm",
+                      }}
+                    >
+                      <Text fontSize="lg" fontWeight="bold" mb={2}>
+                        {subtopic.order}. {subtopic.title}
+                      </Text>
+                      {subtopic.description && (
+                        <Text color="gray.600" mb={3}>
+                          {subtopic.description}
+                        </Text>
+                      )}
+
+                      {subtopic.bulletPoints.length > 0 && (
+                        <Box pl={4}>
+                          {subtopic.bulletPoints.map((bullet, bIndex) => (
+                            <Box
+                              key={bIndex}
+                              mb={2}
+                              p={3}
+                              bg="gray.50"
+                              sx={{
+                                borderRadius: "md",
+                                borderLeft: "3px solid",
+                                borderColor: "blue.200",
+                              }}
+                            >
+                              <Text fontWeight="500">
+                                {bullet.order}. {bullet.title}
+                              </Text>
+                              {bullet.description && (
+                                <Text color="gray.600" mt={1}>
+                                  {bullet.description}
+                                </Text>
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                <Box>
+                  {presentations[activeChapterData._id]?.length > 0 ? (
+                    presentations[activeChapterData._id].map((presentation) => (
+                      <Flex
+                        key={presentation._id}
+                        p={4}
+                        mb={3}
+                        bg="white"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{
+                          border: "1px solid",
+                          borderColor: "gray.200",
+                          borderRadius: "md",
+                          boxShadow: "sm",
+                        }}
+                      >
+                        <Text fontWeight="500">{presentation.title}</Text>
+                        <Flex gap={2}>
                           <Button
-                            onClick={() => onCreateContent(chapter._id)}
+                            onClick={() =>
+                              router.push(
+                                `/subjects/${subjectId}/presentation/${presentation._id}`
+                              )
+                            }
                             variant="secondary"
                             size="small"
                           >
-                            Create Content
+                            View
                           </Button>
-                        )}
+                          {canManage && (
+                            <Button
+                              onClick={() =>
+                                handleDeletePresentation(presentation._id)
+                              }
+                              variant="danger"
+                              size="small"
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </Flex>
                       </Flex>
+                    ))
+                  ) : (
+                    <Box
+                      p={4}
+                      bg="gray.50"
+                      borderRadius="md"
+                      textAlign="center"
+                    >
+                      <Text color="gray.600">
+                        No presentations available for this chapter.
+                      </Text>
                     </Box>
                   )}
                 </Box>
-              ))}
+              )}
             </Box>
-          </Box>
-        </Box>
+          )}
+        </Flex>
       ) : (
         <Box p={4} bg="gray.100" borderRadius="md" textAlign="center">
           <Text color="gray.600">No chapters available yet.</Text>

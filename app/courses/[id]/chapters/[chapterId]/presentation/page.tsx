@@ -165,7 +165,15 @@ const PresentationPage = ({
     layouts,
     defaultLayoutId
   );
-  const currentLayout = layouts[mappedLayoutId];
+  // If the slide has an image element but the layout doesn't support images,
+  // use the title-content-image layout instead
+  const hasImageElement = currentSlide.elements.some(
+    (el) => el.type === "image"
+  );
+  const currentLayout =
+    hasImageElement && mappedLayoutId === "title-content"
+      ? layouts["title-content-image"]
+      : layouts[mappedLayoutId];
 
   return (
     <Box p={4}>
@@ -175,7 +183,7 @@ const PresentationPage = ({
           {selectedPresentation.title}
         </Heading>
         <Text color="gray.600">
-          {selectedPresentation.description || "No description available"}
+          {selectedPresentation.description || "No description available1"}
         </Text>
       </Box>
 
@@ -281,7 +289,7 @@ const PresentationPage = ({
                 }}
               >
                 <MiniSlidePreview
-                  slide={slide}
+                  slide={{ ...slide, layoutType: slide.layout }}
                   isSelected={currentSlideIndex === index}
                   layouts={layouts}
                   defaultLayoutId={defaultLayoutId}
@@ -337,6 +345,7 @@ const PresentationPage = ({
                 }
                 onSlideChange={() => {}} // Read-only mode
                 currentLayout={currentLayout}
+                readOnly={true}
               />
             ) : (
               <Text color="gray.500">Layout not found for this slide</Text>

@@ -2124,9 +2124,27 @@ export const generateLLMContent = async (params: {
   try {
     const isDownload = params.context.download === "true";
 
+    // Optimize the prompts to reduce token count
+    const optimizedPrompts = {
+      ...params.prompts,
+      draftContent: params.prompts.draftContent.map((slide) => ({
+        ...slide,
+        // Limit bullet points to essential information
+        bulletPoints: slide.bulletPoints
+          .map((point) => {
+            // If the point is too long, truncate it
+            if (point.length > 200) {
+              return point.substring(0, 197) + "...";
+            }
+            return point;
+          })
+          .slice(0, 5), // Limit to 5 bullet points per slide
+      })),
+    };
+
     // First generate and save the presentation
     const response = await api.post("/llm/generate", {
-      prompts: params.prompts,
+      prompts: optimizedPrompts,
       context: params.context,
     });
 

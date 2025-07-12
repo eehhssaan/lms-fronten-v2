@@ -1,19 +1,13 @@
 import React, { useState } from "react";
 import { Box, Text, Flex } from "rebass";
+import {
+  PresentationDraftSlide,
+  PresentationDraftBulletPoint,
+} from "../types/presentation";
 
 interface SlideEditModalProps {
-  slide: {
-    slideNumber: number;
-    title: string;
-    bulletPoints: string[];
-    type: "title" | "content" | "section";
-  };
-  onSave: (updatedSlide: {
-    slideNumber: number;
-    title: string;
-    bulletPoints: string[];
-    type: "title" | "content" | "section";
-  }) => void;
+  slide: PresentationDraftSlide;
+  onSave: (updatedSlide: PresentationDraftSlide) => void;
   onClose: () => void;
 }
 
@@ -23,19 +17,36 @@ const SlideEditModal: React.FC<SlideEditModalProps> = ({
   onClose,
 }) => {
   const [title, setTitle] = useState(slide.title);
-  const [bulletPoints, setBulletPoints] = useState([...slide.bulletPoints]);
+  const [bulletPoints, setBulletPoints] = useState<
+    PresentationDraftBulletPoint[]
+  >([...slide.bulletPoints]);
 
   const handleAddBulletPoint = () => {
-    setBulletPoints([...bulletPoints, ""]);
+    setBulletPoints([
+      ...bulletPoints,
+      {
+        title: "",
+        description: "",
+        _id: `temp_${Date.now()}`,
+        subPoints: [],
+      },
+    ]);
   };
 
   const handleRemoveBulletPoint = (index: number) => {
     setBulletPoints(bulletPoints.filter((_, i) => i !== index));
   };
 
-  const handleBulletPointChange = (index: number, value: string) => {
+  const handleBulletPointChange = (
+    index: number,
+    field: "title" | "description",
+    value: string
+  ) => {
     const newBulletPoints = [...bulletPoints];
-    newBulletPoints[index] = value;
+    newBulletPoints[index] = {
+      ...newBulletPoints[index],
+      [field]: value,
+    };
     setBulletPoints(newBulletPoints);
   };
 
@@ -57,7 +68,9 @@ const SlideEditModal: React.FC<SlideEditModalProps> = ({
 
   const handleSave = () => {
     // Filter out empty bullet points
-    const filteredBulletPoints = bulletPoints.filter((point) => point.trim());
+    const filteredBulletPoints = bulletPoints.filter(
+      (point) => point.title.trim() || point.description?.trim()
+    );
     onSave({
       ...slide,
       title,
@@ -133,71 +146,94 @@ const SlideEditModal: React.FC<SlideEditModalProps> = ({
           </Flex>
 
           {bulletPoints.map((point, index) => (
-            <Flex key={index} mb={2} alignItems="center">
-              <Box flex={1}>
-                <input
-                  type="text"
-                  value={point}
-                  onChange={(e) =>
-                    handleBulletPointChange(index, e.target.value)
-                  }
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    borderRadius: "4px",
-                    border: "1px solid #ddd",
-                  }}
-                />
-              </Box>
-              <Flex ml={2}>
-                <button
-                  onClick={() => handleMoveBulletPoint(index, "up")}
-                  disabled={index === 0}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    border: "1px solid #ddd",
-                    backgroundColor: "white",
-                    cursor: index === 0 ? "not-allowed" : "pointer",
-                    opacity: index === 0 ? 0.5 : 1,
-                  }}
-                >
-                  ↑
-                </button>
-                <button
-                  onClick={() => handleMoveBulletPoint(index, "down")}
-                  disabled={index === bulletPoints.length - 1}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    border: "1px solid #ddd",
-                    backgroundColor: "white",
-                    cursor:
-                      index === bulletPoints.length - 1
-                        ? "not-allowed"
-                        : "pointer",
-                    opacity: index === bulletPoints.length - 1 ? 0.5 : 1,
-                    marginLeft: "4px",
-                  }}
-                >
-                  ↓
-                </button>
-                <button
-                  onClick={() => handleRemoveBulletPoint(index)}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    border: "1px solid #ff4444",
-                    backgroundColor: "white",
-                    color: "#ff4444",
-                    cursor: "pointer",
-                    marginLeft: "4px",
-                  }}
-                >
-                  ×
-                </button>
+            <Box key={point._id} mb={4}>
+              <Flex mb={2} alignItems="flex-start">
+                <Box flex={1}>
+                  <input
+                    type="text"
+                    value={point.title}
+                    placeholder="Title"
+                    onChange={(e) =>
+                      handleBulletPointChange(index, "title", e.target.value)
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      border: "1px solid #ddd",
+                      marginBottom: "8px",
+                    }}
+                  />
+                  <textarea
+                    value={point.description || ""}
+                    placeholder="Description (optional)"
+                    onChange={(e) =>
+                      handleBulletPointChange(
+                        index,
+                        "description",
+                        e.target.value
+                      )
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      border: "1px solid #ddd",
+                      minHeight: "60px",
+                      resize: "vertical",
+                    }}
+                  />
+                </Box>
+                <Flex ml={2} alignItems="flex-start">
+                  <button
+                    onClick={() => handleMoveBulletPoint(index, "up")}
+                    disabled={index === 0}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      border: "1px solid #ddd",
+                      backgroundColor: "white",
+                      cursor: index === 0 ? "not-allowed" : "pointer",
+                      opacity: index === 0 ? 0.5 : 1,
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => handleMoveBulletPoint(index, "down")}
+                    disabled={index === bulletPoints.length - 1}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      border: "1px solid #ddd",
+                      backgroundColor: "white",
+                      cursor:
+                        index === bulletPoints.length - 1
+                          ? "not-allowed"
+                          : "pointer",
+                      opacity: index === bulletPoints.length - 1 ? 0.5 : 1,
+                      marginLeft: "4px",
+                    }}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={() => handleRemoveBulletPoint(index)}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      border: "1px solid #ff4444",
+                      backgroundColor: "white",
+                      color: "#ff4444",
+                      cursor: "pointer",
+                      marginLeft: "4px",
+                    }}
+                  >
+                    ×
+                  </button>
+                </Flex>
               </Flex>
-            </Flex>
+            </Box>
           ))}
         </Box>
 

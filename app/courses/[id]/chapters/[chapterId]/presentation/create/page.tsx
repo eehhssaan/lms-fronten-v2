@@ -3,7 +3,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Text } from "rebass";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Theme, Slide } from "@/types/presentation";
+import {
+  Theme,
+  PresentationDraft,
+  PresentationDraftSlide,
+  PresentationDraftBulletPoint,
+} from "@/types/presentation";
 import ThemeSelector from "@/components/ThemeSelector";
 import DraftPreview from "@/components/DraftPreview";
 import PresentationPreview from "@/components/PresentationPreview";
@@ -18,29 +23,6 @@ import {
   PresentationProvider,
   usePresentationContext,
 } from "@/context/PresentationContext";
-
-interface DraftSlide {
-  slideNumber: number;
-  title: string;
-  bulletPoints: string[];
-  type: "title" | "content" | "section";
-}
-
-interface DraftContent {
-  id: string;
-  topic: string;
-  numSlides: number;
-  content: DraftSlide[];
-  status: "generating" | "complete" | "error";
-  progress: number;
-  chapter: string;
-  userPrompt: string;
-  themeId?: string;
-  title?: string;
-  aspectRatio?: string;
-  courseId?: string;
-  scope?: "subject" | "course";
-}
 
 const POLLING_INTERVAL = 3000; // 3 seconds
 
@@ -58,7 +40,9 @@ function PresentationGenerator() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
   const [numberOfSlides, setNumberOfSlides] = useState(5);
   const [userPrompt, setUserPrompt] = useState("");
-  const [draftContent, setDraftContent] = useState<DraftContent | null>(null);
+  const [draftContent, setDraftContent] = useState<PresentationDraft | null>(
+    null
+  );
   const [chapters, setChapters] = useState<{ id: string; title: string }[]>([]);
   const [finalContent, setFinalContent] = useState<any>(null);
 
@@ -95,7 +79,7 @@ function PresentationGenerator() {
     const pollInterval = setInterval(async () => {
       try {
         const response = await api.get(
-          `/v1/presentations/drafts/${draftContent.id}`
+          `/v1/presentations/drafts/${draftContent._id}`
         );
 
         if (!response.data.success) {
@@ -155,7 +139,10 @@ function PresentationGenerator() {
     }
   };
 
-  const handleEditSlide = (slideNumber: number, updatedSlide: DraftSlide) => {
+  const handleEditSlide = (
+    slideNumber: number,
+    updatedSlide: PresentationDraftSlide
+  ) => {
     if (!draftContent) return;
 
     setDraftContent({
@@ -170,12 +157,36 @@ function PresentationGenerator() {
     if (!draftContent || !selectedTheme) return;
 
     try {
+      // Convert the draft content to a more concise format
+      const formattedDraftContent = draftContent.content.map((slide) => ({
+        slideNumber: slide.slideNumber,
+        title: slide.title,
+        type: slide.type,
+        bulletPoints: slide.bulletPoints.map((point) => {
+          let text = point.title;
+          if (point.description) text += `: ${point.description}`;
+          if (point.subPoints && point.subPoints.length > 0) {
+            text +=
+              " | Subpoints: " +
+              point.subPoints
+                .map(
+                  (sub) =>
+                    `${sub.title}${
+                      sub.description ? `: ${sub.description}` : ""
+                    }`
+                )
+                .join("; ");
+          }
+          return text;
+        }),
+      }));
+
       const response = await generateLLMContent({
         prompts: {
           chapter: draftContent.chapter,
           numberOfSlides: draftContent.content.length.toString(),
-          userPrompt: draftContent.userPrompt,
-          draftContent: draftContent.content,
+          userPrompt,
+          draftContent: formattedDraftContent,
         },
         context: {
           themeId: selectedTheme._id,
@@ -193,7 +204,7 @@ function PresentationGenerator() {
       // Save to PresentationContext
       setPresentationFromBackend({
         _id: response.data.presentationId,
-        title: draftContent.title || "Untitled Presentation",
+        title: draftContent.chapter || "Untitled Presentation",
         theme: selectedTheme,
         slides: response.data.slides,
         courseId,
@@ -356,7 +367,7 @@ function PresentationGenerator() {
         </PresentationProvider>
       ) : draftContent ? (
         <DraftPreview
-          content={draftContent}
+          draft={draftContent}
           onEdit={handleEditSlide}
           onGenerateFinal={handleGenerateFinal}
         />

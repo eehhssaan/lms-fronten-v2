@@ -179,22 +179,24 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
         }}
       >
         {element.type === "content" ? (
-          <ContentLayoutRenderer
-            layout={element.contentLayout || "vertical"}
-            items={Array.isArray(value) ? value : []}
-            textStyle={textStyle}
-            onItemChange={(index, field, newValue) => {
-              if (Array.isArray(value)) {
+          Array.isArray(value) ? (
+            <ContentLayoutRenderer
+              layout={element.contentLayout || "vertical"}
+              items={value}
+              textStyle={textStyle}
+              onItemChange={(index, field, newValue) => {
                 const newItems = [...value];
                 newItems[index] = {
                   ...newItems[index],
                   [field]: newValue,
                 };
                 onChange(element.type, newItems);
-              }
-            }}
-            isMiniPreview={isMiniPreview}
-          />
+              }}
+              isMiniPreview={isMiniPreview}
+            />
+          ) : (
+            <div style={textStyle}>{value}</div>
+          )
         ) : element.type === "image" ? (
           <img
             src={value as string}

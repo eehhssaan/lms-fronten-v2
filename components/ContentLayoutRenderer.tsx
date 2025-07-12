@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Box, Flex, Text } from "rebass";
 import { ContentLayout } from "./ContentLayoutSelector";
 import { ContentItem } from "@/types/presentation";
@@ -22,14 +22,33 @@ const AutoScalingContent: React.FC<{
   style: any;
   minFontSize?: number;
   maxFontSize?: number;
-}> = ({ value, onChange, style, minFontSize = 12, maxFontSize = 20 }) => {
-  const { fontSize, containerRef, contentRef } = useAutoScaleFont(value, {
+  isMiniPreview?: boolean;
+}> = ({
+  value,
+  onChange,
+  style,
+  minFontSize = 12,
+  maxFontSize = 20,
+  isMiniPreview,
+}) => {
+  const { fontSize, contentRef } = useAutoScaleFont(value, {
     minFontSize,
     maxFontSize,
   });
 
+  useEffect(() => {
+    const el = contentRef.current;
+    if (el && !isMiniPreview) {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    } else if (el && isMiniPreview) {
+      el.style.height = "auto";
+      el.style.height = "16px";
+    }
+  }, [value, contentRef]);
+
   return (
-    <div ref={containerRef} style={{ height: "100%", width: "100%" }}>
+    <div style={{ width: "100%" }}>
       <textarea
         ref={contentRef}
         value={value}
@@ -38,7 +57,9 @@ const AutoScalingContent: React.FC<{
           ...style,
           fontSize: `${fontSize}px`,
           width: "100%",
-          height: "100%",
+          overflow: "hidden",
+          resize: "none",
+          height: "auto",
         }}
       />
     </div>
@@ -112,13 +133,13 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
     <Box
       height="100%"
       position="relative"
-      sx={{ padding: isMiniPreview ? "4px" : "20px" }}
+      sx={{ padding: isMiniPreview ? "0.20px" : "4px" }}
     >
       <Flex
         height="100%"
         alignItems="stretch"
         sx={{
-          gap: isMiniPreview ? "0.25rem" : "1rem",
+          gap: isMiniPreview ? "0.0625" : "0.25rem",
           position: "relative",
         }}
       >
@@ -191,7 +212,7 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 </Box>
               </Box>
             </Box>
-            {index < items.length - 1 && (
+            {/* {index < items.length - 1 && (
               <Box
                 sx={{
                   display: "flex",
@@ -211,7 +232,7 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                   →
                 </Box>
               </Box>
-            )}
+            )} */}
           </React.Fragment>
         ))}
       </Flex>
@@ -487,25 +508,38 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
           height: isMiniPreview ? "100px" : "600px",
         }}
       >
-        <svg
-          style={{
+        <Box
+          sx={{
             position: "absolute",
-            width: "100%",
-            height: "100%",
             top: 0,
             left: 0,
+            width: "100%",
+            height: "100%",
+            zIndex: 0, // SVG will be underneath
             pointerEvents: "none",
           }}
         >
-          <circle
-            cx={isMiniPreview ? "50" : "300"}
-            cy={isMiniPreview ? "50" : "300"}
-            r={isMiniPreview ? "25" : "120"}
-            fill="none"
-            stroke="#E2E8F0"
-            strokeWidth={isMiniPreview ? "0.5" : "2"}
-          />
-        </svg>
+          <svg
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+              top: 0,
+              left: 0,
+              pointerEvents: "none",
+            }}
+          >
+            <circle
+              cx={isMiniPreview ? "50" : "300"}
+              cy={isMiniPreview ? "55" : "335"}
+              r={isMiniPreview ? "25" : "150"}
+              fill="none"
+              stroke="#E2E8F0"
+              strokeWidth={isMiniPreview ? "2" : "5"}
+              z="0.1"
+            />
+          </svg>
+        </Box>
 
         {items.map((item, index) => {
           const angle = (index * 2 * Math.PI) / items.length - Math.PI / 2;
@@ -522,19 +556,23 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 position: "absolute",
                 left: `${x}px`,
                 top: `${y}px`,
-                transform: "translate(-50%, -50%)",
-                width: isMiniPreview ? "30px" : "200px",
-                minHeight: isMiniPreview ? "20px" : "150px",
+                transform: "translate(-50%, -35%)",
+                width: isMiniPreview ? "42px" : "205px",
+                minHeight: isMiniPreview ? "42px" : "205px",
+                flex: 1,
                 display: "flex",
                 flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
                 textAlign: "center",
                 transition: "all 0.3s ease",
-                backgroundColor: "rgba(49, 130, 206, 0.05)",
-                borderRadius: isMiniPreview ? "1px" : "8px",
+                backgroundColor: "rgb(247, 247, 247)",
+                borderRadius: "50%",
                 border: isMiniPreview
                   ? "none"
                   : "1px solid rgba(49, 130, 206, 0.1)",
                 padding: isMiniPreview ? "1px" : "8px",
+                zIndex: 1,
               }}
             >
               <input
@@ -550,7 +588,6 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                   outline: "none",
                   fontSize: isMiniPreview ? "5px" : "20px",
                   backgroundColor: "transparent",
-                  color: "#8B4513",
                   textAlign: "center",
                   padding: 0,
                 }}
@@ -560,24 +597,25 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 onChange={(value) => onItemChange(index, "detail", value)}
                 style={{
                   ...textStyle,
+
                   border: "none",
                   outline: "none",
                   resize: "none",
                   backgroundColor: "transparent",
-                  color: "#8B4513",
                   textAlign: "center",
                   lineHeight: isMiniPreview ? "1" : "1.5",
                   padding: 0,
                   margin: 0,
                 }}
                 minFontSize={isMiniPreview ? 4 : 12}
-                maxFontSize={isMiniPreview ? 5 : 20}
+                maxFontSize={isMiniPreview ? 5 : 14}
+                isMiniPreview={isMiniPreview}
               />
             </Box>
           );
         })}
 
-        <svg
+        {/* <svg
           style={{
             position: "absolute",
             width: "100%",
@@ -607,7 +645,7 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
               />
             );
           })}
-        </svg>
+        </svg> */}
       </Box>
     </Box>
   );

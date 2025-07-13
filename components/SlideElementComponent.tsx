@@ -173,7 +173,7 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
             display: element.type === "content" ? "-webkit-box" : "-webkit-box",
             WebkitLineClamp: element.type === "title" ? "1" : "2",
             WebkitBoxOrient: "vertical" as const,
-            maxHeight: element.type === "content" ? "80%" : undefined,
+            maxHeight: element.type === "content" ? "98%" : undefined,
             padding: "1px",
           }),
         }}
@@ -204,9 +204,9 @@ const SlideElementComponent: React.FC<SlideElementComponentProps> = ({
             style={{
               width: "100%",
               height: "100%",
-              objectFit: isMiniPreview ? "cover" : "contain",
+              objectFit: isMiniPreview ? "contain" : "contain",
               objectPosition: "center",
-              maxHeight: isMiniPreview ? "80%" : "100%",
+              maxHeight: isMiniPreview ? "98%" : "100%",
             }}
           />
         ) : (

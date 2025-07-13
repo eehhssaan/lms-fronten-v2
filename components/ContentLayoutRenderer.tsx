@@ -23,6 +23,7 @@ const AutoScalingContent: React.FC<{
   minFontSize?: number;
   maxFontSize?: number;
   isMiniPreview?: boolean;
+  height?: string;
 }> = ({
   value,
   onChange,
@@ -30,6 +31,7 @@ const AutoScalingContent: React.FC<{
   minFontSize = 12,
   maxFontSize = 20,
   isMiniPreview,
+  height = "auto",
 }) => {
   const { fontSize, contentRef } = useAutoScaleFont(value, {
     minFontSize,
@@ -43,12 +45,12 @@ const AutoScalingContent: React.FC<{
       el.style.height = el.scrollHeight + "px";
     } else if (el && isMiniPreview) {
       el.style.height = "auto";
-      el.style.height = "16px";
+      el.style.height = height;
     }
   }, [value, contentRef]);
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: "100%", height: "auto" }}>
       <textarea
         ref={contentRef}
         value={value}
@@ -148,25 +150,26 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
               sx={{
                 display: "flex",
                 flexDirection: "column",
-                borderRadius: isMiniPreview ? "2px" : "8px",
+                borderRadius: isMiniPreview ? "2px" : "0px",
                 height: "100%",
                 minHeight: isMiniPreview ? "60px" : "200px",
                 position: "relative",
-                gap: isMiniPreview ? "0.25rem" : "1rem",
+
+                borderRight:
+                  index !== items.length - 1
+                    ? `${isMiniPreview ? "1px" : "3px"} solid #E2E8F0`
+                    : "none",
               }}
             >
               <Box
                 sx={{
                   display: "flex",
                   flexDirection: "column",
-                  height: "100%",
-                  justifyContent: "center",
-                  gap: isMiniPreview ? "0.25rem" : "1rem",
                 }}
               >
                 <Box
                   sx={{
-                    padding: isMiniPreview ? "0.25rem" : "1rem",
+                    paddingTop: isMiniPreview ? "0.25rem" : "0.75rem",
                   }}
                 >
                   <AutoScalingContent
@@ -174,6 +177,8 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                     onChange={(value) => onItemChange(index, "title", value)}
                     style={{
                       ...textStyle,
+                      display: "flex",
+                      alignItems: "center",
                       fontWeight: "bold",
                       width: "100%",
                       border: "none",
@@ -181,16 +186,18 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                       textAlign: "center",
                       fontSize: isMiniPreview ? "7px" : "24px",
                       resize: "none",
+                      maxHeight: isMiniPreview ? "15px" : "50px",
                     }}
-                    minFontSize={isMiniPreview ? 6 : 18}
-                    maxFontSize={isMiniPreview ? 8 : 24}
+                    minFontSize={isMiniPreview ? 5 : 18}
+                    maxFontSize={isMiniPreview ? 7 : 24}
+                    isMiniPreview={isMiniPreview}
+                    height="15px"
                   />
                 </Box>
                 <Box
                   sx={{
                     flex: 1,
                     display: "flex",
-                    alignItems: "center",
                   }}
                 >
                   <AutoScalingContent
@@ -204,36 +211,18 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                       overflow: "auto",
                       textAlign: "center",
                     }}
-                    minFontSize={isMiniPreview ? 6 : 14}
-                    maxFontSize={isMiniPreview ? 8 : 20}
+                    minFontSize={isMiniPreview ? 4 : 14}
+                    maxFontSize={isMiniPreview ? 5 : 18}
+                    isMiniPreview={isMiniPreview}
+                    height="60px"
                   />
                 </Box>
               </Box>
             </Box>
-            {/* {index < items.length - 1 && (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: isMiniPreview ? "12px" : "60px",
-                  alignSelf: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    color: "#3182ce",
-                    fontSize: isMiniPreview ? "10px" : "32px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  →
-                </Box>
-              </Box>
-            )} */}
           </React.Fragment>
         ))}
       </Flex>
+          
     </Box>
   );
 
@@ -418,17 +407,19 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
               sx={{
                 width: `${widthPercentage}%`,
                 marginLeft: `${marginLeftPercentage}%`,
+                // border: "1px solid red",
                 transition: "all 0.3s ease",
-                display: "flex",
+                // display: "flex",
                 alignItems: "center",
                 gap: isMiniPreview ? "4px" : "16px",
               }}
             >
-              <Box
+              {/* <Box
                 sx={{
                   width: isMiniPreview ? "60px" : "150px",
                   minWidth: isMiniPreview ? "60px" : "150px",
                   display: "flex",
+                  border: "1px solid black",
                   justifyContent: "flex-end",
                   alignItems: "center",
                 }}
@@ -450,7 +441,7 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                     padding: isMiniPreview ? "1px 2px" : "0 8px",
                   }}
                 />
-              </Box>
+              </Box> */}
               <Box
                 sx={{
                   backgroundColor: "rgba(49, 130, 206, 0.05)",
@@ -458,10 +449,27 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                   border: "1px solid rgba(49, 130, 206, 0.1)",
                   height: "100%",
                   flex: 1,
-                  display: "flex",
+                  // display: "flex",
                   minHeight: isMiniPreview ? "16px" : undefined,
                 }}
               >
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => onItemChange(index, "title", e.target.value)}
+                  style={{
+                    ...textStyle,
+                    fontWeight: "bold",
+                    width: "100%",
+                    height: isMiniPreview ? "12px" : "32px",
+                    border: "none",
+                    outline: "none",
+                    fontSize: isMiniPreview ? "7px" : "18px",
+                    backgroundColor: "transparent",
+                    textAlign: "center",
+                    padding: isMiniPreview ? "1px 2px" : "0 8px",
+                  }}
+                />
                 <AutoScalingContent
                   value={item.detail}
                   onChange={(value) => onItemChange(index, "detail", value)}
@@ -473,10 +481,10 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                     backgroundColor: "transparent",
                     textAlign: "center",
                     overflow: "auto",
-                    padding: isMiniPreview ? "1px" : "8px",
+                    padding: isMiniPreview ? "1px" : "6px",
                   }}
                   minFontSize={isMiniPreview ? 6 : 12}
-                  maxFontSize={isMiniPreview ? 8 : 20}
+                  maxFontSize={isMiniPreview ? 8 : 18}
                 />
               </Box>
             </Box>
@@ -604,6 +612,7 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 minFontSize={isMiniPreview ? 4 : 12}
                 maxFontSize={isMiniPreview ? 5 : 14}
                 isMiniPreview={isMiniPreview}
+                height="16px"
               />
             </Box>
           );

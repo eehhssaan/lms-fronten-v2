@@ -506,7 +506,7 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
           height: isMiniPreview ? "100px" : "600px",
         }}
       >
-        <Box
+        {/* <Box
           sx={{
             position: "absolute",
             top: 0,
@@ -529,7 +529,7 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
           >
             <circle
               cx={isMiniPreview ? "50" : "300"}
-              cy={isMiniPreview ? "55" : "335"}
+              cy={isMiniPreview ? "55" : "300"}
               r={isMiniPreview ? "25" : "150"}
               fill="none"
               stroke="#E2E8F0"
@@ -537,11 +537,11 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
               z="0.1"
             />
           </svg>
-        </Box>
+        </Box> */}
 
         {items.map((item, index) => {
           const angle = (index * 2 * Math.PI) / items.length - Math.PI / 2;
-          const radius = isMiniPreview ? 25 : 120;
+          const radius = isMiniPreview ? 30 : 130;
           const centerX = isMiniPreview ? 50 : 300;
           const centerY = isMiniPreview ? 50 : 300;
           const x = centerX + radius * Math.cos(angle);
@@ -555,8 +555,8 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 left: `${x}px`,
                 top: `${y}px`,
                 transform: "translate(-50%, -35%)",
-                width: isMiniPreview ? "42px" : "205px",
-                minHeight: isMiniPreview ? "42px" : "205px",
+                width: isMiniPreview ? "42px" : "195px",
+                minHeight: isMiniPreview ? "42px" : "160px",
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
@@ -565,7 +565,7 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 textAlign: "center",
                 transition: "all 0.3s ease",
                 backgroundColor: "rgb(247, 247, 247)",
-                borderRadius: "50%",
+                borderRadius: "20%",
                 border: isMiniPreview
                   ? "none"
                   : "1px solid rgba(49, 130, 206, 0.1)",
@@ -614,7 +614,7 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
           );
         })}
 
-        {/* <svg
+        <svg
           style={{
             position: "absolute",
             width: "100%",
@@ -640,11 +640,11 @@ const ContentLayoutRenderer: React.FC<ContentLayoutRendererProps> = ({
                 x2={x}
                 y2={y}
                 stroke="#E2E8F0"
-                strokeWidth={isMiniPreview ? "0.25" : "1"}
+                strokeWidth={isMiniPreview ? "0.75" : "5"}
               />
             );
           })}
-        </svg> */}
+        </svg>
       </Box>
     </Box>
   );
